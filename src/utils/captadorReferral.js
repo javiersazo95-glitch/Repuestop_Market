@@ -29,6 +29,16 @@ export function captureCaptadorReferralFromUrl() {
   }
 }
 
+/** Guarda un código ya conocido (p. ej. el de la página `/r/:codigo` del taller) para precargar el registro. */
+export function storeCaptadorReferral(value) {
+  try {
+    const code = normalizeCaptadorCode(value);
+    if (code && /^[A-Z0-9_-]+$/.test(code)) window.sessionStorage.setItem(STORAGE_KEY, code);
+  } catch {
+    // Sin sessionStorage el campo simplemente parte vacío.
+  }
+}
+
 export function getStoredCaptadorReferral() {
   try {
     return window.sessionStorage.getItem(STORAGE_KEY) || '';

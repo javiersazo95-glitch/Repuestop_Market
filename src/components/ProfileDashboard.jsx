@@ -8,7 +8,7 @@ import {
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
   ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, PackageSearch, Wrench, CalendarClock,
-  Cog, Gauge, Telescope, Box
+  Cog, Gauge, Telescope, Box, QrCode
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import ProfileMoreMenu from './ProfileMoreMenu';
@@ -62,6 +62,7 @@ import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import SellerWithdrawalsPanel, { isCompleteBankAccount } from './SellerWithdrawalsPanel';
 import MiTallerSection from './talleres/MiTallerSection';
 import WorkshopAppointmentsSection from './talleres/WorkshopAppointmentsSection';
+import WorkshopReferralsPanel from './workshop/WorkshopReferralsPanel';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import FaultsList from './faults/FaultsList';
 import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
@@ -269,7 +270,8 @@ const WORKSHOP_SIDEBAR_GROUPS = [
       { id: 'fallas_taller', label: 'Mis diagnósticos', icon: EngineIcon },
       { id: 'diagnostico', label: 'Servicio de agendamiento', icon: CalendarClock },
       { id: 'mi_taller', label: 'Mi taller', icon: Wrench },
-      { id: 'citas_taller', label: 'Citas del taller', icon: CalendarClock }
+      { id: 'citas_taller', label: 'Citas del taller', icon: CalendarClock },
+      { id: 'invitar_compradores', label: 'Invitar compradores', icon: QrCode }
     ]
   },
   {
@@ -773,7 +775,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // Publicar avisos, acreditar el taller y su agenda son del perfil Taller: un enlace guardado a
   // `/perfil/fallas_taller` (o a las pestañas del taller) de otra cuenta vuelve al resumen.
   useEffect(() => {
-    const soloTaller = ['fallas_taller', 'servicios_taller', 'diagnostico'].includes(activeTab);
+    const soloTaller = ['fallas_taller', 'servicios_taller', 'diagnostico', 'invitar_compradores'].includes(activeTab);
     const soloComprador = activeTab === 'mis_fallas';
     // «Citas del taller» es de la cuenta Taller (y de una tienda con taller): el comprador solo tiene «Mis citas».
     const citasDeTaller = activeTab === 'citas_taller' && !isWorkshop && !isSeller;
@@ -1958,6 +1960,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               {activeTab === 'mi_taller' && <MiTallerSection />}
               {activeTab === 'citas_taller' && (isWorkshop || isSeller) && <WorkshopAppointmentsSection />}
+              {activeTab === 'invitar_compradores' && isWorkshop && <WorkshopReferralsPanel />}
               {(activeTab === 'mis_fallas' || activeTab === 'fallas_taller') && <FaultsList heading={false} />}
               {activeTab === 'servicios_taller' && isWorkshop && <div className="profile-panel"><ProfileWorkshopServicesPanel onBack={() => setActiveTab('mi_taller')} /></div>}
               {activeTab === 'diagnostico' && isWorkshop && <ProfileDiagnosticPanel onOpenAds={() => setActiveTab('mi_taller')} />}

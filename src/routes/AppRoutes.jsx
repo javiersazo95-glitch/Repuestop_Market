@@ -30,6 +30,7 @@ const FaultsPage = lazy(() => import('../pages/FaultsPage'));
 const FaultDetailPage = lazy(() => import('../pages/FaultDetailPage'));
 const TallerPage = lazy(() => import('../pages/TallerPage'));
 const WorkshopRegisterPage = lazy(() => import('../pages/WorkshopRegisterPage'));
+const ReferralLandingPage = lazy(() => import('../pages/ReferralLandingPage'));
 const CartPage = lazy(() => import('../pages/CartPage'));
 const CheckoutPage = lazy(() => import('../pages/CheckoutPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage'));
@@ -67,6 +68,8 @@ export default function AppRoutes() {
               {/* Perfil publico del taller y su registro como cuenta propia. */}
               <Route path={ROUTES.workshop} element={<TallerPage />} />
               <Route path={ROUTES.workshopRegister} element={<WorkshopRegisterPage />} />
+              {/* QR del taller: página pública de bienvenida con su código de invitación. */}
+              <Route path={ROUTES.referral} element={<ReferralLandingPage />} />
               <Route path={ROUTES.about} element={<AboutPage />} />
               {/* El carrito es público: un invitado tiene que poder revisarlo antes de
                   iniciar sesión. El checkout sí exige sesión. */}

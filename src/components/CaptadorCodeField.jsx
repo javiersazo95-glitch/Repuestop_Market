@@ -70,13 +70,19 @@ export function useCaptadorCode(initialCode = '') {
   return { code, status, alias, setCode, validate, codeForSubmit, reset };
 }
 
-export default function CaptadorCodeField({ referral, disabled = false }) {
+/**
+ * `variant="buyer"`: el comprador puede venir invitado por un taller (código `TL-…`, bajo el QR de su taller) o por un captador.
+ * Un código de taller se muestra con el nombre del taller; el resto, como captador.
+ */
+export default function CaptadorCodeField({ referral, disabled = false, variant = 'default' }) {
   const { code, status, alias, setCode, validate } = referral;
   const hasError = status === 'invalid' || status === 'error';
+  const isBuyer = variant === 'buyer';
+  const isWorkshopCode = /^TL-/i.test(String(code || '').trim());
 
   return (
     <div className="form-group">
-      <label htmlFor="captador-code">Código de captador (opcional)</label>
+      <label htmlFor="captador-code">{isBuyer ? 'Código de invitación (opcional)' : 'Código de captador (opcional)'}</label>
       <div className={`input-with-icon ${hasError ? 'has-error' : status === 'valid' ? 'has-success' : ''}`}>
         <Users size={18} className="field-icon" />
         <input
@@ -86,7 +92,7 @@ export default function CaptadorCodeField({ referral, disabled = false }) {
           autoCapitalize="characters"
           spellCheck={false}
           maxLength={CAPTADOR_CODE_MAX_LENGTH}
-          placeholder="Ej: RT-JUAN-00012"
+          placeholder={isBuyer ? 'Ej: TL-AB12CD' : 'Ej: RT-JUAN-00012'}
           value={code}
           disabled={disabled}
           onChange={(e) => setCode(e.target.value)}
@@ -94,7 +100,9 @@ export default function CaptadorCodeField({ referral, disabled = false }) {
         />
       </div>
       {status === 'idle' && (
-        <small className="auth-field-hint">¿Alguien te invitó a RepuesTop? Ingresa su código.</small>
+        <small className="auth-field-hint">
+          {isBuyer ? '¿Un taller te invitó? Ingresa su código: está bajo el QR de su taller.' : '¿Alguien te invitó a RepuesTop? Ingresa su código.'}
+        </small>
       )}
       {status === 'checking' && (
         <small className="auth-field-hint">
@@ -103,7 +111,7 @@ export default function CaptadorCodeField({ referral, disabled = false }) {
       )}
       {status === 'valid' && (
         <small className="auth-field-success">
-          <Check size={13} /> Código válido{alias ? ` · captador @${alias}` : ''}
+          <Check size={13} /> Código válido{alias ? (isWorkshopCode ? ` · taller ${alias}` : ` · captador @${alias}`) : ''}
         </small>
       )}
       {status === 'invalid' && (

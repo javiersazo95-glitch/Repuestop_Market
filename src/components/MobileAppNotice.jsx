@@ -5,8 +5,9 @@ import { GOOGLE_PLAY_URL } from '../config/mobileApp';
 const DISMISSED_KEY = 'repuestop_mobile_app_notice_dismissed';
 
 // La app está en Google Play (Android): solo se invita desde un celular Android; en computador o iPhone no se muestra.
+// Tampoco en dev, donde no hay app publicada (sin enlace a Play Store).
 function isAndroidPhone() {
-  if (typeof navigator === 'undefined') return false;
+  if (typeof navigator === 'undefined' || !GOOGLE_PLAY_URL) return false;
   return /Android.*Mobile/i.test(navigator.userAgent);
 }
 

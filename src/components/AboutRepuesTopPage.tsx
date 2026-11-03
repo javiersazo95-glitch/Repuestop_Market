@@ -638,10 +638,13 @@ export default function AboutRepuesTopPage({
               <p>RepuesTop es la misma plataforma en los dos lados. Buscas por patente en la web, guardas el repuesto y sigues la cotización desde el teléfono: es una sola cuenta y los mismos datos, no dos sistemas distintos.</p>
               <CheckList items={APP_POINTS} />
               <div className="rt-apps__actions">
-                <a className="rt-store-badge" href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer" aria-label="Descargar la app RepuesTop en Google Play">
-                  <GooglePlayMark />
-                  <span><small>Disponible en</small><strong>Google Play</strong></span>
-                </a>
+                {/* En dev no hay app publicada en Play Store (sin enlace): el botón solo aparece donde existe. */}
+                {GOOGLE_PLAY_URL && (
+                  <a className="rt-store-badge" href={GOOGLE_PLAY_URL} target="_blank" rel="noopener noreferrer" aria-label="Descargar la app RepuesTop en Google Play">
+                    <GooglePlayMark />
+                    <span><small>Disponible en</small><strong>Google Play</strong></span>
+                  </a>
+                )}
                 <button className="rt-btn rt-btn--primary" type="button" onClick={goCatalog}>
                   <MonitorSmartphone aria-hidden="true" /> Usar la versión web
                 </button>

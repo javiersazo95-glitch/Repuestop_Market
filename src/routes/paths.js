@@ -44,6 +44,8 @@ export const ROUTES = {
   workshopRegister: '/taller/registro',
   workshop: '/talleres/:workshopId',
   sellerRegister: '/vender',
+  // Página a la que lleva el QR de un taller: bienvenida con su código y la vía para crear la cuenta (web o app).
+  referral: '/r/:code',
   purchaseSuccess: '/compra-exitosa',
   notFound: '/404',
 };
@@ -110,6 +112,8 @@ export const PROFILE_TABS = [
   'mis_fallas', 'fallas_taller', 'servicios_taller', 'diagnostico',
   // «Citas del taller»: las citas vigentes y su historial (Mi taller queda con el perfil y los clientes).
   'citas_taller',
+  // «Invitar compradores»: QR y código del taller; cada 25 compradores registrados gana agendamiento gratis.
+  'invitar_compradores',
   // Celular: el catálogo y el mural de búsquedas dentro de la cuenta, para que la barra inferior no desaparezca.
   'repuestos', 'buscan',
 ];

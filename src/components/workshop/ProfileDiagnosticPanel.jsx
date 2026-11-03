@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertCircle, CalendarClock, CheckCircle2, Gift, Loader2 } from 'lucide-react';
-import { activateDiagnostic, coinsToPesos, daysLeft, getDiagnosticStatus, prizeProgress } from '../../services/workshopApi';
+import { AlertCircle, CalendarClock, CheckCircle2, Gift, Loader2, QrCode } from 'lucide-react';
+import {
+  activateDiagnostic, coinsToPesos, daysLeft, getDiagnosticStatus, getReferralsSummary, prizeProgress, referralsInCycle, referralsProgress,
+} from '../../services/workshopApi';
 import { fetchTokensBalance } from '../../services/walletStorage';
-import { ROUTES } from '../../routes/paths';
+import { ROUTES, profilePath } from '../../routes/paths';
 import ConfirmDialog from '../ConfirmDialog';
 import '../../styles/faults.css';
 import '../talleres/taller-profile.css';
@@ -28,6 +30,14 @@ export default function ProfileDiagnosticPanel({ onOpenAds }) {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Avance de la otra vía gratis (compradores que se registran con el código del taller); si falla, el bloque no se muestra.
+  const [referrals, setReferrals] = useState(null);
+  useEffect(() => {
+    let active = true;
+    getReferralsSummary().then((data) => { if (active) setReferrals(data); }).catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   // window.confirm no abre nada en un navegador embebido y dejaba el boton mudo: se confirma con ConfirmDialog.
   // El saldo se vuelve a leer: pudo recargar en el monedero sin salir de esta pantalla.
@@ -103,6 +113,16 @@ export default function ProfileDiagnosticPanel({ onOpenAds }) {
           <p className="ft-sub">{done}/{status.necesidadesPorGratis} · te faltan {status.necesidadesParaProximoGratis} · {status.periodosGanados} premios ganados</p>
           <div className="ft-actions"><Link className="ft-btn ft-btn-outline" to={ROUTES.auctions}>Publicar una búsqueda de repuestos</Link></div>
         </section>
+
+        {referrals && (
+          <section className="ft-card">
+            <h3 style={{ display: 'flex', gap: 8, alignItems: 'center' }}><QrCode size={20} /> O invita compradores</h3>
+            <p className="ft-sub">Por cada {referrals.porPremio} compradores que se registren con el código de tu taller, se agregan {referrals.diasPorPeriodo} días a tu contador.</p>
+            <div className="ft-progress" role="progressbar" aria-valuemin={0} aria-valuemax={referrals.porPremio} aria-valuenow={referralsInCycle(referrals)}><div style={{ width: `${Math.round(referralsProgress(referrals) * 100)}%` }} /></div>
+            <p className="ft-sub">{referralsInCycle(referrals)}/{referrals.porPremio} · te faltan {referrals.paraProximo} · {referrals.periodosGanados} premios ganados</p>
+            <div className="ft-actions"><Link className="ft-btn ft-btn-outline" to={profilePath('invitar_compradores')}>Ver mi código QR</Link></div>
+          </section>
+        )}
       </div>
       <ConfirmDialog
         isOpen={confirming}

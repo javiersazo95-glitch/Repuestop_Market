@@ -77,6 +77,24 @@ export async function activateDiagnostic() {
   return fetchApi('/taller/diagnostico/activar', { method: 'POST', body: '{}' });
 }
 
+// --- Referidos del taller (`/taller/referidos`): código, enlace del QR y avance hacia los días gratis ---
+
+export async function getReferralsSummary() {
+  return fetchApi('/taller/referidos');
+}
+
+/** Fracción 0-1 del camino al próximo premio por referir compradores; al completar la meta vuelve a empezar. */
+export function referralsProgress(summary) {
+  const per = Number(summary?.porPremio || 0);
+  if (per <= 0) return 0;
+  return Math.min(1, Math.max(0, (per - Number(summary?.paraProximo || 0)) / per));
+}
+
+/** Compradores del ciclo actual (0 a porPremio - 1). */
+export function referralsInCycle(summary) {
+  return Math.max(0, Number(summary?.porPremio || 0) - Number(summary?.paraProximo || 0));
+}
+
 /** Pesos que equivalen a unas monedas (1 moneda = $50). */
 export function coinsToPesos(coins) {
   return `$${(Number(coins || 0) * 50).toLocaleString('es-CL')}`;

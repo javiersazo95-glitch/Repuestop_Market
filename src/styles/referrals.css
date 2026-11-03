@@ -1,0 +1,38 @@
+/* Referidos de taller: página de bienvenida del QR (`/r/:codigo`) y panel «Invitar compradores» del taller. */
+
+/* ---------- Página de bienvenida ---------- */
+.rl { display: flex; justify-content: center; padding: 24px 16px 40px; }
+.rl-card { width: 100%; max-width: 460px; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 26px 20px; border: 1px solid #e2e8f0; border-radius: 20px; background: #ffffff; text-align: center; box-shadow: 0 8px 28px rgba(15, 23, 42, .08); }
+.rl-badge { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: #eaf2ff; color: #0066ff; }
+.rl-card h1 { margin: 0; font-size: 22px; line-height: 1.25; color: #0f172a; }
+.rl-lead { margin: 0; font-size: 14.5px; color: #475569; }
+.rl-warn { margin: 0; padding: 10px 12px; border-radius: 12px; background: #fff6f6; border: 1px solid #fecaca; color: #b42318; font-size: 13.5px; }
+.rl-code { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 12px; border-radius: 14px; background: #f1f5f9; }
+.rl-code small { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #64748b; }
+.rl-code strong { font-size: 28px; letter-spacing: 3px; color: #0f172a; word-break: break-all; }
+.rl-code button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 0; background: transparent; color: #0066ff; font-weight: 700; font-size: 14px; cursor: pointer; }
+.rl-actions { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+.rl-btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 0 16px; border: 1px solid #cbd5e1; border-radius: 14px; background: #ffffff; color: #0f172a; font-size: 15px; font-weight: 700; text-decoration: none; cursor: pointer; }
+.rl-btn.is-primary { border-color: #0066ff; background: #0066ff; color: #ffffff; }
+.rl-notes { width: 100%; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.rl-notes li { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; color: #64748b; }
+.rl-notes svg { flex: 0 0 auto; margin-top: 2px; }
+
+/* ---------- Panel del taller ---------- */
+.wr { display: flex; flex-direction: column; gap: 14px; }
+.wr-head h2 { display: flex; align-items: center; gap: 10px; margin: 0 0 4px; }
+.wr-head p { margin: 0; color: #64748b; font-size: 14px; }
+.wr-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border: 1px solid #e2e8f0; border-radius: 16px; background: #ffffff; }
+.wr-qr { align-items: center; text-align: center; }
+.wr-qr-box { padding: 10px; border: 1px solid #e2e8f0; border-radius: 14px; background: #ffffff; line-height: 0; }
+.wr-muted { margin: 0; color: #64748b; font-size: 13px; }
+.wr-code { width: 100%; max-width: 340px; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px; border-radius: 14px; background: #f1f5f9; }
+.wr-code small { font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #64748b; }
+.wr-code strong { font-size: 26px; letter-spacing: 3px; color: #0f172a; word-break: break-all; }
+.wr-code button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border: 0; background: transparent; color: #0066ff; font-weight: 700; font-size: 14px; cursor: pointer; }
+.wr-share { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 18px; border: 0; border-radius: 12px; background: #0066ff; color: #ffffff; font-weight: 700; font-size: 14.5px; cursor: pointer; }
+.wr-track { height: 12px; border-radius: 999px; background: #f1f5f9; overflow: hidden; }
+.wr-track span { display: block; height: 100%; border-radius: 999px; background: #18a957; transition: width .6s cubic-bezier(.22, 1, .36, 1); }
+.wr-track-meta { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; color: #64748b; }
+.wr-track-meta b { color: #0f172a; }
+.wr-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; color: #475569; font-size: 13.5px; }

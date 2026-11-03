@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Calendar, ChevronRight, Clipboard, Cog, Compass, FileText, Flag, Hammer, Headphones, Heart, HelpCircle, LifeBuoy, LogOut,
   MapPin, MessageCircle, MessageSquare, MessagesSquare, PackageCheck, Activity, Search, Settings, ShieldCheck, Store, Tags, Telescope,
-  Trash2, User, Lock, Wallet, X, Inbox, Wrench,
+  Trash2, User, Lock, Wallet, X, Inbox, Wrench, QrCode,
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import { ROUTES } from '../routes/paths';
@@ -94,6 +94,7 @@ const MENUS = {
       // Mi taller lleva el icono de taller (llave), distinto del de «Casas de repuestos» (tienda).
       t('Mi taller', Wrench, COLORS.stores, { tab: 'mi_taller' }),
       t('Citas del taller', Calendar, COLORS.calendar, { tab: 'citas_taller' }),
+      t('Invitar compradores', QrCode, COLORS.search, { tab: 'invitar_compradores' }),
       t('Favoritos', Heart, COLORS.heart, { tab: 'favoritos' }),
     ]],
     ['Información y ayuda', [

@@ -1726,7 +1726,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
               </div>
             )}
 
-            <CaptadorCodeField referral={captadorReferral} disabled={isSubmitting} />
+            <CaptadorCodeField referral={captadorReferral} disabled={isSubmitting} variant="buyer" />
 
             {/* Aceptacion explicita, igual que en el registro por correo: queda en
                 `RT_aceptacion_terminos` con su version, asi que marcarla por el
@@ -1995,7 +1995,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
               )}
             </div>
 
-            <CaptadorCodeField referral={captadorReferral} disabled={isSubmitting} />
+            <CaptadorCodeField referral={captadorReferral} disabled={isSubmitting} variant="buyer" />
 
             {/* Aceptacion explicita: el backend la exige (`validarTerminos`) y la guarda
                 en `accepts_terms` / `terms_accepted_at`. */}
