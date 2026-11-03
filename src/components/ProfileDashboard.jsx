@@ -7,7 +7,7 @@ import {
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
-  ShoppingCart, Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, PackageSearch, Wrench, CalendarClock,
+  Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, PackageSearch, Wrench, CalendarClock,
   Cog, Gauge, Telescope, Box, QrCode
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
@@ -150,27 +150,11 @@ const SELLER_SIDEBAR_GROUPS = [
     ]
   },
   {
-    // Un vendedor tambien es comprador: aca tiene el mismo grupo que ve un comprador en su
-    // perfil. El backend solo le impide comprarse a si mismo; todo lo demas (comprar a otras
-    // tiendas, pedir cotizaciones, preguntar en productos ajenos, guardar favoritos) es igual.
-    title: 'MIS COMPRAS',
-    flag: 'market.perfil.vendedor.mis-compras',
-    items: [
-      { id: 'compras', label: 'Mis compras', icon: ShoppingCart },
-      { id: 'mis_cotizaciones', label: 'Mis cotizaciones', icon: ReceiptText },
-      { id: 'mis_preguntas', label: 'Mis preguntas', icon: MessageCircleQuestion },
-      { id: 'chats_vendedor', label: 'Chats con vendedor', icon: MessageSquare },
-      { id: 'favoritos', label: 'Favoritos', icon: Heart }
-    ]
-  },
-  {
     title: 'MI TIENDA',
     flag: 'market.perfil.vendedor.mi-tienda',
     items: [
       { id: 'tienda_datos', label: 'Mi tienda y datos', icon: Store },
-      { id: 'retiros', label: 'Retirar dinero', icon: Wallet },
-      { id: 'mi_taller', label: 'Mi taller', icon: Wrench },
-      { id: 'citas_taller', label: 'Citas del taller', icon: CalendarClock }
+      { id: 'retiros', label: 'Retirar dinero', icon: Wallet }
     ]
   },
   {
@@ -184,6 +168,9 @@ const SELLER_SIDEBAR_GROUPS = [
     ]
   }
 ];
+
+// Secciones que ya no existen para la cuenta vendedora (compras y talleres): un enlace guardado vuelve al resumen.
+const SELLER_REMOVED_TABS = ['compras', 'mis_cotizaciones', 'mis_preguntas', 'chats_vendedor', 'favoritos', 'mi_taller', 'citas_taller'];
 
 // Cuenta suspendida (pruebas en dev, 2026-10-09): la tienda solo atiende lo ya vendido (sus
 // pedidos, sus chats con compradores y sus retiros) y el comprador solo sigue lo que ya pago (sus
@@ -778,8 +765,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     const soloTaller = ['fallas_taller', 'servicios_taller', 'diagnostico', 'invitar_compradores'].includes(activeTab);
     const soloComprador = activeTab === 'mis_fallas';
     // «Citas del taller» es de la cuenta Taller (y de una tienda con taller): el comprador solo tiene «Mis citas».
-    const citasDeTaller = activeTab === 'citas_taller' && !isWorkshop && !isSeller;
-    if ((soloTaller && !isWorkshop) || (soloComprador && isWorkshop) || citasDeTaller) {
+    const citasDeTaller = activeTab === 'citas_taller' && !isWorkshop;
+    // La cuenta vendedora es solo vendedora: no compra ni tiene taller, citas ni favoritos de comprador.
+    const soloNoVendedor = isSeller && SELLER_REMOVED_TABS.includes(activeTab);
+    if ((soloTaller && !isWorkshop) || (soloComprador && isWorkshop) || citasDeTaller || soloNoVendedor) {
       setActiveTabState('resumen');
       onTabChange?.('resumen', { replace: true });
     }

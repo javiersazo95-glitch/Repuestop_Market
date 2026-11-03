@@ -58,9 +58,7 @@ const MENUS = {
   ],
   seller: [
     ['Explorar', [
-      t('Talleres y servicios', Hammer, COLORS.workshops, { to: ROUTES.talleres }),
       t('Atender encargos', Telescope, COLORS.search, { tab: 'buscan' }),
-      t('Citas del taller', Calendar, COLORS.calendar, { tab: 'citas_taller' }),
     ]],
     ['Mi actividad', [
       t('Cotizaciones', Clipboard, COLORS.quotes, { tab: 'cotizaciones' }),

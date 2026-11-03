@@ -98,14 +98,15 @@ export default function Footer() {
     }));
   };
 
-  const buyerPurchasesLabel = String(user?.role || user?.rol || '').toUpperCase() === 'SELLER'
-    ? 'Mis compras'
-    : 'Mis pedidos';
-  const supportLinks = [
-    ...SUPPORT_LINKS.slice(0, 2),
-    [buyerPurchasesLabel, PackageSearch, buyerProfilePath(user, 'purchases'), true],
-    ...SUPPORT_LINKS.slice(2),
-  ];
+  const isSellerAccount = String(user?.role || user?.rol || '').toUpperCase() === 'SELLER';
+  // La cuenta vendedora no compra: no tiene «Mis compras».
+  const supportLinks = isSellerAccount
+    ? SUPPORT_LINKS
+    : [
+      ...SUPPORT_LINKS.slice(0, 2),
+      ['Mis pedidos', PackageSearch, buyerProfilePath(user, 'purchases'), true],
+      ...SUPPORT_LINKS.slice(2),
+    ];
 
   // Enlazar a la ruta en la que ya estamos no navega a ningún lado y deja al
   // usuario mirando la misma pantalla sin moverse: en ese caso se sube al inicio.

@@ -352,7 +352,7 @@ export default function Header({
         </button>
         <div className="mobile-header-actions">
           <button type="button" aria-label={isLoggedIn ? 'Abrir mi perfil' : 'Iniciar sesión'} onClick={() => isLoggedIn ? onOpenProfile?.() : onOpenAuthModal?.()}><User size={22} /></button>
-          {!isBlockedAccount && <button type="button" aria-label={`Abrir carrito${cartCount ? `, ${cartCount} productos` : ''}`} onClick={onOpenCart}><ShoppingCart size={22} />{cartCount > 0 && <span className="mobile-cart-count">{cartCount}</span>}</button>}
+          {!isBlockedAccount && !isSellerAccount && <button type="button" aria-label={`Abrir carrito${cartCount ? `, ${cartCount} productos` : ''}`} onClick={onOpenCart}><ShoppingCart size={22} />{cartCount > 0 && <span className="mobile-cart-count">{cartCount}</span>}</button>}
           <button type="button" className="mobile-nav-toggle" aria-label={showMobileNav ? 'Cerrar menú' : 'Abrir menú'} aria-expanded={showMobileNav} aria-controls="marketplace-navigation" onClick={() => { if (showMobileNav) setShowCategoryMenu(false); setShowMobileNav((open) => !open); }}>{showMobileNav ? <X size={24} /> : <Menu size={24} />}</button>
         </div>
 
@@ -461,7 +461,7 @@ export default function Header({
           {/* Con la cuenta bloqueada el carrito no se muestra: el backend responde 403 a
               todo el lado comprador, asi que el boton solo llevaria a un checkout que
               falla sin explicar por que. */}
-          {!isBlockedAccount && (
+          {!isBlockedAccount && !isSellerAccount && (
             <>
               <div className="header-divider" />
               <button className="cart-trigger-box" onClick={onOpenCart}>
@@ -536,13 +536,17 @@ export default function Header({
 
           {/* Solo movil (public-mobile.css): lo que mas se busca al abrir el menu. */}
           <div className="mobile-drawer-quick mobile-only-nav-item">
-            <button type="button" onClick={() => { setShowMobileNav(false); if (isLoggedIn) navigate(buyerProfilePath(user, 'purchases')); else onOpenAuthModal?.(); }}>
-              <Package size={20} /><span>Mis compras</span>
-            </button>
-            <button type="button" onClick={() => { setShowMobileNav(false); if (isLoggedIn) navigate(buyerProfilePath(user, 'favorites')); else onOpenAuthModal?.(); }}>
-              <Heart size={20} /><span>Favoritos</span>
-            </button>
-            {!isBlockedAccount && (
+            {!isSellerAccount && (
+              <>
+                <button type="button" onClick={() => { setShowMobileNav(false); if (isLoggedIn) navigate(buyerProfilePath(user, 'purchases')); else onOpenAuthModal?.(); }}>
+                  <Package size={20} /><span>Mis compras</span>
+                </button>
+                <button type="button" onClick={() => { setShowMobileNav(false); if (isLoggedIn) navigate(buyerProfilePath(user, 'favorites')); else onOpenAuthModal?.(); }}>
+                  <Heart size={20} /><span>Favoritos</span>
+                </button>
+              </>
+            )}
+            {!isBlockedAccount && !isSellerAccount && (
               <button type="button" onClick={() => { setShowMobileNav(false); onOpenCart(); }}>
                 <ShoppingCart size={20} /><span>Carrito</span>{cartCount > 0 && <b>{cartCount}</b>}
               </button>
@@ -694,7 +698,10 @@ export default function Header({
           <button type="button" className="nav-item-faults" aria-current={navCurrent(ROUTES.faults)} onClick={() => { setShowMobileNav(false); navigate(ROUTES.faults); }}><EngineIcon size={16} /> <span>Fallas automotrices</span></button>
           <button type="button" className="nav-item-stores" aria-current={navCurrent(ROUTES.stores)} onClick={() => { setShowMobileNav(false); onOpenStores(); }}><Store size={16} /> <span>Casas de repuestos</span></button>
           <button type="button" className="nav-item-about mobile-only-nav-item" aria-current={navCurrent(ROUTES.about)} onClick={() => { setShowMobileNav(false); onOpenAbout(); }}><Info size={16} /> <span>Sobre RepuesTop</span></button>
-          <button type="button" className="nav-item-ads" aria-current={navCurrent(ROUTES.talleres)} onClick={() => { setShowMobileNav(false); onOpenTalleres(); }}><CarFront size={16} /> <span>Servicios automotrices</span></button>
+          {/* La cuenta vendedora solo vende: no tiene talleres ni servicios automotrices. */}
+          {!isSellerAccount && (
+            <button type="button" className="nav-item-ads" aria-current={navCurrent(ROUTES.talleres)} onClick={() => { setShowMobileNav(false); onOpenTalleres(); }}><CarFront size={16} /> <span>Servicios automotrices</span></button>
+          )}
           <p className="mobile-drawer-section-title is-more mobile-only-nav-item">RepuesTop</p>
           <button type="button" className="nav-item-help" aria-current={navCurrent(ROUTES.support)} onClick={() => { setShowMobileNav(false); onOpenHelp(); }}><HelpCircle size={16} /> <span className="nav-label-desktop">Ayuda</span><span className="nav-label-mobile">Centro de ayuda</span></button>
           {/* Solo movil: en escritorio este acceso vive en la barra superior, que en el celular
