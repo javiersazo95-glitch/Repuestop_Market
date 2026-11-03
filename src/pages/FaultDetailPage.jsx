@@ -260,7 +260,9 @@ export default function FaultDetailPage() {
   const mobility = fault.seMueve === true ? 'Sí, se puede mover' : fault.seMueve === false ? 'No se puede mover' : 'No informado';
   const symptomSummary = fault.sintomas?.length ? `${fault.sintomas.slice(0, 3).join(' · ')}${fault.sintomas.length > 3 ? ` +${fault.sintomas.length - 3}` : ''}` : 'Sin síntomas informados';
   const memberSince = fault.autorMiembroDesde || fault.miembroDesde || fault.autorCreadoAt || fault.usuarioCreadoAt;
-  const evaluationCount = fault.autorEvaluaciones ?? fault.evaluaciones ?? fault.cantidadEvaluaciones;
+  // Reputación del comprador (tiendas y talleres lo califican); el backend solo la envía a talleres y al propio dueño.
+  const authorRating = fault.autorCalificacion ?? fault.autorRating ?? null;
+  const evaluationCount = fault.autorCalificaciones ?? fault.autorEvaluaciones ?? fault.evaluaciones ?? fault.cantidadEvaluaciones;
   // El dueño ve todos los diagnósticos; los demás reciben solo el propio (taller) o ninguno: el total sale del resumen público.
   const diagnosisCount = fault.propia ? diagnostics.length : Math.max(diagnostics.length, publicDiagnoses.length);
   const saved = isFaultSaved(fault.id);
@@ -315,7 +317,7 @@ export default function FaultDetailPage() {
                 <div><dt>Diagnósticos en este caso</dt><dd>{diagnosisCount}</dd></div>
                 <div><dt>Ubicación declarada</dt><dd>{place || 'No informada'}</dd></div>
               </dl>
-              {fault.autorRating != null && <div className="ft-detail-rating"><span>{[1, 2, 3, 4, 5].map((item) => <Star key={item} size={15} fill="currentColor" />)}</span><strong>{fault.autorRating}</strong>{evaluationCount != null && <small>({evaluationCount} {evaluationCount === 1 ? 'evaluación' : 'evaluaciones'})</small>}</div>}</div>}</span></div>
+              {authorRating != null && <div className="ft-detail-rating"><span>{[1, 2, 3, 4, 5].map((item) => <Star key={item} size={15} fill={item <= Math.round(authorRating) ? 'currentColor' : 'none'} />)}</span><strong>{Number(authorRating).toFixed(1)}</strong><small>como comprador</small>{evaluationCount != null && <small>({evaluationCount} {evaluationCount === 1 ? 'evaluación' : 'evaluaciones'})</small>}</div>}</div>}</span></div>
             <p className="ft-detail-vehicle-line">{[fault.anio, fault.combustible, fault.kilometraje != null ? `${fault.kilometraje.toLocaleString('es-CL')} km` : null].filter(Boolean).map((item) => <span key={item}>{item}</span>)}</p>
             <p className="ft-detail-lead">{fault.titulo || 'Falla automotriz sin título'}</p>
             <dl className="ft-detail-case-grid">

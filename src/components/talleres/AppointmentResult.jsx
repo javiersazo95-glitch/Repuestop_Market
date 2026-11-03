@@ -36,18 +36,20 @@ export function AppointmentResultForm({ appointment, onDone }) {
   const [outcome, setOutcome] = useState(null);
   const [detail, setDetail] = useState('');
   const [cost, setCost] = useState('');
+  const [customerRating, setCustomerRating] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   const submit = async (event) => {
     event.preventDefault();
     if (!outcome || busy) return;
+    if (customerRating < 1) { setError('Califica al cliente como comprador para registrar el resultado.'); return; }
     if (detail.trim().length < 10) { setError('Cuenta en al menos 10 caracteres qué pasó en la cita.'); return; }
     const amount = parseInt(cost.replace(/\D/g, ''), 10);
     setBusy(true);
     setError('');
     try {
-      await registerAppointmentResult(appointment.id, { outcome, detail, cost: outcome === 'REALIZADA' && Number.isFinite(amount) ? amount : null });
+      await registerAppointmentResult(appointment.id, { outcome, detail, cost: outcome === 'REALIZADA' && Number.isFinite(amount) ? amount : null, customerRating });
       onDone?.();
     } catch (err) {
       setError(apiErrorMessage(err, 'No pudimos registrar el resultado de la cita.'));
@@ -73,9 +75,28 @@ export function AppointmentResultForm({ appointment, onDone }) {
           <input inputMode="numeric" maxLength={9} value={cost} onChange={(event) => setCost(event.target.value.replace(/\D/g, ''))} placeholder="45000" />
         </label>
       )}
+      <div className="apr-rating" role="radiogroup" aria-label="Calificación del cliente como comprador">
+        <span>{`Califica a ${appointment.customerName || 'el cliente'} como comprador`}</span>
+        <div className="apr-stars">
+          {[1, 2, 3, 4, 5].map((value) => (
+            <button
+              key={value}
+              type="button"
+              role="radio"
+              aria-checked={customerRating === value}
+              aria-label={`${value} ${value === 1 ? 'estrella' : 'estrellas'}`}
+              className={value <= customerRating ? 'is-on' : ''}
+              onClick={() => setCustomerRating(value)}
+            >
+              <Star size={26} fill={value <= customerRating ? 'currentColor' : 'none'} />
+            </button>
+          ))}
+        </div>
+        <small className="apr-hint">Puntualidad, trato y pago. Otros talleres verán esta calificación en el perfil del cliente.</small>
+      </div>
       <small className="apr-hint">Queda en el historial de la cita y se avisa al cliente. Él lo verá cuando evalúe su experiencia con tu taller, y esa evaluación es pública en tu perfil.</small>
       {error && <p className="trk-error" role="alert">{error}</p>}
-      <button type="submit" className="apr-submit" disabled={busy || !outcome || detail.trim().length === 0}>{busy ? <Loader2 size={16} className="spin-icon" /> : (finishing ? 'Finalizar cita y registrar resultado' : 'Registrar resultado')}</button>
+      <button type="submit" className="apr-submit" disabled={busy || !outcome || detail.trim().length === 0 || customerRating < 1}>{busy ? <Loader2 size={16} className="spin-icon" /> : (finishing ? 'Finalizar cita y registrar resultado' : 'Registrar resultado')}</button>
     </form>
   );
 }

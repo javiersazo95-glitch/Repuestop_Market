@@ -3,7 +3,7 @@ import TallerRating from '../talleres/TallerRating';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle, ArrowLeft, Bookmark, Calendar, Car, Check, ChevronDown, ChevronRight, ChevronUp, Copy, ExternalLink,
-  Lock, MapPin, Megaphone, MessageCircle, Navigation, Pencil, Share2, Signal, Tag, Truck, UserRound, Wrench, X,
+  Lock, MapPin, Megaphone, MessageCircle, Navigation, Pencil, Share2, Signal, Star, Tag, Truck, UserRound, Wrench, X,
 } from 'lucide-react';
 import ContextualReportButton from '../ContextualReportButton';
 import VehicleBrandLogo from '../VehicleBrandLogo';
@@ -168,6 +168,11 @@ export default function FaultDetailMobile({
               {fault.marca && <VehicleBrandLogo brand={fault.marca} />}
             </div>
             <InfoItem icon={UserRound} label="Cliente">{fault.autor || 'Usuario de RepuesTop'}</InfoItem>
+            {fault.autorCalificacion ? (
+              <InfoItem icon={Star} label="Calificación como comprador">
+                {`${Number(fault.autorCalificacion).toFixed(1)} de 5${fault.autorCalificaciones ? ` · ${fault.autorCalificaciones} ${fault.autorCalificaciones === 1 ? 'calificación' : 'calificaciones'}` : ''}`}
+              </InfoItem>
+            ) : null}
             {place && <InfoItem icon={MapPin} label="Ubicación">{place}</InfoItem>}
             {fault.requiereRecogida && <InfoItem icon={Truck} label="Recogida">Necesita que vengan por el vehículo</InfoItem>}
             {fault.alcance && <InfoItem icon={Megaphone} label="Aviso a">{scopeText(fault)}</InfoItem>}

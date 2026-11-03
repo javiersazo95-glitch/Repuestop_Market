@@ -1,0 +1,109 @@
+/* Citas del taller / Mis citas con pestañas Citas | Historial, buscador de historial y pestaña Clientes de Mi taller.
+   Es el equivalente web del rediseño de la app (AppointmentsHubModal, WorkshopClientsTab). */
+
+/* ---------- Buscador: barra + filtro avanzado + orden en una fila ---------- */
+.stb { position: relative; display: flex; flex-direction: column; gap: 6px; margin: 2px 0 12px; }
+.stb-row { display: flex; align-items: center; gap: 8px; }
+.stb-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; color: #64748b; }
+.stb-search:focus-within { border-color: #0066ff; box-shadow: 0 0 0 3px rgba(0, 102, 255, .14); }
+.stb-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font-size: 15px; color: #0f172a; padding: 0; }
+.stb-search input::-webkit-search-cancel-button { display: none; }
+.stb-clear { display: grid; place-items: center; width: 24px; height: 24px; border: 0; border-radius: 50%; background: #f1f5f9; color: #64748b; cursor: pointer; }
+.stb-btn { position: relative; flex: 0 0 auto; display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; color: #0f172a; cursor: pointer; }
+.stb-btn.is-active { border-color: #0066ff; background: #eaf2ff; color: #0066ff; }
+.stb-btn b { position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: #0066ff; color: #ffffff; font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; }
+.stb-count { color: #64748b; font-size: 12px; }
+.stb-panel { position: absolute; z-index: 30; top: 52px; left: 0; right: 0; display: flex; flex-direction: column; gap: 12px; padding: 14px; border: 1px solid #e2e8f0; border-radius: 14px; background: #ffffff; box-shadow: 0 14px 34px rgba(15, 23, 42, .16); }
+.stb-panel.is-sort { gap: 6px; padding: 8px; }
+.stb-section { display: flex; flex-direction: column; gap: 6px; }
+.stb-section > span { font-size: 12px; font-weight: 700; color: #64748b; }
+.stb-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.stb-chips button { min-height: 36px; padding: 0 12px; border: 1px solid #e2e8f0; border-radius: 999px; background: #ffffff; color: #475569; font-size: 13px; font-weight: 600; cursor: pointer; }
+.stb-chips button.is-on { border-color: #0066ff; background: #eaf2ff; color: #0066ff; }
+.stb-actions { display: flex; gap: 10px; }
+.stb-ghost, .stb-primary { flex: 1; min-height: 42px; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.stb-ghost { border: 1px solid #e2e8f0; background: #ffffff; color: #0f172a; }
+.stb-primary { border: 0; background: #0066ff; color: #ffffff; flex: 2; }
+.stb-panel.is-sort button { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 44px; padding: 0 12px; border: 1px solid transparent; border-radius: 10px; background: transparent; color: #0f172a; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
+.stb-panel.is-sort button.is-on { border-color: #0066ff; background: #eaf2ff; color: #0066ff; }
+
+/* ---------- Gestión de citas con pestañas ---------- */
+.agenda-modal-card.is-tabbed .booking-modal-header { align-items: center; gap: 12px; padding-bottom: 8px; }
+.appt-head-tools { display: flex; gap: 8px; margin-left: auto; }
+.appt-tool { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff; color: #0f172a; cursor: pointer; }
+.appt-tool.is-active { border-color: #0066ff; background: #eaf2ff; color: #0066ff; }
+.appt-tabs { display: flex; gap: 4px; padding: 3px; margin: 0 0 12px; border: 1px solid #e2e8f0; border-radius: 14px; background: #f1f5f9; }
+.appt-tabs button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; border: 0; border-radius: 11px; background: transparent; color: #64748b; font-size: 14px; font-weight: 700; cursor: pointer; }
+.appt-tabs button.is-active { background: #ffffff; color: #0f172a; box-shadow: 0 1px 3px rgba(15, 23, 42, .14); }
+.appt-tabs button i { min-width: 20px; padding: 0 5px; border-radius: 999px; background: #0066ff; color: #ffffff; font-size: 12px; font-style: normal; line-height: 20px; text-align: center; }
+.appt-counters.is-compact { gap: 6px; margin: 0 0 12px; }
+.appt-counters.is-compact .appt-counter { flex-direction: row; justify-content: center; gap: 6px; padding: 8px 6px; min-height: 40px; }
+.appt-counters.is-compact .appt-counter strong { font-size: 18px; }
+.appt-counters.is-compact .appt-counter span { font-size: 12px; white-space: nowrap; }
+.appt-counters.is-compact .appt-counter small { display: none; }
+.appt-client-banner { display: flex; align-items: center; gap: 8px; padding: 8px 12px; margin-bottom: 8px; border: 1px solid #bfd7ff; border-radius: 12px; background: #eaf2ff; color: #0066ff; font-size: 13px; font-weight: 700; }
+.appt-client-banner span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.appt-client-banner button { display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 50%; background: transparent; color: #0066ff; cursor: pointer; }
+
+/* ---------- Tarjeta de cita resumida ---------- */
+.agenda-appointment { row-gap: 10px; }
+.agenda-appointment-top { align-items: center; }
+.appt-client-link { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; padding: 2px 4px; border: 0; background: transparent; color: #64748b; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.appt-client-link:hover { color: #0066ff; }
+.appt-line { display: flex; align-items: center; gap: 6px; margin: 2px 0 0; font-size: 12.5px; color: #64748b; text-decoration: none; }
+.appt-line span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.appt-line.is-link { color: #475569; }
+.appt-line.is-link:hover span { text-decoration: underline; }
+.appt-expand { flex: 0 0 100%; display: inline-flex; align-items: center; justify-content: flex-start; gap: 4px; align-self: flex-start; min-height: 28px; padding: 0; border: 0; background: transparent; color: #0066ff; font-size: 13px; font-weight: 700; cursor: pointer; }
+.appt-details { flex: 0 0 100%; display: flex; flex-direction: column; gap: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; }
+.appt-detail { display: flex; align-items: flex-start; gap: 10px; }
+.appt-detail-ic { flex: 0 0 auto; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: #f1f5f9; color: #64748b; }
+.appt-detail-ic.is-home { color: #0066ff; }
+.appt-detail-ic.is-star { color: #d97706; }
+.appt-detail > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: 13px; color: #0f172a; }
+.appt-detail small { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: #64748b; }
+.appt-detail strong { font-weight: 700; }
+.appt-detail a { color: #0066ff; font-weight: 600; text-decoration: underline; overflow-wrap: anywhere; }
+.appt-detail span { color: #475569; overflow-wrap: anywhere; }
+.agenda-appointment-actions { flex: 0 0 100%; padding-top: 10px; border-top: 1px solid #e2e8f0; }
+
+/* ---------- Calificar al comprador al registrar el resultado ---------- */
+.apr-rating { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border-radius: 12px; background: #f1f5f9; }
+.apr-rating > span { font-size: 13px; font-weight: 700; color: #0f172a; }
+.apr-stars { display: flex; gap: 4px; }
+.apr-stars button { display: grid; place-items: center; width: 44px; height: 44px; border: 0; border-radius: 10px; background: transparent; color: #94a3b8; cursor: pointer; }
+.apr-stars button.is-on { color: #f59e0b; }
+
+/* ---------- Pestaña Clientes de Mi taller ---------- */
+.wc { display: flex; flex-direction: column; gap: 12px; }
+.wc-empty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 24px 14px; border: 1px dashed #cbd5e1; border-radius: 12px; color: #64748b; text-align: center; font-size: 13px; }
+.wc-empty p { margin: 0; }
+.wc-card { display: flex; flex-direction: column; gap: 12px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 14px; background: #ffffff; }
+.wc-card.is-highlight { border-color: #0066ff; }
+.wc-head { display: flex; align-items: center; gap: 12px; }
+.wc-avatar { flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #eaf2ff; color: #0066ff; font-weight: 800; font-size: 14px; }
+.wc-head-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.wc-name-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.wc-name-row strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; color: #0f172a; }
+.wc-pill { flex: 0 0 auto; padding: 2px 8px; border-radius: 999px; font-size: 11.5px; font-weight: 700; }
+.wc-pill.is-new { background: #eaf2ff; color: #0066ff; }
+.wc-pill.is-returning { background: #eafbf1; color: #0e7038; }
+.wc-rating { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: #64748b; }
+.wc-rating svg { color: #f59e0b; }
+.wc-arrow { flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid #bfd7ff; border-radius: 50%; background: #ffffff; color: #0066ff; cursor: pointer; }
+.wc-stats { display: flex; margin: 0; padding: 8px 0; border-radius: 12px; background: #f1f5f9; }
+.wc-stats > div { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.wc-stats > div + div { border-left: 1px solid #e2e8f0; }
+.wc-stats dd { margin: 0; font-size: 15px; font-weight: 800; color: #0f172a; }
+.wc-stats dt { font-size: 10.5px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: #64748b; }
+.wc-details { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+.wc-details > div { display: flex; align-items: flex-start; gap: 10px; }
+.wc-ic { flex: 0 0 auto; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: #f1f5f9; color: #64748b; }
+.wc-details > div > div { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.wc-details small { font-size: 11px; font-weight: 700; letter-spacing: .03em; text-transform: uppercase; color: #64748b; }
+.wc-details strong { font-size: 13px; color: #0f172a; overflow-wrap: anywhere; }
+
+@media (max-width: 560px) {
+  .appt-tabs button { font-size: 13px; }
+  .appt-counters.is-compact .appt-counter span { font-size: 11.5px; }
+}

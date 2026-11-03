@@ -61,6 +61,7 @@ import NewCatalogProductModal from './NewCatalogProductModal';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import SellerWithdrawalsPanel, { isCompleteBankAccount } from './SellerWithdrawalsPanel';
 import MiTallerSection from './talleres/MiTallerSection';
+import WorkshopAppointmentsSection from './talleres/WorkshopAppointmentsSection';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
 import FaultsList from './faults/FaultsList';
 import AutomotiveServiceAccreditation from './AutomotiveServiceAccreditation';
@@ -167,7 +168,8 @@ const SELLER_SIDEBAR_GROUPS = [
     items: [
       { id: 'tienda_datos', label: 'Mi tienda y datos', icon: Store },
       { id: 'retiros', label: 'Retirar dinero', icon: Wallet },
-      { id: 'mi_taller', label: 'Mi taller', icon: Wrench }
+      { id: 'mi_taller', label: 'Mi taller', icon: Wrench },
+      { id: 'citas_taller', label: 'Citas del taller', icon: CalendarClock }
     ]
   },
   {
@@ -194,6 +196,7 @@ const SELLER_BLOCKED_HIDDEN_TABS = [
   'preguntas_productos',
   'tienda_datos',
   'mi_taller',
+  'citas_taller',
   // Una cuenta suspendida no deja feedback (pruebas en dev, 2026-10-09).
   'feedback',
 ];
@@ -265,7 +268,8 @@ const WORKSHOP_SIDEBAR_GROUPS = [
       { id: 'mural_fallas', label: 'Fallas automotrices', icon: EngineIcon, href: ROUTES.faults },
       { id: 'fallas_taller', label: 'Mis diagnósticos', icon: EngineIcon },
       { id: 'diagnostico', label: 'Servicio de agendamiento', icon: CalendarClock },
-      { id: 'mi_taller', label: 'Mi taller', icon: Wrench }
+      { id: 'mi_taller', label: 'Mi taller', icon: Wrench },
+      { id: 'citas_taller', label: 'Citas del taller', icon: CalendarClock }
     ]
   },
   {
@@ -771,11 +775,13 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   useEffect(() => {
     const soloTaller = ['fallas_taller', 'servicios_taller', 'diagnostico'].includes(activeTab);
     const soloComprador = activeTab === 'mis_fallas';
-    if ((soloTaller && !isWorkshop) || (soloComprador && isWorkshop)) {
+    // «Citas del taller» es de la cuenta Taller (y de una tienda con taller): el comprador solo tiene «Mis citas».
+    const citasDeTaller = activeTab === 'citas_taller' && !isWorkshop && !isSeller;
+    if ((soloTaller && !isWorkshop) || (soloComprador && isWorkshop) || citasDeTaller) {
       setActiveTabState('resumen');
       onTabChange?.('resumen', { replace: true });
     }
-  }, [activeTab, isWorkshop, onTabChange]);
+  }, [activeTab, isWorkshop, isSeller, onTabChange]);
 
   useEffect(() => {
     const oculta = (isSellerBlocked && SELLER_BLOCKED_HIDDEN_TABS.includes(activeTab))
@@ -1803,7 +1809,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 />
               )}
               {activeTab === 'resumen' && isWorkshop && !isBuyerBlocked && (
-                <WorkshopActiveAppointments onOpenAppointments={() => setActiveTab('mi_taller')} />
+                <WorkshopActiveAppointments onOpenAppointments={() => setActiveTab('citas_taller')} />
               )}
               {activeTab === 'resumen' && isWorkshop && !isBuyerBlocked && (
                 <WorkshopBookingStatus onOpenWorkshop={() => setActiveTab('mi_taller')} onOpenService={() => setActiveTab('diagnostico')} />
@@ -1951,6 +1957,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               )}
 
               {activeTab === 'mi_taller' && <MiTallerSection />}
+              {activeTab === 'citas_taller' && (isWorkshop || isSeller) && <WorkshopAppointmentsSection />}
               {(activeTab === 'mis_fallas' || activeTab === 'fallas_taller') && <FaultsList heading={false} />}
               {activeTab === 'servicios_taller' && isWorkshop && <div className="profile-panel"><ProfileWorkshopServicesPanel onBack={() => setActiveTab('mi_taller')} /></div>}
               {activeTab === 'diagnostico' && isWorkshop && <ProfileDiagnosticPanel onOpenAds={() => setActiveTab('mi_taller')} />}

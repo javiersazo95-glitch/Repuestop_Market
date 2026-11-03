@@ -2,7 +2,7 @@ import React from 'react';
 import {
   Calendar, ChevronRight, Clipboard, Cog, Compass, FileText, Flag, Hammer, Headphones, Heart, HelpCircle, LifeBuoy, LogOut,
   MapPin, MessageCircle, MessageSquare, MessagesSquare, PackageCheck, Activity, Search, Settings, ShieldCheck, Store, Tags, Telescope,
-  Trash2, User, Lock, Wallet, X, Inbox,
+  Trash2, User, Lock, Wallet, X, Inbox, Wrench,
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import { ROUTES } from '../routes/paths';
@@ -60,7 +60,7 @@ const MENUS = {
     ['Explorar', [
       t('Talleres y servicios', Hammer, COLORS.workshops, { to: ROUTES.talleres }),
       t('Búsqueda de repuestos', Telescope, COLORS.search, { tab: 'buscan' }),
-      t('Mis citas', Calendar, COLORS.calendar, { tab: 'mi_taller' }),
+      t('Citas del taller', Calendar, COLORS.calendar, { tab: 'citas_taller' }),
     ]],
     ['Mi actividad', [
       t('Cotizaciones', Clipboard, COLORS.quotes, { tab: 'cotizaciones' }),
@@ -91,8 +91,9 @@ const MENUS = {
       t('Mis compras', PackageCheck, COLORS.orders, { tab: 'pedidos' }),
       t('Mis preguntas', MessageSquare, COLORS.questions, { tab: 'mis_preguntas' }),
       t('Chats con vendedor', MessagesSquare, COLORS.questions, { tab: 'chats_vendedor' }),
-      t('Mi taller', Store, COLORS.stores, { tab: 'mi_taller' }),
-      t('Citas del taller', Calendar, COLORS.calendar, { tab: 'mi_taller' }),
+      // Mi taller lleva el icono de taller (llave), distinto del de «Casas de repuestos» (tienda).
+      t('Mi taller', Wrench, COLORS.stores, { tab: 'mi_taller' }),
+      t('Citas del taller', Calendar, COLORS.calendar, { tab: 'citas_taller' }),
       t('Favoritos', Heart, COLORS.heart, { tab: 'favoritos' }),
     ]],
     ['Información y ayuda', [

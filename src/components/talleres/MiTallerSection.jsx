@@ -1,26 +1,22 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useSearchParams, Link, useNavigate } from 'react-router-dom';
 import {
-  Wrench, Eye, CalendarClock, RefreshCw, ChevronRight, Lock, ShieldCheck
+  Wrench, Eye, Users, RefreshCw, ChevronRight, Lock, ShieldCheck
 } from 'lucide-react';
 import { fetchMyAppointments, APPOINTMENTS_UPDATED_EVENT } from '../../services/talleresStorage';
-import {
-  isAppointmentCurrent, summarizeAppointmentsByRole
-} from '../../utils/appointmentHistory';
+import { buildWorkshopClients } from '../../utils/workshopClients';
+import WorkshopClientsTab from './WorkshopClientsTab';
 import { useAuth } from '../../context/AuthContext';
 import { profilePath, tallerPath } from '../../routes/paths';
 import ShareLinkButton from '../ShareLinkButton';
 import { useAutomotiveAccreditation } from '../../hooks/useAutomotiveAccreditation';
 import { AccreditationPill } from './AccreditationPill';
 import AccreditationModal from './AccreditationModal';
-import AppointmentsHistoryModal from './AppointmentsHistoryModal';
-import BookingModal from './BookingModal';
 import CapturerContactCard from '../CapturerContactCard';
 import NextStepsBanner from './NextStepsBanner';
 import AgendaConfigModal from './AgendaConfigModal';
 import MyAppointmentsHub from './MyAppointmentsHub';
 import TallerProfileEditor from './TallerProfileEditor';
-import { fetchTaller } from '../../services/talleresStorage';
 import { getAgendaConfigs } from '../../services/agendaConfigsStorage';
 import { createDefaultAgendaConfig, PRINCIPAL_AGENDA_ID, PRINCIPAL_AGENDA_NAME } from '../../data/agendaConfig';
 import './ads-wall.css';
@@ -49,7 +45,7 @@ export default function MiTallerSection() {
     return (
       <div className="profile-panel ads-management-panel">
         {/* `?cita=ID` (desde una notificacion) resalta esa cita en la lista. */}
-        <MyAppointmentsHub inline customerOnly initialSegment="pedidas" focusAppointmentId={searchParams.get('cita')} />
+        <MyAppointmentsHub inline customerOnly tabbed initialSegment="pedidas" focusAppointmentId={searchParams.get('cita')} />
       </div>
     );
   }
@@ -64,13 +60,12 @@ function WorkshopSection() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState([]);
-  const [activeTab, setActiveTab] = useState('perfil'); // 'perfil' | 'citas'
-  const [rebookState, setRebookState] = useState(null); // { taller, appointment, appointmentId } | null
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'clientes' ? 'clientes' : 'perfil'); // 'perfil' | 'clientes'
+  const [focusClientKey, setFocusClientKey] = useState(searchParams.get('cliente'));
   const [isLoading, setIsLoading] = useState(true);
   const [profileKey, setProfileKey] = useState(0);
 
   const tallerId = accreditation.isApproved && accreditation.record?.id ? String(accreditation.record.id) : null;
-  const myTaller = tallerId ? { id: tallerId } : null;
 
   const loadAppointments = useCallback(async ({ signal } = {}) => {
     try {
@@ -111,16 +106,14 @@ function WorkshopSection() {
     return () => window.clearInterval(timer);
   }, []);
 
-  const appointmentSummary = useMemo(
-    () => summarizeAppointmentsByRole(appointments, sessionUserId, now),
+  // Clientes del taller: quienes le agendaron alguna cita (un taller no reserva en otros talleres).
+  const clients = useMemo(
+    () => buildWorkshopClients(
+      appointments.filter((item) => sessionUserId && String(item.ownerUserId ?? '') === String(sessionUserId)),
+      now
+    ),
     [appointments, sessionUserId, now]
   );
-  const pendingReceived = appointmentSummary.provider.pending;
-  const upcomingAppointmentsCount = appointmentSummary.provider.current + appointmentSummary.customer.current;
-
-  const replaceAppointment = (saved) => {
-    setAppointments((current) => current.map((item) => (item.id === saved.id ? saved : item)));
-  };
 
   const gateMessage = ACCREDITATION_GATE_MESSAGE[accreditation.status] || ACCREDITATION_GATE_MESSAGE.SIN_SOLICITUD;
 
@@ -144,32 +137,25 @@ function WorkshopSection() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, accreditation.isLoading, accreditation.onboarding, openPrincipalAgenda]);
 
-  // Enlaces de las citas (boton del calendario y notificaciones): `?citas=abrir|recibidas|pedidas&cita=ID` abre la
-  // pestaña Citas, en esa bandeja y con la cita resaltada. Se consumen una sola vez.
-  const [focusCitaId, setFocusCitaId] = useState(null);
-  const [citasSegment, setCitasSegment] = useState(undefined);
+  // Las citas del taller viven en su propia pestaña («Citas del taller»): los enlaces de citas (botón del calendario y
+  // notificaciones, `?citas=abrir&cita=ID`) se reenvían ahí. Se consumen una sola vez.
   useEffect(() => {
     const citas = searchParams.get('citas');
     if (!citas) return;
-    setActiveTab('citas');
-    setFocusCitaId(searchParams.get('cita'));
-    setCitasSegment(citas === 'recibidas' || citas === 'pedidas' ? citas : undefined);
+    const cita = searchParams.get('cita');
+    navigate(`${profilePath('citas_taller')}${cita ? `?cita=${encodeURIComponent(cita)}` : ''}`, { replace: true });
+  }, [searchParams, navigate]);
+
+  // `?tab=clientes&cliente=KEY` llega desde el historial de citas («Ver perfil»). Se consume una sola vez.
+  useEffect(() => {
+    if (searchParams.get('tab') !== 'clientes') return;
+    setActiveTab('clientes');
+    setFocusClientKey(searchParams.get('cliente'));
     const next = new URLSearchParams(searchParams);
-    next.delete('citas');
-    next.delete('cita');
+    next.delete('tab');
+    next.delete('cliente');
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
-
-  const handleRebook = async (appointment) => {
-    try {
-      const taller = await fetchTaller(appointment.tallerId);
-      // Solo una cita vigente se cambia de hora; desde una cancelada o pasada es una reserva nueva.
-      setRebookState({ taller, appointment, appointmentId: isAppointmentCurrent(appointment) ? appointment.id : null });
-    } catch {
-      setRebookState(null);
-      window.alert('El taller de esta cita ya no está publicado, así que no se puede reservar otra hora.');
-    }
-  };
 
   const hasAgenda = Boolean(accreditation.onboarding?.agendaLista);
   // Los servicios tienen su propia vista, con vuelta a Mi taller. `isNew` la abre con el formulario de uno nuevo.
@@ -276,30 +262,21 @@ function WorkshopSection() {
         </div>
       )}
 
-      {/* Mi perfil y Citas, como las pestañas de la app. */}
+      {/* Mi perfil y Clientes, como las pestañas de la app (las citas están en «Citas del taller»). */}
       <div className="taller-editor__tabs" role="tablist" aria-label="Mi taller">
         <button type="button" role="tab" aria-selected={activeTab === 'perfil'} className={activeTab === 'perfil' ? 'is-active' : ''} onClick={() => setActiveTab('perfil')}>
           <Wrench size={15} /> Mi perfil
         </button>
-        <button type="button" role="tab" aria-selected={activeTab === 'citas'} className={activeTab === 'citas' ? 'is-active' : ''} onClick={() => setActiveTab('citas')}>
-          <CalendarClock size={15} /> Citas
-          {pendingReceived > 0 ? <i aria-label={`${pendingReceived} por responder`}>{pendingReceived}</i> : upcomingAppointmentsCount > 0 ? <i>{upcomingAppointmentsCount}</i> : null}
+        <button type="button" role="tab" aria-selected={activeTab === 'clientes'} className={activeTab === 'clientes' ? 'is-active' : ''} onClick={() => setActiveTab('clientes')}>
+          <Users size={15} /> Clientes
         </button>
       </div>
 
-      {activeTab === 'citas' && (
-        <AppointmentsHistoryModal
-          inline
-          myTaller={myTaller}
-          tallerLoaded={!accreditation.isLoading}
-          appointments={appointments}
-          sessionUserId={sessionUserId}
-          userEmail={user?.email || ''}
-          initialSegment={citasSegment}
-          focusAppointmentId={focusCitaId}
-          onClose={() => setActiveTab('perfil')}
-          onAppointmentUpdated={replaceAppointment}
-          onRebook={handleRebook}
+      {activeTab === 'clientes' && (
+        <WorkshopClientsTab
+          clients={clients}
+          highlightKey={focusClientKey}
+          onOpenHistory={(client) => navigate(`${profilePath('citas_taller')}?vista=historial&cliente=${encodeURIComponent(client.key)}`)}
         />
       )}
 
@@ -333,17 +310,6 @@ function WorkshopSection() {
           user={user}
           onSaved={() => accreditation.refresh()}
           onClose={() => { setIsAccreditationOpen(false); accreditation.refresh(); }}
-        />
-      )}
-
-      {rebookState && (
-        <BookingModal
-          taller={rebookState.taller}
-          onBooked={() => loadAppointments()}
-          onClose={() => setRebookState(null)}
-          isRescheduling={Boolean(rebookState.appointmentId)}
-          rescheduleFromId={rebookState.appointmentId}
-          fromAppointment={rebookState.appointment}
         />
       )}
     </div>

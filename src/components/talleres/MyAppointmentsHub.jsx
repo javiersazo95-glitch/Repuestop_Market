@@ -17,7 +17,11 @@ import './ads-wall.css';
  * Carga por su cuenta las citas de la sesión y el taller propio (para saber cuáles son
  * "recibidas"); un fallo al pedir el taller no deja sin citas a quien no lo tiene.
  */
-export default function MyAppointmentsHub({ onClose, initialSegment, focusAppointmentId = null, inline = false, customerOnly = false }) {
+export default function MyAppointmentsHub({
+  onClose, initialSegment, focusAppointmentId = null, inline = false, customerOnly = false,
+  // Citas | Historial como pestañas y el cruce con Clientes (ver `AppointmentsHistoryModal`).
+  tabbed = false, initialView, clientKey = null, onClearClient, onOpenClient
+}) {
   const { user } = useAuth();
   const sessionUserId = user?.userId ?? user?.id ?? user?.buyerId ?? null;
   const accreditation = useAutomotiveAccreditation(Boolean(user));
@@ -55,6 +59,11 @@ export default function MyAppointmentsHub({ onClose, initialSegment, focusAppoin
       <AppointmentsHistoryModal
         inline={inline}
         customerOnly={customerOnly}
+        tabbed={tabbed}
+        initialView={initialView}
+        clientKey={clientKey}
+        onClearClient={onClearClient}
+        onOpenClient={onOpenClient}
         myTaller={myTaller}
         tallerLoaded={!accreditation.isLoading}
         appointments={appointments}

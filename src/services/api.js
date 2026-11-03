@@ -2042,10 +2042,10 @@ export async function rateAppointmentWorkshopApi(appointmentId, stars, comment) 
 }
 
 /** El taller registra lo que pasó con una cita ya terminada (una vez): resultado, detalle y costo final opcional. */
-export async function registerAppointmentResultApi(appointmentId, { outcome, detail, cost }) {
+export async function registerAppointmentResultApi(appointmentId, { outcome, detail, cost, customerRating }) {
   return fetchApi(`/agendamientos/${appointmentId}/resultado`, {
     method: 'POST',
-    body: JSON.stringify({ resultado: outcome, detalle: detail?.trim(), costo: cost ?? null })
+    body: JSON.stringify({ resultado: outcome, detalle: detail?.trim(), costo: cost ?? null, calificacionCliente: customerRating })
   });
 }
 

@@ -791,6 +791,11 @@ export function adaptAppointment(dto) {
     fallaId: dto.fallaId ? String(dto.fallaId) : null,
     fallaTitle: dto.fallaTitle || '',
     fallaDescription: dto.fallaDescription || '',
+    // Comuna y región que el cliente indicó en la falla de la que nace la cita.
+    customerLocation: dto.customerLocation || '',
+    // Reputación del cliente como comprador (tiendas y talleres lo califican); null si nunca lo calificaron.
+    customerRating: Number.isFinite(Number(dto.customerRating)) && Number(dto.customerRating) > 0 ? Number(dto.customerRating) : null,
+    customerRatingCount: Number.isFinite(Number(dto.customerRatingCount)) ? Number(dto.customerRatingCount) : 0,
     status: APPOINTMENT_STATUSES.includes(dto.status) ? dto.status : 'pending',
     createdAt: dto.createdAt || null,
     chatAvailable: dto.chatAvailable !== false,
