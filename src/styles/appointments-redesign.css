@@ -81,7 +81,8 @@
 .wc-card { display: flex; flex-direction: column; gap: 12px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 14px; background: #ffffff; }
 .wc-card.is-highlight { border-color: #0066ff; }
 .wc-head { display: flex; align-items: center; gap: 12px; }
-.wc-avatar { flex: 0 0 auto; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #eaf2ff; color: #0066ff; font-weight: 800; font-size: 14px; }
+.wc-avatar { width: 40px; height: 40px; font-size: 14px; }
+.appt-line-avatar { width: 20px; height: 20px; font-size: 10px; }
 .wc-head-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
 .wc-name-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .wc-name-row strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; color: #0f172a; }

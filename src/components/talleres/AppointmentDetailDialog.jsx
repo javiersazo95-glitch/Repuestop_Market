@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Ban, Building2, Calendar, Car, ClipboardList, FileText, Lock, Star, CarFront, User, X } from 'lucide-react';
 import { formatAgendaDateLong } from '../../data/agendaConfig';
 import { describeAppointment } from '../../utils/appointmentHistory';
+import AuctionAvatar from '../AuctionAvatar';
 import { AppointmentResultDetail, AppointmentResultForm } from './AppointmentResult';
 import '../../styles/appointment-detail.css';
 
@@ -38,7 +39,8 @@ export default function AppointmentDetailDialog({ appointment, viewer, onClose, 
   const meta = describeAppointment(appointment, viewer);
   const closed = appointment.status === 'cancelled' || appointment.status === 'rejected';
   const services = appointment.services?.length ? appointment.services.join(', ') : appointment.service;
-  const vehicle = [appointment.vehiclePatent, appointment.vehicleModel].filter(Boolean).join(' · ');
+  const providerClosed = asProvider && !['pending', 'accepted'].includes(meta.state);
+  const vehicle = (providerClosed ? [appointment.vehicleModel] : [appointment.vehiclePatent, appointment.vehicleModel]).filter(Boolean).join(' · ');
   const { result } = appointment;
   const canRegister = asProvider && !result && (appointment.resultPending || appointment.canFinish);
   const locked = !asProvider && appointment.resultAvailable && !result;
@@ -47,7 +49,9 @@ export default function AppointmentDetailDialog({ appointment, viewer, onClose, 
     <div className="apd-backdrop" role="dialog" aria-modal="true" aria-label="Detalle de la cita" onClick={onClose}>
       <div className={`apd tone-${meta.tone}`} onClick={(event) => event.stopPropagation()}>
         <header className="apd-head">
-          <span className="apd-head-icon"><CarFront size={24} /></span>
+          {asProvider
+            ? <AuctionAvatar className="apd-head-icon apd-head-avatar" src={appointment.customerPhotoUrl} name={appointment.customerName || 'Cliente'} />
+            : <span className="apd-head-icon"><CarFront size={24} /></span>}
           <div>
             <small>Detalle de la cita</small>
             <h3>{asProvider ? appointment.customerName || 'Cliente' : appointment.tallerName || 'Taller'}</h3>

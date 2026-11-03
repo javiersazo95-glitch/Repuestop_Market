@@ -7,7 +7,8 @@ export function appointmentClientKey(appointment) {
   return email ? `e:${email}` : `n:${(appointment.customerName || '').trim().toLowerCase()}`;
 }
 
-const vehicleLabel = (appointment) => [appointment.vehiclePatent, appointment.vehicleModel].filter(Boolean).join(' · ');
+// Solo marca y modelo: la patente es un dato privado del cliente y no se guarda en el registro del taller.
+const vehicleLabel = (appointment) => appointment.vehicleModel || '';
 const locationOf = (appointment) => appointment.customerLocation || (appointment.homeService ? appointment.homeAddress : '') || null;
 
 /**
@@ -27,6 +28,7 @@ export function buildWorkshopClients(received, now = new Date()) {
         name: appointment.customerName || 'Cliente sin nombre',
         phone: appointment.customerPhone || '',
         email: appointment.customerEmail || '',
+        photoUrl: null,
         rating: null,
         ratingCount: 0,
         vehicles: [],
@@ -44,6 +46,7 @@ export function buildWorkshopClients(received, now = new Date()) {
     else if (appointmentHistoryKind(appointment) === 'finished') client.attendedAppointments += 1;
     const vehicle = vehicleLabel(appointment);
     if (vehicle && !client.vehicles.includes(vehicle)) client.vehicles.push(vehicle);
+    if (!client.photoUrl) client.photoUrl = appointment.customerPhotoUrl || null;
     if (!client.location) client.location = locationOf(appointment);
     if (client.rating === null && appointment.customerRating) {
       client.rating = appointment.customerRating;

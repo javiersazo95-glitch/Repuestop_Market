@@ -4,6 +4,7 @@ import SearchToolbar from '../SearchToolbar';
 import {
   applyClientQuery, countActiveClientFilters, EMPTY_CLIENT_QUERY,
 } from '../../utils/workshopClients';
+import AuctionAvatar from '../AuctionAvatar';
 import '../../styles/appointments-redesign.css';
 
 const SORT_OPTIONS = [
@@ -17,7 +18,6 @@ const STATUS_OPTIONS = [{ key: 'all', label: 'Todos' }, { key: 'returning', labe
 const RATING_OPTIONS = [{ key: 'all', label: 'Todos' }, { key: 'rated', label: 'Con calificación' }, { key: 'unrated', label: 'Sin calificación' }];
 const ACTIVITY_OPTIONS = [{ key: 'all', label: 'Todos' }, { key: 'current', label: 'Con citas vigentes' }];
 
-const initials = (name) => name.split(' ').map((part) => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
 /** AAAA-MM-DD → DD/MM/AA: corto para que entre en la fila de resumen. */
 const shortDate = (iso) => {
   const [year, month, day] = String(iso).split('-');
@@ -80,7 +80,7 @@ export default function WorkshopClientsTab({ clients, highlightKey = null, onOpe
         return (
           <article key={client.key} className={`wc-card ${client.key === highlightKey ? 'is-highlight' : ''}`}>
             <header className="wc-head">
-              <span className="wc-avatar" aria-hidden="true">{initials(client.name)}</span>
+              <AuctionAvatar className="wc-avatar" src={client.photoUrl} name={client.name} />
               <div className="wc-head-body">
                 <div className="wc-name-row">
                   <strong>{client.name}</strong>

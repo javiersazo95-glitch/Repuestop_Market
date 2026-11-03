@@ -22,6 +22,7 @@ import { apiErrorMessage } from '../../services/walletStorage';
 import AppointmentsCalendarModal from './AppointmentsCalendarModal';
 import PrincipalAgendaCard from './PrincipalAgendaCard';
 import AppointmentChatDialog from './AppointmentChatDialog';
+import AuctionAvatar from '../AuctionAvatar';
 import ListPager from '../ListPager';
 import usePagedList from '../../hooks/usePagedList';
 import SearchToolbar from '../SearchToolbar';
@@ -268,7 +269,8 @@ export default function AppointmentsHistoryModal({
     const origin = appointment.fallaId ? 'Diagnóstico en fallas automotrices' : 'Perfil del taller';
     // Vista resumida: el detalle completo se abre con «Ver detalle».
     const isOpen = expandedIds.includes(appointment.id);
-    const vehicle = [appointment.vehiclePatent, appointment.vehicleModel].filter(Boolean).join(' · ');
+    // Al taller le sirve la patente mientras atiende la cita; en su historial es un dato privado del cliente.
+    const vehicle = (isReceived && !isCurrent ? [appointment.vehicleModel] : [appointment.vehiclePatent, appointment.vehicleModel]).filter(Boolean).join(' · ');
     const person = isReceived ? appointment.customerName : appointment.tallerName;
     const hasContact = isReceived
       ? Boolean(appointment.customerPhone || appointment.customerEmail)
@@ -321,7 +323,7 @@ export default function AppointmentsHistoryModal({
           <h5>{services || 'Servicio no informado'}</h5>
           {/* Resumen: quién y con qué vehículo. El resto (contacto, origen, resultado…) se abre con «Ver detalle». */}
           {(person || vehicle) && (
-            <p className="appt-line">{isReceived ? <UserRound size={13} /> : <Wrench size={13} />} <span>{[person, vehicle].filter(Boolean).join('  ·  ')}</span></p>
+            <p className="appt-line">{isReceived ? <AuctionAvatar className="appt-line-avatar" src={appointment.customerPhotoUrl} name={appointment.customerName} /> : <Wrench size={13} />} <span>{[person, vehicle].filter(Boolean).join('  ·  ')}</span></p>
           )}
           {/* Al cliente le sirve la dirección exacta a la vista: es a donde tiene que llegar. */}
           {!isReceived && appointment.workshopAddress && (
