@@ -19,8 +19,7 @@ function detectDevice() {
 /**
  * Página a la que lleva el QR de un taller (`/r/TL-XXXXXX`): le da la bienvenida a quien lo escanea, muestra el código del
  * taller (para escribirlo a mano si hace falta) y lo lleva a crear su cuenta, con el código ya puesto, por la web o por la
- * app de Android. En iPhone y computador la vía es la web. Dónde se genera el QR decide el ambiente: en dev no hay Play Store y
- * solo se ofrece la web de dev, así se prueba todo el flujo.
+ * app de Android. La web y la app de Google Play se ofrecen siempre (en dev también, para probar el flujo). 
  */
 export default function ReferralLandingPage() {
   const { code: rawCode } = useParams();
@@ -60,7 +59,7 @@ export default function ReferralLandingPage() {
   };
 
   const registerHref = `${ROUTES.home}?ref=${encodeURIComponent(code)}`;
-  const showAndroid = device === 'android' && Boolean(playUrl);
+  const showAndroid = Boolean(playUrl);
 
   return (
     <div className="rl">
@@ -84,23 +83,22 @@ export default function ReferralLandingPage() {
         )}
 
         <div className="rl-actions">
-          {showAndroid ? (
-            <>
-              <a className="rl-btn is-primary" href={playUrl} target="_blank" rel="noopener noreferrer">
-                <Smartphone size={18} aria-hidden="true" /> Descargar en Google Play
-              </a>
-              <Link className="rl-btn" to={registerHref}><Globe size={18} aria-hidden="true" /> Crear mi cuenta en la web</Link>
-            </>
-          ) : (
-            <Link className="rl-btn is-primary" to={registerHref}><Globe size={18} aria-hidden="true" /> Crear mi cuenta en la web</Link>
+          {playUrl && (
+            <a className={`rl-btn ${device === 'android' ? 'is-primary' : ''}`} href={playUrl} target="_blank" rel="noopener noreferrer"
+              style={device === 'android' ? { order: -1 } : undefined}>
+              <Smartphone size={18} aria-hidden="true" /> Descargar en Google Play
+            </a>
           )}
+          <Link className={`rl-btn ${device === 'android' && playUrl ? '' : 'is-primary'}`} to={registerHref}>
+            <Globe size={18} aria-hidden="true" /> Crear mi cuenta en la web
+          </Link>
         </div>
 
         <ul className="rl-notes">
           {showAndroid && (
             <li><Download size={15} aria-hidden="true" /> Si descargas la app, al crear tu cuenta escribe el código de arriba en «Código de invitación».</li>
           )}
-          {device === 'ios' && <li><Smartphone size={15} aria-hidden="true" /> En iPhone usa RepuesTop desde la web: crea tu cuenta con el botón de arriba.</li>}
+          {device !== 'android' && <li><Smartphone size={15} aria-hidden="true" /> La app es para Android; en iPhone o computador crea tu cuenta desde la web.</li>}
           <li><Check size={15} aria-hidden="true" /> Puedes registrarte con tu correo o con Google. Tu código se completa solo en la web; si no, ingrésalo a mano.</li>
         </ul>
       </section>

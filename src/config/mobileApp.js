@@ -1,17 +1,15 @@
-// Ficha oficial de la app Android de RepuesTop en Google Play. Solo existe en producción: dev no tiene build publicado
-// en Play Store, así que ahí no hay enlace y la web ofrece crear la cuenta directo (así se prueba el QR de punta a punta).
-const PRODUCTION_PLAY_URL = 'https://play.google.com/store/apps/details?id=cl.repuestop.app';
-const PRODUCTION_HOSTS = new Set(['repuestop.cl', 'www.repuestop.cl']);
+// Ficha oficial de la app Android de RepuesTop en Google Play. Dev no tiene build propio publicado, pero igual apunta a la
+// ficha de producción para poder probar el flujo del QR de punta a punta (web o Play Store).
+const PLAY_URL = 'https://play.google.com/store/apps/details?id=cl.repuestop.app';
 
 function resolvePlayUrl() {
-  // `VITE_PLAY_STORE_URL` manda si está definida (vacía = sin Play Store); si no, se decide por el dominio.
+  // `VITE_PLAY_STORE_URL` manda si está definida (vacía = sin Play Store); si no, siempre la ficha oficial.
   const configured = import.meta.env?.VITE_PLAY_STORE_URL;
   if (typeof configured === 'string') return configured.trim();
-  if (typeof window === 'undefined') return PRODUCTION_PLAY_URL;
-  return PRODUCTION_HOSTS.has(window.location.hostname) ? PRODUCTION_PLAY_URL : '';
+  return PLAY_URL;
 }
 
-/** Enlace a Google Play del ambiente actual; cadena vacía cuando no hay app publicada (dev). */
+/** Enlace a Google Play del ambiente actual; cadena vacía solo si `VITE_PLAY_STORE_URL` está definida vacía. */
 export const GOOGLE_PLAY_URL = resolvePlayUrl();
 
 /**
