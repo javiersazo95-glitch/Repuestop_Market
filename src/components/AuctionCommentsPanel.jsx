@@ -20,6 +20,8 @@ function timeAgo(iso) {
 }
 
 /** Comentarios públicos de la búsqueda: las tiendas preguntan para afinar la cotización. */
+const VISIBLE_COMMENTS = 3;
+
 export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = true, isCreator = false, quotes = [] }) {
   const { isLoggedIn } = useAuth();
   const [comments, setComments] = useState([]);
@@ -30,6 +32,7 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
   const [sortBy, setSortBy] = useState('RECIENTES');
   const [replyingId, setReplyingId] = useState(null);
   const [replyText, setReplyText] = useState('');
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -83,6 +86,9 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
   }, {});
   const questions = comments.filter((comment) => comment.respondeAId == null || !comments.some((c) => c.id === comment.respondeAId));
   const ordered = sortBy === 'RECIENTES' ? [...questions].reverse() : questions;
+  // Se ven los primeros y el resto se despliega hacia abajo con "Ver más": el panel no crece sin límite.
+  const visible = showAll ? ordered : ordered.slice(0, VISIBLE_COMMENTS);
+  const hiddenCount = ordered.length - visible.length;
 
   return (
     <section className="as-card as-comments" aria-label="Comentarios de la búsqueda">
@@ -133,7 +139,7 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
         <p className="as-muted as-empty">Aún no hay comentarios sobre esta búsqueda. Pregunta lo que necesites saber para afinar tu cotización.</p>
       ) : (
         <ul className="as-comment-list">
-          {ordered.map((comment) => (
+          {visible.map((comment) => (
             <li key={comment.id} className="as-comment">
               <StoreProfileLink storeId={commentStoreId(comment, quotes)} name={comment.autor}>
                 <AuctionAvatar className="as-comment-avatar" src={comment.autorFotoUrl} name={comment.autor} isStore={comment.autorEsTienda} />
@@ -172,6 +178,11 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
             </li>
           ))}
         </ul>
+      )}
+      {!loading && ordered.length > VISIBLE_COMMENTS && (
+        <button type="button" className="as-more" onClick={() => setShowAll((value) => !value)} aria-expanded={showAll}>
+          {showAll ? 'Ver menos comentarios' : `Ver más comentarios (${hiddenCount})`}
+        </button>
       )}
     </section>
   );

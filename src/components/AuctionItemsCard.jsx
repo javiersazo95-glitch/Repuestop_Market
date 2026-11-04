@@ -44,14 +44,20 @@ export default function AuctionItemsCard({ items = [], isOpen, vehicle = {}, can
           <li key={item.id} className={item.pendiente ? '' : 'is-awarded'}>
             <span className="av-item-number">{index + 1}</span>
             <div className="av-item-line">
-              <strong>{item.repuesto}</strong>
-              <span className="av-item-qty">× {item.cantidad}</span>
-              {item.categoria && <span className="av-item-cat">{item.categoria}</span>}
-              {item.vehiculoPropio && <span className="av-item-cat is-vehicle">{itemVehicleLabel(item)}</span>}
+              <div className="av-item-main">
+                <strong>{item.repuesto}</strong>
+                <span className="av-item-qty">× {item.cantidad}</span>
+              </div>
               {item.pendiente ? (
                 <span className="av-item-status is-open"><Clock size={12} /> {isOpen ? 'Disponible' : 'Sin adjudicar'}</span>
               ) : (
                 <span className="av-item-status is-awarded"><CheckCircle2 size={12} /> Adjudicado</span>
+              )}
+              {(item.categoria || item.vehiculoPropio) && (
+                <div className="av-item-tags">
+                  {item.categoria && <span className="av-item-cat">{item.categoria}</span>}
+                  {item.vehiculoPropio && <span className="av-item-cat is-vehicle">{itemVehicleLabel(item)}</span>}
+                </div>
               )}
             </div>
             {item.descripcion && (

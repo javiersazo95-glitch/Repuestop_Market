@@ -275,6 +275,7 @@ export default function AuctionDetailPage() {
   const canQuote = isSeller && !esCreador && isOpen && itemsPendientes > 0 && !miCotizacion?.aceptada;
   const acceptedCount = cotizaciones.filter((quote) => quote.aceptada).length;
   const paidOffers = auction?.ofertasPagadas ?? 0;
+  const latestQuote = [...cotizaciones].sort((a, b) => new Date(b.fechaEnvio).getTime() - new Date(a.fechaEnvio).getTime())[0];
   const offersStatusLine = acceptedCount > 0
     ? (paidOffers >= acceptedCount
       ? 'Pedido pagado. Revisa tus ofertas y sigue tu compra desde "Ver ofertas".'
@@ -494,7 +495,7 @@ export default function AuctionDetailPage() {
               <AuctionBuyerCard auctionId={auction.id} vehicle={[marca, modelo].filter(Boolean).join(' ')} region={region} />
             </div>
 
-            <section className="as-card av-offers" aria-label="Ofertas recibidas">
+            <section className={`as-card av-offers ${esCreador ? 'is-summary' : ''}`} aria-label="Ofertas recibidas">
               <header className="av-offers-banner">
                 <span className="av-offers-count" aria-hidden="true">{cotizaciones.length}</span>
                 <div className="av-offers-banner-text">
@@ -542,7 +543,16 @@ export default function AuctionDetailPage() {
                     <ShieldCheck size={15} />
                     {esCreador ? offersStatusLine : 'Los precios y condiciones son confidenciales: solo los ve el comprador y la tienda que ofertó.'}
                   </p>
-                  {esCreador ? null : (
+                  {esCreador ? (
+                    latestQuote && (
+                      <div className="av-offers-latest">
+                        <span className="av-offers-latest-label">Última oferta recibida</span>
+                        <ul className="av-offer-list">
+                          <QuoteRow quote={latestQuote} index={0} onViewPhoto={openStorePhoto} />
+                        </ul>
+                      </div>
+                    )
+                  ) : (
                     <ul className="av-offer-list">
                       {cotizaciones.map((quote, index) => (
                         <QuoteRow
