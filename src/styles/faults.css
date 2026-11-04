@@ -536,8 +536,8 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
   .ft-m-only { display: block; }
   .ft-m-controls { display: flex; flex-direction: column; gap: 12px; margin: 12px 0; }
   .ft-m-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
-  .ft-m-tabs button { flex: 0 0 auto; min-height: 36px; padding: 0 14px; border: 1px solid #d9e0e7; border-radius: 999px; background: #fff; color: #5a6b7a; font: inherit; font-size: 13px; font-weight: 600; white-space: nowrap; }
-  .ft-m-tabs button.is-active { border-color: #bfd6f7; background: #eaf2ff; color: #0056bf; }
+  .ft-m-tabs button { flex: 0 0 auto; min-height: 40px; padding: 0 16px; border: 1.5px solid #0056bf; border-radius: 999px; background: #fff; color: #0056bf; font: inherit; font-size: 13px; font-weight: 800; white-space: nowrap; }
+  .ft-m-tabs button.is-active { border-color: #0056bf; background: #0056bf; color: #fff; }
   .ft-m-row { display: flex; align-items: center; gap: 8px; }
   .ft-m-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 12px; border: 1px solid #d9e0e7; border-radius: 12px; background: #fff; color: #5a6b7a; }
   .ft-m-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 14px; color: #243442; }

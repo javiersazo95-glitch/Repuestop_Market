@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Camera, Car, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { normalizePlate } from '../utils/vehicleLookup';
+import AuctionManualVehicle from './AuctionManualVehicle';
 import usePlateLookup, { maskPlate } from '../utils/usePlateLookup';
 import { getComunasApi, getRegionesApi } from '../services/api';
 import { createAuction, updateAuction, uploadAuctionPhoto } from '../services/auctionApi';
@@ -71,7 +72,12 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
   const source = auction || template;
   const { HEADER_CATEGORIES } = useCategories();
   const [patente, setPatente] = useState(() => source?.patente || initialPatente);
-  const { vehicle, error: plateError, looking } = usePlateLookup(patente);
+  const { vehicle: plateVehicle, error: plateError, looking } = usePlateLookup(patente);
+  // Sin patente a mano: marca, modelo y año del catálogo (búsqueda manual).
+  const [vehicleMode, setVehicleMode] = useState(() => (source && !source.patente && source.marca ? 'manual' : 'plate'));
+  const [manualVehicle, setManualVehicle] = useState(() => (source && !source.patente && source.marca
+    ? { marca: source.marca, modelo: source.modelo, anio: source.anio || undefined } : null));
+  const vehicle = manualVehicle || plateVehicle;
 
   const [items, setItems] = useState(() => (source ? itemsFromAuction(source) : [newItem()]));
   const [itemVehicles, setItemVehicles] = useState({});
@@ -153,7 +159,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
 
   const submit = async (event) => {
     event.preventDefault();
-    if (!vehicle?.chasis) { setError('Ingresa la patente de tu vehículo: la usamos para obtener sus datos y su chasis.'); return; }
+    if (!manualVehicle && !vehicle?.chasis) { setError('Ingresa la patente de tu vehículo o usa la búsqueda manual.'); return; }
     const blank = items.findIndex((item) => !item.nombre.trim());
     if (blank >= 0) { setError(`Indica el nombre del repuesto ${blank + 1}.`); return; }
     const noCategory = items.findIndex((item) => !item.categoria);
@@ -169,12 +175,12 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
     setError('');
     try {
       const payload = {
-        patente: normalizePlate(patente),
+        patente: manualVehicle ? undefined : normalizePlate(patente),
         marca: vehicle.marca || undefined,
         modelo: vehicle.modelo || undefined,
         anio: vehicle.anio || undefined,
-        version: vehicle.version || undefined,
-        chasis: vehicle.chasis,
+        version: manualVehicle ? undefined : vehicle.version || undefined,
+        chasis: manualVehicle ? undefined : vehicle.chasis,
         repuestoSolicitado: items[0].nombre.trim(),
         categoria: items[0].categoria,
         cantidad: totalUnits || 1,
@@ -211,31 +217,56 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
 
         <section className="am-card">
           <h3 className="am-form-title">1. Datos del vehículo</h3>
-          <Field label="Patente chilena *">
-            <span className="am-input-wrap">
-              <input
-                type="text"
-                value={patente}
-                onChange={(event) => setPatente(event.target.value.toUpperCase())}
-                placeholder="Ej: AB-CD-12"
-                maxLength={12}
-                autoCapitalize="characters"
-                autoComplete="off"
-              />
-              {looking && <Loader2 size={18} className="am-spin" />}
-            </span>
-          </Field>
-          {plateError && <p className="am-error" role="alert">{plateError}</p>}
-          <div className="am-two">
-            <Field label="Marca"><input type="text" value={vehicle?.marca || ''} placeholder="Toyota" readOnly /></Field>
-            <Field label="Modelo"><input type="text" value={vehicle?.modelo || ''} placeholder="Yaris" readOnly /></Field>
-          </div>
-          <div className="am-two">
-            <Field label="Año"><input type="text" value={vehicle?.anio || ''} placeholder="2018" readOnly /></Field>
-            <Field label="Motor"><input type="text" value={vehicle?.motor || ''} placeholder="1.5L" readOnly /></Field>
-          </div>
-          <Field label="Versión"><input type="text" value={vehicle?.version || ''} placeholder="GLI" readOnly /></Field>
-          <Field label="Chasis / VIN"><input type="text" value={vehicle?.chasis || ''} placeholder="Se completa con la patente" readOnly /></Field>
+          {manualVehicle ? (
+            <>
+              <div className="am-two">
+                <Field label="Marca"><input type="text" value={manualVehicle.marca || ''} readOnly /></Field>
+                <Field label="Modelo"><input type="text" value={manualVehicle.modelo || ''} readOnly /></Field>
+              </div>
+              <Field label="Año"><input type="text" value={manualVehicle.anio || ''} readOnly /></Field>
+              <button type="button" className="am-link" onClick={() => setManualVehicle(null)}>Cambiar vehículo</button>
+            </>
+          ) : (
+            <>
+              {!plateVehicle && (
+                <div className="am-tabs" role="tablist" aria-label="Cómo indicar el vehículo">
+                  <button type="button" role="tab" aria-selected={vehicleMode === 'plate'} className={vehicleMode === 'plate' ? 'is-active' : ''} onClick={() => setVehicleMode('plate')}>Por patente</button>
+                  <button type="button" role="tab" aria-selected={vehicleMode === 'manual'} className={vehicleMode === 'manual' ? 'is-active' : ''} onClick={() => setVehicleMode('manual')}>Búsqueda manual</button>
+                </div>
+              )}
+              {!plateVehicle && vehicleMode === 'manual' ? (
+                <div className="ft-page"><AuctionManualVehicle onUse={setManualVehicle} /></div>
+              ) : (
+                <>
+                  <Field label="Patente chilena *">
+                    <span className="am-input-wrap">
+                      <input
+                        type="text"
+                        value={patente}
+                        onChange={(event) => setPatente(event.target.value.toUpperCase())}
+                        placeholder="Ej: AB-CD-12"
+                        maxLength={12}
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                      />
+                      {looking && <Loader2 size={18} className="am-spin" />}
+                    </span>
+                  </Field>
+                  {plateError && <p className="am-error" role="alert">{plateError}</p>}
+                  <div className="am-two">
+                    <Field label="Marca"><input type="text" value={plateVehicle?.marca || ''} placeholder="Toyota" readOnly /></Field>
+                    <Field label="Modelo"><input type="text" value={plateVehicle?.modelo || ''} placeholder="Yaris" readOnly /></Field>
+                  </div>
+                  <div className="am-two">
+                    <Field label="Año"><input type="text" value={plateVehicle?.anio || ''} placeholder="2018" readOnly /></Field>
+                    <Field label="Motor"><input type="text" value={plateVehicle?.motor || ''} placeholder="1.5L" readOnly /></Field>
+                  </div>
+                  <Field label="Versión"><input type="text" value={plateVehicle?.version || ''} placeholder="GLI" readOnly /></Field>
+                  <Field label="Chasis / VIN"><input type="text" value={plateVehicle?.chasis || ''} placeholder="Se completa con la patente" readOnly /></Field>
+                </>
+              )}
+            </>
+          )}
         </section>
 
         <section className="am-card">

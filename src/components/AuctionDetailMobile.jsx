@@ -263,7 +263,7 @@ export default function AuctionDetailMobile({
               {isOpen && <span className={`am-pill is-${tone}`}><Clock size={14} /> {formatRemaining(remainingMs)}</span>}
             </div>
             <h2>{repuestoSolicitado}</h2>
-            <p className="am-meta am-tracking"><Hash size={14} /><span>Código: <strong>{auctionTrackingCode(id)}</strong></span></p>
+            {esCreador && <p className="am-meta am-tracking"><Hash size={14} /><span>Código: <strong>{auctionTrackingCode(id)}</strong></span></p>}
             {createdAt && <p className="am-meta"><CalendarDays size={14} /><span>Publicado {formatPublished(createdAt)}</span></p>}
             {location && <p className="am-meta"><MapPin size={14} /><span>{location}</span></p>}
           </div>

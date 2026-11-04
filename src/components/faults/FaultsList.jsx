@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle, Bookmark, CalendarDays, Camera, Car, ChevronRight, FileText, Filter, Loader2,
@@ -254,6 +254,14 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   }, [isLoggedIn, isWorkshop, intranet]);
 
   useEffect(() => { load(); }, [load]);
+  // Celular: una sola vez, al terminar de cargar, quien ya tiene fallas propias abre en ellas; sin ninguna, el mural.
+  const initialViewApplied = useRef(false);
+  useEffect(() => {
+    if (initialViewApplied.current || loading || intranet || !isLoggedIn || !isMobile) return;
+    initialViewApplied.current = true;
+    const mineKey = isWorkshop ? 'COMMENTED' : 'MINE';
+    if (lists[mineKey].length > 0) setView(mineKey);
+  }, [loading, intranet, isLoggedIn, isMobile, isWorkshop, lists]);
   useEffect(() => { if (!isLoggedIn && !intranet) setView('OPEN'); }, [isLoggedIn, intranet]);
   useEffect(() => {
     const timer = setTimeout(() => setQuery(searchText.trim()), 250);
@@ -438,8 +446,11 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
             <div className="ft-m-only ft-m-controls">
               {isLoggedIn && (
                 <div className="ft-m-tabs" role="tablist">
-                  <button type="button" role="tab" aria-selected={view === 'OPEN'} className={view === 'OPEN' ? 'is-active' : ''} onClick={() => setView('OPEN')}>Mural público ({lists.OPEN.length})</button>
-                  <button type="button" role="tab" aria-selected={view !== 'OPEN'} className={view !== 'OPEN' ? 'is-active' : ''} onClick={() => setView(isWorkshop ? 'COMMENTED' : 'MINE')}>Mis fallas ({lists[isWorkshop ? 'COMMENTED' : 'MINE'].length})</button>
+                  {(lists[isWorkshop ? 'COMMENTED' : 'MINE'].length > 0 ? ['MINE', 'OPEN'] : ['OPEN', 'MINE']).map((tabKey) => (tabKey === 'OPEN' ? (
+                    <button key="OPEN" type="button" role="tab" aria-selected={view === 'OPEN'} className={view === 'OPEN' ? 'is-active' : ''} onClick={() => setView('OPEN')}>Mural público ({lists.OPEN.length})</button>
+                  ) : (
+                    <button key="MINE" type="button" role="tab" aria-selected={view !== 'OPEN'} className={view !== 'OPEN' ? 'is-active' : ''} onClick={() => setView(isWorkshop ? 'COMMENTED' : 'MINE')}>Mis fallas ({lists[isWorkshop ? 'COMMENTED' : 'MINE'].length})</button>
+                  )))}
                 </div>
               )}
               <div className="ft-m-row">

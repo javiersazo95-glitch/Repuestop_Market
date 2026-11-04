@@ -73,3 +73,11 @@
 .acv-address-error { color: #b42318; font-size: 12.5px; }
 
 .acv-shipping-rule { display: block; margin-top: 6px; font-size: 12px; line-height: 1.45; color: #5a6b7a; }
+
+/* Formulario de pedido con el estilo del de fallas (ft-*): ajustes puntuales. */
+.acv-count-row { display: flex; justify-content: flex-end; margin-top: -6px; }
+.ft-page .acv-item legend { color: var(--ft-primary); }
+.ft-page .acv-add-item { border-color: var(--ft-primary); color: var(--ft-primary); }
+.ft-page .acv-plate { border-color: var(--ft-primary-border); background: var(--ft-primary-light); }
+.ft-page .acv-plate.is-confirmed { background: #fff; }
+.ft-page .acv-quick-address { margin-top: 0; }
