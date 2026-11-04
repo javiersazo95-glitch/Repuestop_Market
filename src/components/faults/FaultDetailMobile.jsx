@@ -3,13 +3,13 @@ import TallerRating from '../talleres/TallerRating';
 import { Link } from 'react-router-dom';
 import {
   AlertCircle, ArrowLeft, Bookmark, Calendar, Car, Check, ChevronDown, ChevronRight, ChevronUp, Copy, ExternalLink,
-  Lock, MapPin, Megaphone, MessageCircle, Navigation, Pencil, Share2, Signal, Star, Tag, Truck, UserRound, Wrench, X,
+  Lock, MapPin, MessageCircle, Navigation, Pencil, Share2, Signal, Star, Tag, Truck, UserRound, Wrench, X,
 } from 'lucide-react';
 import ContextualReportButton from '../ContextualReportButton';
 import VehicleBrandLogo from '../VehicleBrandLogo';
 import CharCount from './CharCount';
 import { resolveMediaUrl } from '../../services/api';
-import { priceRange, scopeText, timeSince } from '../../services/faultApi';
+import { priceRange, timeSince } from '../../services/faultApi';
 import { formatDistanceKm } from '../../utils/geoDistance';
 import { workshopPath } from '../../routes/paths';
 import '../../styles/app-kit.css';
@@ -175,7 +175,6 @@ export default function FaultDetailMobile({
             ) : null}
             {place && <InfoItem icon={MapPin} label="Ubicación">{place}</InfoItem>}
             {fault.requiereRecogida && <InfoItem icon={Truck} label="Recogida">Necesita que vengan por el vehículo</InfoItem>}
-            {fault.alcance && <InfoItem icon={Megaphone} label="Aviso a">{scopeText(fault)}</InfoItem>}
             <InfoItem icon={Calendar} label="Publicación">{publishedOn(fault.createdAt)}</InfoItem>
             <div className="ftd-info-item">
               <Signal size={14} aria-hidden="true" />
