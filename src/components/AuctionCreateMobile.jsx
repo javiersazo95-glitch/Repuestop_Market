@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Camera, Car, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { normalizePlate } from '../utils/vehicleLookup';
 import AuctionManualVehicle from './AuctionManualVehicle';
+import { PlateBenefitHint, RecommendedBadge } from './PlateRecommended';
 import usePlateLookup, { maskPlate } from '../utils/usePlateLookup';
 import { getComunasApi, getRegionesApi } from '../services/api';
 import { createAuction, updateAuction, uploadAuctionPhoto } from '../services/auctionApi';
@@ -234,10 +235,11 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
             <>
               {!plateVehicle && (
                 <div className="am-tabs" role="tablist" aria-label="Cómo indicar el vehículo">
-                  <button type="button" role="tab" aria-selected={vehicleMode === 'plate'} className={vehicleMode === 'plate' ? 'is-active' : ''} onClick={() => setVehicleMode('plate')}>Por patente</button>
+                  <button type="button" role="tab" aria-selected={vehicleMode === 'plate'} className={vehicleMode === 'plate' ? 'is-active' : ''} onClick={() => setVehicleMode('plate')}>Por patente<RecommendedBadge /></button>
                   <button type="button" role="tab" aria-selected={vehicleMode === 'manual'} className={vehicleMode === 'manual' ? 'is-active' : ''} onClick={() => setVehicleMode('manual')}>Búsqueda manual</button>
                 </div>
               )}
+              {!plateVehicle && vehicleMode === 'plate' && <PlateBenefitHint />}
               {!plateVehicle && vehicleMode === 'manual' ? (
                 <div className="ft-page"><AuctionManualVehicle onUse={setManualVehicle} initial={manualVehicle} /></div>
               ) : (

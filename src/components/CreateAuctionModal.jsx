@@ -11,6 +11,7 @@ import { resolverUbicacionPorNombre } from '../services/geoLookup';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import AuctionCreateMobile from './AuctionCreateMobile';
 import AuctionManualVehicle from './AuctionManualVehicle';
+import { PlateBenefitHint, RecommendedBadge } from './PlateRecommended';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { createAuction, updateAuction, uploadAuctionPhoto } from '../services/auctionApi';
 import { useAuth } from '../context/AuthContext';
@@ -420,10 +421,11 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
             <>
               {!plateVehicle && (
                 <div className="ft-tabs" role="tablist" aria-label="Cómo indicar el vehículo">
-                  <button type="button" role="tab" aria-selected={vehicleMode === 'plate'} className={`ft-tab ${vehicleMode === 'plate' ? 'is-active' : ''}`} onClick={() => setVehicleMode('plate')}>Por patente</button>
+                  <button type="button" role="tab" aria-selected={vehicleMode === 'plate'} className={`ft-tab ${vehicleMode === 'plate' ? 'is-active' : ''}`} onClick={() => setVehicleMode('plate')}>Por patente<RecommendedBadge /></button>
                   <button type="button" role="tab" aria-selected={vehicleMode === 'manual'} className={`ft-tab ${vehicleMode === 'manual' ? 'is-active' : ''}`} onClick={() => setVehicleMode('manual')}>Búsqueda manual</button>
                 </div>
               )}
+              {!plateVehicle && vehicleMode === 'plate' && <PlateBenefitHint />}
               {!plateVehicle && vehicleMode === 'manual' ? (
                 <AuctionManualVehicle onUse={setManualVehicle} initial={manualVehicle} />
               ) : plateVehicle ? (
@@ -448,7 +450,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
                     className="acv-plate-input"
                   />
                   <small className="acv-plate-hint">
-                    {lookingUpPlate ? 'Consultando patente…' : <>Con tu patente obtenemos la marca, el modelo, el año y el chasis. ¿No la tienes a mano? <button type="button" className="ft-link" onClick={() => setVehicleMode('manual')}>Ingresa el vehículo a mano</button>.</>}
+                    {lookingUpPlate ? 'Consultando patente…' : <>¿No la tienes a mano? <button type="button" className="ft-link" onClick={() => setVehicleMode('manual')}>Ingresa el vehículo a mano</button>.</>}
                   </small>
                 </div>
               )}

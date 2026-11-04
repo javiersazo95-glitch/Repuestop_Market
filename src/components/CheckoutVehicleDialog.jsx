@@ -5,6 +5,7 @@ import { getVehicleBrandsApi, getVehicleModelsApi, getVehicleMotorsApi, getVehic
 import { formatVehicleLabel, isValidPlate, lookupVehicleByPlate, normalizePlate } from '../utils/vehicleLookup';
 import { buildCartVehicle, initialVehicleMode, normalizeChassis, vehicleFormMissing, vehicleYearOptions } from '../utils/cartVehicleForm';
 import SearchableDropdown from './SearchableDropdown';
+import { PlateBenefitHint, RecommendedBadge } from './PlateRecommended';
 
 const sameText = (a, b) => String(a || '').trim().toLowerCase() === String(b || '').trim().toLowerCase();
 const toOptions = (list) => (Array.isArray(list) ? list : []).map((item) => ({ value: String(item.id), label: item.nombre }));
@@ -221,12 +222,13 @@ export default function CheckoutVehicleDialog({ vehicle, plateCache, initialMode
         </header>
         <div className="checkout-vehicle-modes" role="tablist" aria-label="Cómo indicar el vehículo">
           <button type="button" role="tab" aria-selected={mode === 'plate'} className={mode === 'plate' ? 'is-active' : ''} onClick={() => setMode('plate')}>
-            <Car size={15} /> Por patente
+            <Car size={15} /> Por patente<RecommendedBadge />
           </button>
           <button type="button" role="tab" aria-selected={mode === 'manual'} className={mode === 'manual' ? 'is-active' : ''} onClick={() => setMode('manual')}>
             <PencilLine size={15} /> Búsqueda manual
           </button>
         </div>
+        {mode === 'plate' && <PlateBenefitHint className="checkout-vehicle-benefit" />}
         {mode === 'plate' ? (
           <div className="cart-invoice-fields">
             <label>
