@@ -7,7 +7,6 @@ import usePlateLookup, { maskPlate } from '../utils/usePlateLookup';
 import { getComunasApi, getRegionesApi } from '../services/api';
 import { createAuction, updateAuction, uploadAuctionPhoto } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
-import { useCategories } from '../data/categories';
 import { MAX_PRICE, MAX_QUANTITY, onlyDigits } from '../utils/inputLimits';
 import '../styles/auction-app-mobile.css';
 
@@ -17,7 +16,7 @@ const TIPO_ENVIO_OPTIONS = ['Despacho a domicilio', 'Retiro en tienda'];
 const MAX_PHOTOS = 5;
 const MAX_ITEMS = 20;
 let itemSeq = 0;
-const newItem = (otroVehiculo = false) => ({ key: `item-${++itemSeq}`, nombre: '', categoria: '', cantidad: '1', descripcion: '', otroVehiculo, patente: '' });
+const newItem = (otroVehiculo = false) => ({ key: `item-${++itemSeq}`, nombre: '', cantidad: '1', descripcion: '', otroVehiculo, patente: '' });
 
 
 function Field({ label, children }) {
@@ -34,14 +33,13 @@ function itemsFromAuction(auction) {
   const list = (auction?.items || []).map((item) => ({
     ...newItem(),
     nombre: item.repuesto || '',
-    categoria: item.categoria || '',
     cantidad: String(item.cantidad || 1),
     descripcion: item.descripcion || '',
     otroVehiculo: Boolean(item.vehiculoPropio),
     patente: item.patente || '',
   }));
   if (list.length) return list;
-  return [{ ...newItem(), nombre: auction?.repuestoSolicitado || '', categoria: auction?.categoria || '', cantidad: String(auction?.cantidad || 1), descripcion: auction?.descripcion || '' }];
+  return [{ ...newItem(), nombre: auction?.repuestoSolicitado || '', cantidad: String(auction?.cantidad || 1), descripcion: auction?.descripcion || '' }];
 }
 
 /** Patente de un repuesto para otro vehículo: se identifica sola y avisa el resultado al formulario. */
@@ -71,7 +69,6 @@ function ItemVehicle({ itemKey, patente, onChange, onVehicle }) {
 export default function AuctionCreateMobile({ onClose, onSuccess, auction = null, template = null, initialPatente = '' }) {
   const isEditing = Boolean(auction);
   const source = auction || template;
-  const { HEADER_CATEGORIES } = useCategories();
   const [patente, setPatente] = useState(() => source?.patente || initialPatente);
   const { vehicle: plateVehicle, error: plateError, looking } = usePlateLookup(patente);
   // Sin patente a mano: marca, modelo y año del catálogo (búsqueda manual).
@@ -134,7 +131,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
       return text ? `Para: ${text}` : 'Para otro vehículo · ingresa su patente';
     }
     const text = vehicleText(vehicle, patente);
-    return text ? `Para: ${text}` : 'Para el vehículo del pedido · ingresa su patente arriba';
+    return text ? `Para: ${text}` : 'Para el vehículo ingresado · completa los datos arriba';
   };
   const totalUnits = items.reduce((sum, item) => sum + (parseInt(item.cantidad, 10) || 0), 0);
 
@@ -163,8 +160,6 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
     if (!manualVehicle && !vehicle?.chasis) { setError('Ingresa la patente de tu vehículo o usa la búsqueda manual.'); return; }
     const blank = items.findIndex((item) => !item.nombre.trim());
     if (blank >= 0) { setError(`Indica el nombre del repuesto ${blank + 1}.`); return; }
-    const noCategory = items.findIndex((item) => !item.categoria);
-    if (noCategory >= 0) { setError(`Selecciona la categoría del repuesto ${noCategory + 1}.`); return; }
     if (items.some((item) => item.otroVehiculo && !itemVehicles[item.key])) {
       setError('Hay repuestos para otro vehículo sin patente identificada. Ingresa su patente o cámbialo al mismo vehículo.');
       return;
@@ -184,11 +179,9 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
         motor: manualVehicle ? manualVehicle.motor || undefined : undefined,
         chasis: vehicle.chasis || undefined,
         repuestoSolicitado: items[0].nombre.trim(),
-        categoria: items[0].categoria,
         cantidad: totalUnits || 1,
         items: items.map((item) => ({
           repuestoSolicitado: item.nombre.trim(),
-          categoria: item.categoria,
           descripcion: item.descripcion.trim() || undefined,
           cantidad: parseInt(item.cantidad, 10) || 1,
           patente: item.otroVehiculo ? normalizePlate(item.patente) : undefined,
@@ -293,12 +286,6 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
               <div className="am-two">
                 <Field label="Cantidad *">
                   <input type="text" inputMode="numeric" maxLength={3} value={item.cantidad} onChange={(event) => changeItem(item.key, { cantidad: onlyDigits(event.target.value, 3) })} />
-                </Field>
-                <Field label="Categoría *">
-                  <select value={item.categoria} onChange={(event) => changeItem(item.key, { categoria: event.target.value })}>
-                    <option value="">Selecciona</option>
-                    {HEADER_CATEGORIES.map((cat) => <option key={cat.id} value={cat.nombre}>{cat.nombre}</option>)}
-                  </select>
                 </Field>
               </div>
               <Field label="Descripción de la falla / requerimiento">
