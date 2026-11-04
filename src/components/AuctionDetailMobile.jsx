@@ -384,11 +384,8 @@ export default function AuctionDetailMobile({
           {miCotizacion ? <Pencil size={18} /> : <Gavel size={18} />} {miCotizacion ? 'Modificar mi oferta' : 'Ofertar ahora'}
         </button>
       )}
-      {esCreador && acceptedCount > 0 && (
-        <button type="button" className="am-btn" onClick={onOpenPurchase}><ShoppingCart size={18} /> Ver mi pedido y pagar</button>
-      )}
-      {esCreador && isOpen && acceptedCount === 0 && cotizaciones.length > 0 && (
-        <button type="button" className="am-btn" onClick={onCompare}><Gavel size={18} /> Comparar y aceptar ofertas</button>
+      {esCreador && cotizaciones.length > 0 && (
+        <button type="button" className="am-btn" onClick={onCompare}><Gavel size={18} /> Ver ofertas</button>
       )}
       {isSeller && !esCreador && miCotizacion?.aceptada && (
         <p className="am-note"><PackageCheck size={16} /> El comprador aceptó tu oferta. Recibirás el pedido cuando pague.</p>

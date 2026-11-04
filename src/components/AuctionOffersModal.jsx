@@ -12,6 +12,7 @@ import StoreProfileLink from './StoreProfileLink';
 import AuctionImageViewer from './AuctionImageViewer';
 import { resolveMediaUrl } from '../services/api';
 import { evaluateOffer, shippingClass, suggestOffer } from '../utils/auctionOfferFit';
+import { usePaymentDeadline } from '../utils/paymentDeadline';
 import '../styles/auction-offers.css';
 
 const nf = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
@@ -387,7 +388,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
  * (qué repuestos incluye y cuáles faltan). El comprador acepta las que le sirven, completas o parciales; lo
  * que no se adjudica sigue disponible para otras tiendas. Lo aceptado se paga junto desde "Tu pedido".
  */
-export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChanged, onOpenPurchase, fullScreen = false, focusOfferId = null }) {
+export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChanged, onOpenPurchase, onViewOrder, fullScreen = false, focusOfferId = null }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -401,6 +402,8 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
   const [hintsOn, setHintsOn] = useState(false);
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(25);
+  // Plazo para pagar lo aceptado (mismo de cualquier compra); null si no hay un pago pendiente.
+  const paymentDeadline = usePaymentDeadline(detail?.pagoPendienteVenceEn);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -511,6 +514,38 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
   const pageOffers = fullScreen ? shown.slice(safePage * pageSize, (safePage + 1) * pageSize) : shown;
   const hasFilters = statusFilter !== 'all' || coverFilter !== 'all' || searchText || sortBy !== 'best';
 
+  // Pie del popup: pagar lo aceptado (con su plazo) o, ya pagado, ir al pedido. Solo aquí se paga; la tarjeta de la página no lo ofrece.
+  const paidCount = detail?.ofertasPagadas ?? 0;
+  const toPay = Math.max(0, acceptedCount - paidCount);
+  const payTotal = detail?.pagoPendienteTotal;
+  const goToOrder = () => { onClose(); onViewOrder?.(); };
+  const payFooter = detail && acceptedCount > 0 && ((toPay > 0 && onOpenPurchase) || (paidCount > 0 && onViewOrder)) ? (
+    <footer className="ao-pay-footer">
+      <div className="ao-pay-info">
+        {toPay > 0 ? (
+          <>
+            <strong>{toPay} {toPay === 1 ? 'tienda aceptada' : 'tiendas aceptadas'} por pagar{payTotal ? ` · ${money(payTotal)}` : ''}</strong>
+            {paymentDeadline && <span className={paymentDeadline.expired ? 'is-expired' : ''}><Clock size={13} /> {paymentDeadline.text}</span>}
+          </>
+        ) : (
+          <strong><CheckCircle2 size={15} /> Pedido pagado</strong>
+        )}
+      </div>
+      <div className="ao-pay-actions">
+        {paidCount > 0 && onViewOrder && (
+          <button type="button" className={toPay > 0 ? 'ao-btn-outline' : 'ao-btn-primary'} onClick={goToOrder}>
+            <PackageCheck size={15} /> Ver pedido
+          </button>
+        )}
+        {toPay > 0 && onOpenPurchase && (
+          <button type="button" className="ao-btn-primary" onClick={() => { onClose(); onOpenPurchase(); }}>
+            Continuar con el pago
+          </button>
+        )}
+      </div>
+    </footer>
+  ) : null;
+
   const view = (
     <div className={`ao-overlay ${fullScreen ? 'is-full' : ''}`} role="presentation" onMouseDown={(event) => { if (!fullScreen && event.target === event.currentTarget) onClose(); }}>
       <div className={`ao-modal ${fullScreen ? 'is-full' : ''}`} role="dialog" aria-modal="true" aria-label="Ofertas recibidas">
@@ -529,11 +564,6 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
             {items.length > 0 && <span><PackageCheck size={14} /> <strong>{items.length - pendingItems.length}</strong> de {items.length} repuestos adjudicados</span>}
             {isOpenAuction && <span><Clock size={14} /> Cierra el {formatDateTime(detail.fechaLimite)}</span>}
             {detail.presupuestoMaximo ? <span>Presupuesto tope <strong>{money(detail.presupuestoMaximo)}</strong></span> : null}
-            {acceptedCount > 0 && onOpenPurchase && (
-              <button type="button" className="ao-summary-cta" onClick={() => { onClose(); onOpenPurchase(); }}>
-                Ver mi pedido y pagar ({acceptedCount} {acceptedCount === 1 ? 'tienda' : 'tiendas'})
-              </button>
-            )}
           </div>
         )}
 
@@ -677,10 +707,12 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
             </>
           )}
 
-          {acceptedCount > 0 && (
-            <p className="ao-secure"><ShieldCheck size={15} /> Las ofertas aceptadas se pagan juntas, en un solo pedido de varias tiendas, desde "Ver mi pedido y pagar".</p>
+          {acceptedCount > 0 && acceptedCount > (detail?.ofertasPagadas ?? 0) && (
+            <p className="ao-secure"><ShieldCheck size={15} /> Las ofertas aceptadas se pagan juntas, en un solo pedido de varias tiendas, con "Continuar con el pago".</p>
           )}
         </div>
+
+        {payFooter}
       </div>
     </div>
   );

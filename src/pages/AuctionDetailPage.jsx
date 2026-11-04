@@ -27,6 +27,7 @@ import '../styles/auction-mobile.css';
 import ShareLinkButton from '../components/ShareLinkButton';
 import AuctionAvatar from '../components/AuctionAvatar';
 import { useAuth } from '../context/AuthContext';
+import { usePaymentDeadline } from '../utils/paymentDeadline';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import '../styles/auctions.css';
 import '../styles/auction-social.css';
@@ -212,6 +213,8 @@ export default function AuctionDetailPage() {
     loadDetail();
   }, [id]);
 
+  const paymentDeadline = usePaymentDeadline(auction?.pagoPendienteVenceEn);
+
   // Aviso de oferta nueva (`?oferta=ID`): al cargar la búsqueda, el comprador cae directo en esa oferta.
   const focusOpened = useRef(false);
   useEffect(() => {
@@ -271,6 +274,12 @@ export default function AuctionDetailPage() {
   const location = [comuna, region].filter(Boolean).join(', ');
   const canQuote = isSeller && !esCreador && isOpen && itemsPendientes > 0 && !miCotizacion?.aceptada;
   const acceptedCount = cotizaciones.filter((quote) => quote.aceptada).length;
+  const paidOffers = auction?.ofertasPagadas ?? 0;
+  const offersStatusLine = acceptedCount > 0
+    ? (paidOffers >= acceptedCount
+      ? 'Pedido pagado. Revisa tus ofertas y sigue tu compra desde "Ver ofertas".'
+      : `${acceptedCount} ${acceptedCount === 1 ? 'tienda aceptada' : 'tiendas aceptadas'} · pago pendiente. Págalo desde "Ver ofertas".`)
+    : 'Compáralas y elige la que más te convenga.';
   // Vencio o se cancelo sin aceptar ninguna oferta: ya no se edita, pero se vuelve a publicar con los mismos datos.
   const canRepublish = Boolean(esCreador) && isExpirada && acceptedCount === 0;
   // Se cancela mientras siga abierta y sin ofertas aceptadas (el backend lo vuelve a validar).
@@ -531,51 +540,31 @@ export default function AuctionDetailPage() {
                 <>
                   <p className="av-offers-note">
                     <ShieldCheck size={15} />
-                    {esCreador ? 'Compáralas y elige la que más te convenga.' : 'Los precios y condiciones son confidenciales: solo los ve el comprador y la tienda que ofertó.'}
+                    {esCreador ? offersStatusLine : 'Los precios y condiciones son confidenciales: solo los ve el comprador y la tienda que ofertó.'}
                   </p>
-                  <ul className="av-offer-list">
-                    {cotizaciones.map((quote, index) => (
-                      <QuoteRow
-                        key={quote.id}
-                        quote={quote}
-                        index={index}
-                        onViewPhoto={openStorePhoto}
-                      />
-                    ))}
+                  {esCreador ? null : (
+                    <ul className="av-offer-list">
+                      {cotizaciones.map((quote, index) => (
+                        <QuoteRow
+                          key={quote.id}
+                          quote={quote}
+                          index={index}
+                          onViewPhoto={openStorePhoto}
+                        />
+                      ))}
                   </ul>
+                  )}
                 </>
               )}
 
-              {esCreador && isOpen && cotizaciones.length > 0 && (
-                <button type="button" className="as-btn-primary av-offers-compare" onClick={() => setIsOffersOpen(true)}>
-                  <Gavel size={16} /> Comparar y aceptar ofertas
-                </button>
+              {esCreador && paymentDeadline && (
+                <p className={`av-offers-deadline ${paymentDeadline.expired ? 'is-expired' : ''}`}><Clock size={14} /> {paymentDeadline.text}</p>
               )}
 
-              {esCreador && acceptedCount > 0 && (
-                <div className="av-offers-cta">
-                  <span className="av-offers-cta-icon"><PackageCheck size={22} /></span>
-                  <p>
-                    <strong>{pedidoId && isFinalizada ? 'Pedido pagado' : `Tu pedido: ${acceptedCount} ${acceptedCount === 1 ? 'tienda' : 'tiendas'}`}</strong>
-                    <small>
-                      {itemsPendientes > 0
-                        ? `Te faltan ${itemsPendientes} ${itemsPendientes === 1 ? 'repuesto' : 'repuestos'} por adjudicar. Puedes pagar lo aceptado ahora.`
-                        : 'Ya adjudicaste todos tus repuestos. Revisa la composición y paga.'}
-                    </small>
-                  </p>
-                  <button type="button" className="as-btn-primary" onClick={() => setIsPurchaseOpen(true)}>
-                    <ShoppingCart size={15} /> Ver mi pedido y pagar
-                  </button>
-                  {pedidoId && (
-                    <button
-                      type="button"
-                      className="as-btn-outline"
-                      onClick={() => navigate(String(user?.role || role || '').toUpperCase() === 'SELLER' ? profilePurchasePath(pedidoId) : profileOrderPath(pedidoId))}
-                    >
-                      <PackageCheck size={15} /> Seguir compra
-                    </button>
-                  )}
-                </div>
+              {esCreador && cotizaciones.length > 0 && (
+                <button type="button" className="as-btn-primary av-offers-compare" onClick={() => setIsOffersOpen(true)}>
+                  <Gavel size={16} /> Ver ofertas
+                </button>
               )}
 
               {isSeller && !esCreador && miCotizacion?.aceptada && (
@@ -598,8 +587,8 @@ export default function AuctionDetailPage() {
             </button>
           )}
           {esCreador && acceptedCount > 0 && (
-            <button type="button" className="mobile-sticky-bar__btn" onClick={() => setIsPurchaseOpen(true)}>
-              <ShoppingCart size={17} /> Ver mi pedido y pagar
+            <button type="button" className="mobile-sticky-bar__btn" onClick={() => setIsOffersOpen(true)}>
+              <Gavel size={17} /> Ver ofertas
             </button>
           )}
           {esCreador && acceptedCount === 0 && cotizaciones.length > 0 && (
@@ -665,6 +654,7 @@ export default function AuctionDetailPage() {
           onClose={() => setIsOffersOpen(false)}
           onChanged={loadDetail}
           onOpenPurchase={() => setIsPurchaseOpen(true)}
+          onViewOrder={pedidoId ? () => navigate(String(user?.role || role || '').toUpperCase() === 'SELLER' ? profilePurchasePath(pedidoId) : profileOrderPath(pedidoId)) : undefined}
         />
       )}
 

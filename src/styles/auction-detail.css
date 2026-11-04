@@ -269,3 +269,9 @@
 .av-items .as-title small { order: 2; }
 .av-items-list.is-compact li { align-items: flex-start; }
 .av-items-list.is-compact .av-item-number, .av-items-list.is-compact .av-item-msg { align-self: center; }
+
+/* Tarjeta de ofertas del comprador: solo resumen, plazo de pago y un botón; el pago vive en el popup. */
+.av-offers-deadline { display: flex; align-items: center; gap: 6px; margin: 0; padding: 10px 18px 0; font-size: 12px; font-weight: 600; color: #3b4e5d; }
+.av-offers-deadline svg { flex-shrink: 0; color: #0066ff; }
+.av-offers-deadline.is-expired { color: #9a5a00; }
+.av-offers-deadline.is-expired svg { color: #9a5a00; }
