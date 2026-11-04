@@ -45,7 +45,7 @@ function resolveStage(auction, now) {
 
 const FILTERS = [['all', 'Todas'], ['open', 'En curso'], ['offers', 'Con ofertas'], ['toPay', 'Por pagar'], ['purchased', 'Compradas'], ['closed', 'Cerradas']];
 
-/** Acciones de una tarjeta, como en "Mis fallas": editar (lápiz), ver detalle, ofertas y preguntas. */
+/** Acciones de una tarjeta, como en "Mis fallas": editar (lápiz), ver detalle, ofertas y comentarios. */
 function AuctionActions({ auction, stage, pendingQuestions, onChanged }) {
   const navigate = useNavigate();
   const [panel, setPanel] = useState(false);
@@ -92,9 +92,9 @@ function AuctionActions({ auction, stage, pendingQuestions, onChanged }) {
           type="button"
           className="pa-btn-secondary"
           onClick={() => setPanel(true)}
-          aria-label={pendingQuestions > 0 ? `Preguntas de las tiendas (${pendingQuestions} sin responder)` : 'Preguntas de las tiendas'}
+          aria-label={pendingQuestions > 0 ? `Comentarios de las tiendas (${pendingQuestions} sin responder)` : 'Comentarios de las tiendas'}
         >
-          <MessageCircle size={15} /> Preguntas
+          <MessageCircle size={15} /> Comentarios
           {pendingQuestions > 0 && <span className="mfa-badge">{pendingQuestions > 99 ? '99+' : pendingQuestions}</span>}
         </button>
         {stage.key === 'purchased' && auction.pedidoId && (
@@ -169,7 +169,7 @@ function AuctionCard({ auction, stage, now, pendingQuestions, onChanged }) {
           <div><dt><Wallet size={14} /> Presupuesto</dt><dd>{auction.presupuestoMaximo ? `${money(auction.presupuestoMaximo)} máx.` : 'Sin tope'}</dd></div>
           <div><dt><CalendarDays size={14} /> Plazo</dt><dd>{stage.open ? `Quedan ${formatRemaining(stage.remaining)}` : 'Cerrado'}</dd></div>
           <div><dt><Tag size={14} /> Ofertas</dt><dd>{offers === 0 ? 'Sin ofertas aún' : `${offers} ${offers === 1 ? 'oferta recibida' : 'ofertas recibidas'}`}</dd></div>
-          <div><dt><MessageCircle size={14} /> Preguntas</dt><dd>{pendingQuestions > 0 ? `${pendingQuestions} sin responder` : 'Sin preguntas pendientes'}</dd></div>
+          <div><dt><MessageCircle size={14} /> Comentarios</dt><dd>{pendingQuestions > 0 ? `${pendingQuestions} sin responder` : 'Sin comentarios pendientes'}</dd></div>
           <div><dt><CreditCard size={14} /> Pago</dt><dd>{payText}</dd></div>
         </dl>
         <AuctionActions auction={auction} stage={stage} pendingQuestions={pendingQuestions} onChanged={onChanged} />
@@ -242,7 +242,7 @@ export default function ProfileMyAuctions() {
           <div className="ft-empty">
             <Gavel size={22} />
             <strong>{rows.length === 0 ? 'Aún no publicas encargos' : 'No encontramos encargos'}</strong>
-            {rows.length === 0 ? 'Publica lo que necesitas y aquí verás las ofertas y preguntas de las tiendas.' : 'Prueba cambiando la búsqueda o el filtro.'}
+            {rows.length === 0 ? 'Publica lo que necesitas y aquí verás las ofertas y comentarios de las tiendas.' : 'Prueba cambiando la búsqueda o el filtro.'}
           </div>
         )
         : (

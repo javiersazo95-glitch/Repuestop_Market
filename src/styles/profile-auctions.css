@@ -83,3 +83,9 @@
 .mfa-actions .pa-btn-link { flex: 0 0 auto; padding: 4px 2px; font-size: 12px; white-space: nowrap; }
 .mfa-actions .pa-btn-secondary { flex: 0 1 auto; min-width: 0; min-height: 36px; padding: 0 10px; gap: 6px; font-size: 12px; }
 .mfa-actions .pa-btn-secondary svg { flex: 0 0 auto; }
+
+/* Mis fallas y Encargar repuesto del perfil: cada tarjeta se distingue de la otra (fondo gris con tarjetas blancas) y los botones nunca se cortan. */
+.ft-profile-faults .ft-fault-list { gap: 16px; padding: 14px; border-radius: 14px; background: #f3f6fa; }
+.ft-profile-faults .ft-fault-card { border-color: #d3deea; box-shadow: 0 6px 16px -12px rgba(15, 23, 42, 0.35); }
+.ft-profile-faults .mfa-actions { flex-wrap: wrap; row-gap: 8px; }
+.ft-profile-faults .ft-fault-detail { min-width: 0; }

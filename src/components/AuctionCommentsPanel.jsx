@@ -135,7 +135,7 @@ export default function AuctionCommentsPanel({ auctionId, title = '', isOpen, ca
         <AuctionQuestionsModal
           auctionId={auctionId}
           title={title}
-          eyebrow={isCreator ? 'Preguntas a tu búsqueda' : 'Comentarios de la búsqueda'}
+          eyebrow={isCreator ? 'Comentarios de tu búsqueda' : 'Comentarios de la búsqueda'}
           canReply={isCreator && isOpen}
           onClose={() => {
             setAllOpen(false);
