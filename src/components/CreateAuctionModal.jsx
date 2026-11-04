@@ -269,7 +269,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
   // Sin patente a mano: marca, modelo y año del catálogo (búsqueda manual, como en repuestos y fallas).
   const [vehicleMode, setVehicleMode] = useState(() => (source && !source.patente && source.marca ? 'manual' : 'plate'));
   const [manualVehicle, setManualVehicle] = useState(() => (source && !source.patente && source.marca
-    ? { marca: source.marca, modelo: source.modelo, anio: source.anio || undefined } : null));
+    ? { marca: source.marca, modelo: source.modelo, anio: source.anio || undefined, version: source.version || undefined, motor: source.motor || undefined, chasis: source.chasis || undefined } : null));
   const vehicle = manualVehicle || plateVehicle;
 
   const [items, setItems] = useState(() => (source ? itemsFromAuction(source) : [newItem()]));
@@ -359,8 +359,9 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
       marca: vehicle.marca || undefined,
       modelo: vehicle.modelo || undefined,
       anio: vehicle.anio || undefined,
-      version: manualVehicle ? undefined : vehicle.version || undefined,
-      chasis: manualVehicle ? undefined : vehicle.chasis,
+      version: vehicle.version || undefined,
+      motor: manualVehicle ? manualVehicle.motor || undefined : undefined,
+      chasis: vehicle.chasis || undefined,
       // El servidor arma el título del pedido a partir de los repuestos; estos campos son el respaldo.
       repuestoSolicitado: items[0].nombre.trim(),
       categoria: items[0].categoria,
@@ -411,7 +412,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
                 <button type="button" className="ft-link" onClick={() => setManualVehicle(null)}>Cambiar vehículo</button>
               </div>
               <dl>
-                {[['Marca', manualVehicle.marca], ['Modelo', manualVehicle.modelo], ['Año', manualVehicle.anio || '']]
+                {[['Marca', manualVehicle.marca], ['Modelo', manualVehicle.modelo], ['Año', manualVehicle.anio || ''], ['Versión', manualVehicle.version], ['Motor', manualVehicle.motor], ['Chasis / VIN', manualVehicle.chasis]]
                   .filter(([, value]) => value).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
               </dl>
             </div>
@@ -424,7 +425,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
                 </div>
               )}
               {!plateVehicle && vehicleMode === 'manual' ? (
-                <AuctionManualVehicle onUse={setManualVehicle} />
+                <AuctionManualVehicle onUse={setManualVehicle} initial={manualVehicle} />
               ) : plateVehicle ? (
                 <div className="acv-plate is-confirmed">
                   <span className="acv-plate-label">Patente</span>

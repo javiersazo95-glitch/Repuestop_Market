@@ -76,7 +76,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
   // Sin patente a mano: marca, modelo y año del catálogo (búsqueda manual).
   const [vehicleMode, setVehicleMode] = useState(() => (source && !source.patente && source.marca ? 'manual' : 'plate'));
   const [manualVehicle, setManualVehicle] = useState(() => (source && !source.patente && source.marca
-    ? { marca: source.marca, modelo: source.modelo, anio: source.anio || undefined } : null));
+    ? { marca: source.marca, modelo: source.modelo, anio: source.anio || undefined, version: source.version || undefined, motor: source.motor || undefined, chasis: source.chasis || undefined } : null));
   const vehicle = manualVehicle || plateVehicle;
 
   const [items, setItems] = useState(() => (source ? itemsFromAuction(source) : [newItem()]));
@@ -179,8 +179,9 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
         marca: vehicle.marca || undefined,
         modelo: vehicle.modelo || undefined,
         anio: vehicle.anio || undefined,
-        version: manualVehicle ? undefined : vehicle.version || undefined,
-        chasis: manualVehicle ? undefined : vehicle.chasis,
+        version: vehicle.version || undefined,
+        motor: manualVehicle ? manualVehicle.motor || undefined : undefined,
+        chasis: vehicle.chasis || undefined,
         repuestoSolicitado: items[0].nombre.trim(),
         categoria: items[0].categoria,
         cantidad: totalUnits || 1,
@@ -224,6 +225,9 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
                 <Field label="Modelo"><input type="text" value={manualVehicle.modelo || ''} readOnly /></Field>
               </div>
               <Field label="Año"><input type="text" value={manualVehicle.anio || ''} readOnly /></Field>
+              {manualVehicle.version ? <Field label="Versión"><input type="text" value={manualVehicle.version} readOnly /></Field> : null}
+              {manualVehicle.motor ? <Field label="Motor"><input type="text" value={manualVehicle.motor} readOnly /></Field> : null}
+              {manualVehicle.chasis ? <Field label="Chasis / VIN"><input type="text" value={manualVehicle.chasis} readOnly /></Field> : null}
               <button type="button" className="am-link" onClick={() => setManualVehicle(null)}>Cambiar vehículo</button>
             </>
           ) : (
@@ -235,7 +239,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
                 </div>
               )}
               {!plateVehicle && vehicleMode === 'manual' ? (
-                <div className="ft-page"><AuctionManualVehicle onUse={setManualVehicle} /></div>
+                <div className="ft-page"><AuctionManualVehicle onUse={setManualVehicle} initial={manualVehicle} /></div>
               ) : (
                 <>
                   <Field label="Patente chilena *">
