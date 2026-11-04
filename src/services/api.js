@@ -1439,7 +1439,7 @@ export async function getPublicProductsApi({ page = 0, size = 12, texto, patente
   if (soloCotizacion !== undefined) params.set('soloCotizacion', String(soloCotizacion));
   if (soloDestacados) params.set('soloDestacados', 'true');
   if (categoriaId) params.set('categoriaId', String(categoriaId));
-  if (subcategoriaId) params.set('subcategoriaId', String(subcategoriaId));
+  if (subcategoriaId !== undefined && subcategoriaId !== null && subcategoriaId !== '') params.set('subcategoriaId', String(subcategoriaId));
   if (marcaId) params.set('marcaId', String(marcaId));
   if (precioMin) params.set('precioMin', String(precioMin));
   if (precioMax) params.set('precioMax', String(precioMax));
@@ -2364,7 +2364,7 @@ export async function getVehicleCatalogPartsApi(catalogoId, { anio, sort, catego
   // Top, compatible, universal con Top y universal nunca se mezclan.
   if (sort) params.set('sort', sort);
   if (categoriaId) params.set('categoriaId', String(categoriaId));
-  if (subcategoriaId) params.set('subcategoriaId', String(subcategoriaId));
+  if (subcategoriaId !== undefined && subcategoriaId !== null && subcategoriaId !== '') params.set('subcategoriaId', String(subcategoriaId));
   if (condicion) params.set('condicion', condicion);
   if (origen) params.set('origen', origen);
   if (comunaId) params.set('comunaId', String(comunaId));

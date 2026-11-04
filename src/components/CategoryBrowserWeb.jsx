@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SIN_SUBCATEGORIA } from '../utils/catalogSinSubcategoria';
 import { ChevronRight, LayoutGrid } from 'lucide-react';
 import '../styles/catalog-browser-web.css';
 
@@ -90,7 +91,7 @@ export default function CategoryBrowserWeb({ categories, onPick, counts = {}, no
             );
           })}
           {withoutSubcategory > 0 && (
-            <button type="button" className="cbw-sub" onClick={() => onPick({ category: active, subcategory: null })} aria-label={`Sin subcategoría, ${plural(withoutSubcategory)}`}>
+            <button type="button" className="cbw-sub" onClick={() => onPick({ category: active, subcategory: SIN_SUBCATEGORIA })} aria-label={`Sin subcategoría, ${plural(withoutSubcategory)}`}>
               <span className="cbw-sub-img cbw-sub-img-empty"><img src={active.image} alt="" loading="lazy" /></span>
               <span className="cbw-sub-name">Sin subcategoría</span>
               <span className="cbw-sub-count">{plural(withoutSubcategory)}</span>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { SIN_SUBCATEGORIA } from '../utils/catalogSinSubcategoria';
 import { ChevronRight } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import '../styles/catalog-app-mobile.css';
@@ -54,7 +55,7 @@ export default function CategoryBrowserMobile({ categories, visuals, onPick, cou
             </button>
           ))}
           {withoutSubcategory > 0 && (
-            <button type="button" className="cbm-sub" onClick={() => onPick({ category: active, subcategory: null })} aria-label={`Sin subcategoría, ${withoutSubcategory} repuestos`}>
+            <button type="button" className="cbm-sub" onClick={() => onPick({ category: active, subcategory: SIN_SUBCATEGORIA })} aria-label={`Sin subcategoría, ${withoutSubcategory} repuestos`}>
               <span className="cbm-circle cbm-circle-empty"><CategoryIconTile iconName={visuals[active.id]?.iconName} iconUrl={visuals[active.id]?.iconUrl} color={visuals[active.id]?.color} size={24} /></span>
               <span className="cbm-name">Sin subcategoría</span>
               <span className="cbm-count">{withoutSubcategory} {withoutSubcategory === 1 ? 'repuesto' : 'repuestos'}</span>

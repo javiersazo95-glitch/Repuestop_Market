@@ -28,6 +28,7 @@ import TextSearchWithSuggestions from './TextSearchWithSuggestions';
 import SheetSelect from './SheetSelect';
 import { useIsMobile } from '../hooks/useIsMobile';
 import PaginationBar from './PaginationBar';
+import { SIN_SUBCATEGORIA, SIN_SUBCATEGORIA_ID, SIN_SUBCATEGORIA_LABEL } from '../utils/catalogSinSubcategoria';
 import CategoryBrowserMobile from './CategoryBrowserMobile';
 import CategoryBrowserWeb from './CategoryBrowserWeb';
 import { auctionDetailPath, ROUTES } from '../routes/paths';
@@ -396,6 +397,7 @@ export default function PartsCatalogView({
 
   const activeSubcategoryId = useMemo(() => {
     if (selectedSubcategory === 'TODAS') return initialCatalogFilter?.subcategoryId || undefined;
+    if (selectedSubcategory === SIN_SUBCATEGORIA) return SIN_SUBCATEGORIA_ID;
     const subcategorySlug = HEADER_CATEGORIES.find((h) => h.id === selectedCategory)?.subcategorySlugs?.[selectedSubcategory];
     const matched = (subcategorySlug && backendSubcategories.find((sub) => sub.slug === subcategorySlug))
       || backendSubcategories.find((sub) => normalizeNameKey(sub.nombre) === normalizeNameKey(selectedSubcategory));
@@ -592,6 +594,7 @@ export default function PartsCatalogView({
   }, [NAVIGATION_CATEGORIES, filterSource, selectedCategory, activeCategoryId]);
   const publishedSubcategoryId = useMemo(() => {
     if (selectedSubcategory === 'TODAS') return activeSubcategoryId;
+    if (selectedSubcategory === SIN_SUBCATEGORIA) return undefined;
     const sub = (filterSource?.subcategorias || []).find((item) => String(item.categoriaId) === String(publishedCategoryId)
       && normalizeNameKey(item.nombre) === normalizeNameKey(selectedSubcategory));
     return sub?.id ?? activeSubcategoryId;
@@ -604,7 +607,7 @@ export default function PartsCatalogView({
     if (!filterSource) return partBrands;
     const byGroup = (list, groupId) => (list || [])
       .filter((brand) => String(brand.grupoId) === String(groupId));
-    if (selectedSubcategory !== 'TODAS' && publishedSubcategoryId != null && filterSource.marcasPorSubcategoria) {
+    if (selectedSubcategory !== 'TODAS' && selectedSubcategory !== SIN_SUBCATEGORIA && publishedSubcategoryId != null && filterSource.marcasPorSubcategoria) {
       return byGroup(filterSource.marcasPorSubcategoria, publishedSubcategoryId);
     }
     if (selectedCategory !== 'TODAS' && publishedCategoryId != null && filterSource.marcasPorCategoria) {
@@ -1092,7 +1095,7 @@ export default function PartsCatalogView({
   };
 
   const appliedFilterLabel = selectedSubcategory !== 'TODAS'
-    ? selectedSubcategory
+    ? (selectedSubcategory === SIN_SUBCATEGORIA ? SIN_SUBCATEGORIA_LABEL : selectedSubcategory)
     : selectedCategory !== 'TODAS'
       ? (NAVIGATION_CATEGORIES.find((category) => category.id === selectedCategory)?.nombre || selectedCategory)
       : null;
