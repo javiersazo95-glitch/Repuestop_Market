@@ -292,10 +292,10 @@ export default function CommissionSummaryCard({
               marginTop: '10px',
             }}>
               <div style={{ flex: 1, marginRight: '8px' }}>
-                <span style={{ display: 'block', fontSize: '11.5px', color: '#1e40af' }}>
+                <span style={{ display: 'block', fontSize: '11.5px', color: '#0052cc' }}>
                   {suggestedContextLabel || `Para recibir al menos ${formatCLP(price)} líquido, te sugerimos cobrar:`}
                 </span>
-                <strong style={{ display: 'block', color: '#1d4ed8', fontSize: '14px', marginTop: '1px' }}>
+                <strong style={{ display: 'block', color: '#0052cc', fontSize: '14px', marginTop: '1px' }}>
                   {formatCLP(suggestedPriceForCurrentBase)}
                 </strong>
               </div>

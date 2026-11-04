@@ -1,6 +1,6 @@
 /* ===========================================================================
    CATÁLOGO DE REPUESTOS EN CELULAR — misma apariencia de la app (pestaña Repuestos)
-   Controles de 48 px con radio 12, borde #d9e0e7, azul de marca #0056bf y chips tonales (ver app-kit.css).
+   Controles de 48 px con radio 12, borde #d9e0e7, azul de marca #0066ff y chips tonales (ver app-kit.css).
    Solo celular: el escritorio conserva su diseño.
    =========================================================================== */
 @media (max-width: 767px) {
@@ -18,12 +18,12 @@
     background: #fff;
     box-shadow: none;
   }
-  .parts-catalog-view-wrapper .catalog-quick-patente-bar .patente-icon { color: var(--ak-primary, #0056bf); }
+  .parts-catalog-view-wrapper .catalog-quick-patente-bar .patente-icon { color: var(--ak-primary, #0066ff); }
   .parts-catalog-view-wrapper .btn-quick-patente-submit {
     min-height: 40px;
     padding: 0 16px;
     border-radius: 8px;
-    background: var(--ak-primary, #0056bf);
+    background: var(--ak-primary, #0066ff);
     font-size: 14px;
     font-weight: 600;
   }
@@ -36,11 +36,11 @@
     font-size: 13px;
     font-weight: 600;
   }
-  .parts-catalog-view-wrapper .btn-comuna-toggle-pill svg { color: var(--ak-primary, #0056bf); }
+  .parts-catalog-view-wrapper .btn-comuna-toggle-pill svg { color: var(--ak-primary, #0066ff); }
   .parts-catalog-view-wrapper .btn-comuna-toggle-pill.active {
     border-color: var(--ak-primary-border, #bfd6f7);
     background: var(--ak-primary-light, #eaf2ff);
-    color: var(--ak-primary, #0056bf);
+    color: var(--ak-primary, #0066ff);
   }
 
   /* Buscador + filtro + orden: una fila de controles de 48 px, como en la app. */
@@ -64,11 +64,11 @@
   }
   .parts-catalog-view-wrapper .catalog-mobile-filter-trigger { font-size: 13px; font-weight: 600; }
   .parts-catalog-view-wrapper .catalog-mobile-filter-trigger svg,
-  .parts-catalog-view-wrapper .catalog-mobile-sort-trigger svg { color: var(--ak-primary, #0056bf); }
+  .parts-catalog-view-wrapper .catalog-mobile-sort-trigger svg { color: var(--ak-primary, #0066ff); }
 
   /* Categorías: círculos con foto y nombre, como el explorador de la app. */
   .parts-catalog-view-wrapper .category-catalog-card strong { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ak-text, #243442); }
-  .parts-catalog-view-wrapper .category-catalog-card.active-selected strong { color: var(--ak-primary, #0056bf); }
+  .parts-catalog-view-wrapper .category-catalog-card.active-selected strong { color: var(--ak-primary, #0066ff); }
 
   .parts-catalog-view-wrapper .catalog-mobile-showcase-heading h2 { font-size: 17px; line-height: 22px; font-weight: 600; color: var(--ak-text, #243442); }
   .parts-catalog-view-wrapper .catalog-mobile-showcase-heading p { font-size: 13px; line-height: 18px; color: var(--ak-text-muted, #5a6b7a); }
@@ -81,11 +81,11 @@
   .cbm { display: flex; margin-top: 12px; border: 1px solid #d9e0e7; border-radius: 16px; background: #fff; overflow: hidden; }
   .cbm-left { flex: 0 0 30%; min-width: 98px; max-width: 132px; max-height: 460px; overflow-y: auto; border-right: 1px solid #d9e0e7; background: #f8fafc; }
   .cbm-left button { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border: 0; border-left: 3px solid transparent; background: transparent; color: #5a6b7a; font: inherit; font-size: 12px; line-height: 16px; font-weight: 600; text-align: center; }
-  .cbm-left button.is-active { border-left-color: #0056bf; background: #fff; color: #0056bf; }
+  .cbm-left button.is-active { border-left-color: #0066ff; background: #fff; color: #0066ff; }
   .cbm-right { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 8px; max-height: 460px; overflow-y: auto; }
   .cbm-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .cbm-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 17px; line-height: 22px; font-weight: 600; color: #243442; }
-  .cbm-all { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 2px; padding: 0; border: 0; background: transparent; color: #0056bf; font: inherit; font-size: 12px; font-weight: 600; }
+  .cbm-all { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 2px; padding: 0; border: 0; background: transparent; color: #0066ff; font: inherit; font-size: 12px; font-weight: 600; }
   .cbm-count { font-size: 11px; line-height: 14px; font-weight: 600; color: #5a6b7a; text-align: center; }
   .cbm-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 4px; }
   .cbm-sub { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border: 0; background: transparent; font: inherit; }

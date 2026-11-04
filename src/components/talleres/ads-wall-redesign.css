@@ -6,8 +6,8 @@
    ========================================================================== */
 
 :root {
-  --ads-primary: #0056BF;
-  --ads-primary-dark: #00459A;
+  --ads-primary: #0066ff;
+  --ads-primary-dark: #0052cc;
   --ads-primary-light: #EAF2FF;
   --ads-text: #243442;
   --ads-muted: #5A6B7A;
@@ -77,7 +77,7 @@
 .ads-search-input-wrap input:focus {
   border-color: var(--ads-primary);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.12);
 }
 .ads-nearby-btn,
 .ads-search-clear {
@@ -171,7 +171,7 @@
 .story-ring-container {
   background: var(--ads-primary) !important;
   animation: none !important;
-  box-shadow: 0 4px 10px -4px rgba(0, 86, 191, 0.4) !important;
+  box-shadow: 0 4px 10px -4px rgba(0, 102, 255, 0.4) !important;
 }
 .story-verified-badge { background: var(--ads-primary); }
 .ads-stories-header h2 {
@@ -207,7 +207,7 @@
 .ads-provider-card {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(160deg, #0B1B47 0%, #0056BF 100%);
+  background: linear-gradient(160deg, #0B1B47 0%, #0066ff 100%);
   color: #fff;
   border-radius: 16px;
   padding: 20px 18px;
@@ -467,7 +467,7 @@
   gap: 4px;
   padding: 5px 9px;
   border-radius: 999px;
-  background: #1E40AF;
+  background: #0052cc;
   color: #fff;
   font-size: 11px;
   font-weight: 700;
@@ -531,7 +531,7 @@
   background: var(--ads-primary);
   color: #fff;
   border: 3px solid #fff;
-  box-shadow: 0 6px 16px -6px rgba(0, 86, 191, 0.6);
+  box-shadow: 0 6px 16px -6px rgba(0, 102, 255, 0.6);
   overflow: hidden;
   padding: 0;
   cursor: pointer;
@@ -646,7 +646,7 @@ button.ad-meta-item:hover { color: var(--ads-primary); }
 /* Etiquetas de servicio de la tarjeta (24 horas / a domicilio), mismos tonos que la app. */
 .ad-card-service-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 6px; }
 .ad-meta-chip.is-24h { background: #FFF0F0; color: #B42318; border: 1px solid #FECACA; }
-.ad-meta-chip.is-home { background: #EAF2FF; color: #0056BF; border: 1px solid #BFD6F7; }
+.ad-meta-chip.is-home { background: #EAF2FF; color: #0066ff; border: 1px solid #BFD6F7; }
 
 .ad-card-specialist-row {
   min-width: 0;
@@ -736,7 +736,7 @@ button.ad-meta-item:hover { color: var(--ads-primary); }
 }
 .ad-pill svg { flex-shrink: 0; }
 .ad-pill:hover { filter: brightness(0.96); }
-.ad-pill-phone { background: rgba(0, 86, 191, 0.12); color: var(--ads-primary); }
+.ad-pill-phone { background: rgba(0, 102, 255, 0.12); color: var(--ads-primary); }
 .ad-pill-wsp { background: #25D366; color: #fff; }
 .ad-pill-agenda { background: #059669; color: #fff; }
 
@@ -878,7 +878,7 @@ button.ad-meta-item:hover { color: var(--ads-primary); }
 }
 .ads-filter-chip.active {
   border-color: var(--ads-primary);
-  background: rgba(0, 86, 191, 0.1);
+  background: rgba(0, 102, 255, 0.1);
   color: var(--ads-primary);
   font-weight: 700;
 }
@@ -976,7 +976,7 @@ button.ad-meta-item:hover { color: var(--ads-primary); }
 .ads-sb-field:focus-within {
   border-color: var(--ads-primary);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12);
+  box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.12);
 }
 .ads-sb-lead-icon { flex: 0 0 auto; color: var(--ads-muted); }
 .ads-sb-input {
@@ -1060,7 +1060,7 @@ button.ad-meta-item:hover { color: var(--ads-primary); }
   color: inherit;
   cursor: pointer;
 }
-.ads-sb-vehicle-remove:hover { background: rgba(0, 86, 191, 0.14); }
+.ads-sb-vehicle-remove:hover { background: rgba(0, 102, 255, 0.14); }
 
 .ads-sb-icon-btn {
   display: inline-flex;

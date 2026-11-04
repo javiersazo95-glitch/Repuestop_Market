@@ -21,7 +21,7 @@
 .founder-info-example dl > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
 .founder-info-example dt { color: #5d6b82; font-size: 13px; }
 .founder-info-example dd { margin: 0; color: #0d1b33; font-size: 14px; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.founder-info-ok { justify-self: end; min-height: 40px; padding: 0 18px; border: 0; border-radius: 10px; color: #fff; background: #0056bf; font-size: 14px; font-weight: 700; cursor: pointer; }
+.founder-info-ok { justify-self: end; min-height: 40px; padding: 0 18px; border: 0; border-radius: 10px; color: #fff; background: #0066ff; font-size: 14px; font-weight: 700; cursor: pointer; }
 
 @media (max-width: 768px) {
   .founder-info-trigger { background: rgba(146, 64, 14, .1); }

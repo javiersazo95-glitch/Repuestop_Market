@@ -1071,7 +1071,7 @@ export default function CheckoutPage() {
                               {address.esPrincipal && (
                                 <em
                                   className="checkout-address-tag"
-                                  style={isSeller ? { background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe' } : undefined}
+                                  style={isSeller ? { background: '#dbeafe', color: '#0052cc', border: '1px solid #bfdbfe' } : undefined}
                                 >
                                   {isSeller ? 'Dirección de tu tienda' : 'Principal'}
                                 </em>

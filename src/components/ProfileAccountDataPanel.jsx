@@ -862,7 +862,7 @@ export default function ProfileAccountDataPanel({
                           width: '42px',
                           height: '42px',
                           borderRadius: '10px',
-                          background: '#2563eb',
+                          background: '#0066ff',
                           color: '#fff',
                           display: 'grid',
                           placeItems: 'center',
@@ -877,7 +877,7 @@ export default function ProfileAccountDataPanel({
                             </h4>
                             <span style={{
                               background: '#dbeafe',
-                              color: '#1e40af',
+                              color: '#0052cc',
                               border: '1px solid #bfdbfe',
                               padding: '3px 10px',
                               borderRadius: '12px',
@@ -920,15 +920,15 @@ export default function ProfileAccountDataPanel({
                       borderTop: '1px solid #e2e8f0',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#334155' }}>
-                        <Store size={15} color="#2563eb" style={{ flexShrink: 0 }} />
+                        <Store size={15} color="#0066ff" style={{ flexShrink: 0 }} />
                         <span>Ficha pública en el catálogo</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#334155' }}>
-                        <Store size={15} color="#2563eb" style={{ flexShrink: 0 }} />
+                        <Store size={15} color="#0066ff" style={{ flexShrink: 0 }} />
                         <span>Retiros de clientes y transportistas</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#334155' }}>
-                        <Package size={15} color="#2563eb" style={{ flexShrink: 0 }} />
+                        <Package size={15} color="#0066ff" style={{ flexShrink: 0 }} />
                         <span>Recepción de cambios y devoluciones</span>
                       </div>
                     </div>

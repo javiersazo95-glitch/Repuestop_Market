@@ -1,13 +1,13 @@
 /* ==========================================================================
    LISTADO DE SUBASTAS (/subastas) — mismo lenguaje que el Mural y el catálogo:
-   Plus Jakarta Sans (--font-primary), títulos en --font-display, azul #0056BF,
+   Plus Jakarta Sans (--font-primary), títulos en --font-display, azul #0066ff,
    panel de filtros a la izquierda (264 px) y tarjetas de borde 1 px.
    Todo va con prefijo .aw- para no tocar el detalle ni los modales de subasta.
    ========================================================================== */
 
 .aw-page {
-  --aw-primary: #0056bf;
-  --aw-primary-dark: #00459a;
+  --aw-primary: #0066ff;
+  --aw-primary-dark: #0052cc;
   --aw-primary-light: #eaf2ff;
   --aw-primary-border: #bfd6f7;
   --aw-text: #243442;
@@ -140,7 +140,7 @@
   background: #fff;
   color: var(--aw-muted);
 }
-.aw-search:focus-within { border-color: var(--aw-primary); box-shadow: 0 0 0 3px rgba(0, 86, 191, 0.12); }
+.aw-search:focus-within { border-color: var(--aw-primary); box-shadow: 0 0 0 3px rgba(0, 102, 255, 0.12); }
 .aw-search input {
   flex: 1;
   min-width: 0;

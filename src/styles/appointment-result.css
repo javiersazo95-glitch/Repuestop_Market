@@ -3,21 +3,21 @@
 .apr-label { font-size: 13px; font-weight: 600; color: var(--ak-text-muted, #5a6b7a); }
 .apr-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .apr-chips button { min-height: 36px; padding: 0 14px; border: 1px solid #d9e0e7; border-radius: 999px; background: #fff; color: #5a6b7a; font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
-.apr-chips button.is-on { border-color: #bfd6f7; background: #eaf2ff; color: #0056bf; }
+.apr-chips button.is-on { border-color: #bfd6f7; background: #eaf2ff; color: #0066ff; }
 .apr-hint { font-size: 12px; line-height: 17px; color: var(--ak-text-muted, #5a6b7a); }
 .apr-field { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
 .apr-field small { font-weight: 400; color: var(--ak-text-muted, #5a6b7a); }
 .apr-field textarea, .apr-field input, .apr-field select { width: 100%; padding: 10px 12px; border: 1px solid #d9e0e7; border-radius: 12px; font: inherit; font-size: 16px; resize: vertical; }
-.apr-submit { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 16px; border: 0; border-radius: 12px; background: #0056bf; color: #fff; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.apr-submit { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 16px; border: 0; border-radius: 12px; background: #0066ff; color: #fff; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .apr-submit:disabled { opacity: .5; cursor: not-allowed; }
-.apr-locked { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px; border-radius: 12px; background: #eaf2ff; color: #0056bf; text-align: center; }
+.apr-locked { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px; border-radius: 12px; background: #eaf2ff; color: #0066ff; text-align: center; }
 .apr-locked p { margin: 0; color: #243442; font-size: 13px; line-height: 19px; }
 
 /* Aviso al entrar con citas sin resultado (taller). */
 .prp-backdrop { position: fixed; inset: 0; z-index: 1250; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 23, 42, .6); }
 .prp { display: flex; flex-direction: column; gap: 12px; width: min(100%, 520px); max-height: 88vh; padding: 16px; border-radius: 16px; background: #fff; box-shadow: 0 24px 70px rgba(15, 23, 42, .3); }
 .prp-head { display: flex; align-items: center; gap: 12px; }
-.prp-head > span { flex: 0 0 44px; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #eaf2ff; color: #0056bf; }
+.prp-head > span { flex: 0 0 44px; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: #eaf2ff; color: #0066ff; }
 .prp-head h2 { margin: 0; font-size: 17px; line-height: 22px; color: #243442; }
 .prp-head p { margin: 2px 0 0; font-size: 12px; line-height: 17px; color: #5a6b7a; }
 .prp-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
@@ -26,6 +26,6 @@
 .prp-item-head > span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .prp-item-head strong { font-size: 14px; color: #243442; }
 .prp-item-head small { font-size: 12px; color: #5a6b7a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.prp-item-head em { font-style: normal; font-size: 13px; font-weight: 700; color: #0056bf; }
+.prp-item-head em { font-style: normal; font-size: 13px; font-weight: 700; color: #0066ff; }
 .prp-item-body { padding: 12px; border-top: 1px solid #e6eaef; }
 .prp-later { align-self: center; padding: 6px 12px; border: 0; background: transparent; color: #5a6b7a; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }

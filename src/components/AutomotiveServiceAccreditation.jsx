@@ -397,7 +397,7 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
       {!embedded && (
         <div className="profile-panel-header-row">
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <ShieldCheck size={26} style={{ color: '#2563eb' }} />
+            <ShieldCheck size={26} style={{ color: '#0066ff' }} />
             <div>
               <h3 className="profile-panel-title" style={{ margin: 0 }}>Acreditar servicio automotriz</h3>
               <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#64748b' }}>
@@ -410,7 +410,7 @@ export default function AutomotiveServiceAccreditation({ user, embedded = false,
 
       {record && (
         <div style={{ margin: '18px 0', padding: '14px', borderRadius: '10px', background: '#eff6ff', border: '1px solid #cfe0fb' }}>
-          <strong style={{ color: '#1d4ed8' }}>Estado: {ESTADO_LABEL[estado] || estado}</strong>
+          <strong style={{ color: '#0052cc' }}>Estado: {ESTADO_LABEL[estado] || estado}</strong>
           {record.notasRevision && (
             <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#334155' }}>{record.notasRevision}</p>
           )}

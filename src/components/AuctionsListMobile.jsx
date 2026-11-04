@@ -142,7 +142,7 @@ export default function AuctionsListMobile({
   return (
     <main className={`am-page am-list${embedded ? ' is-embedded' : ''}`}>
       <SectionHero
-        gradient={['#0B3B91', '#0056BF', '#2E9BFF']}
+        gradient={['#0B3B91', '#0066ff', '#2E9BFF']}
         eyebrow={{ icon: forStores ? <Telescope /> : <Search />, label: mineTab ? 'SEGUIMIENTO' : forStores ? 'ENCARGOS' : 'ENCARGAR' }}
         title={mineTab ? 'Mis búsquedas' : forStores ? 'Atender encargos' : 'Encargar repuesto'}
         subtitle={mineTab
@@ -154,8 +154,8 @@ export default function AuctionsListMobile({
           <>
             <span className="ak-hero-halo" />
             <span className="ak-hero-disc"><Cog /></span>
-            <span className="ak-hero-lens" style={{ color: '#1D4ED8' }}><Search /></span>
-            <HeroChip className="is-top" icon={<Tag />} label="3 ofertas" color="#1D4ED8" />
+            <span className="ak-hero-lens" style={{ color: '#0052cc' }}><Search /></span>
+            <HeroChip className="is-top" icon={<Tag />} label="3 ofertas" color="#0052cc" />
             <HeroChip className="is-bottom" icon={<Store />} label="Tiendas" color="#0F766E" />
           </>
         )}
