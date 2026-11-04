@@ -524,3 +524,9 @@
 .aw-tabs button:hover:not(.is-active) { background: #eaf2ff; }
 .aw-tabs button.is-active { background: var(--aw-primary); border-color: var(--aw-primary); color: #fff; }
 .aw-card-pending { display: inline-flex; align-items: center; gap: 6px; margin: 8px 0 0; padding: 4px 10px; border-radius: 999px; background: var(--aw-amber-bg); border: 1px solid var(--aw-amber-border); color: var(--aw-amber); font-size: 12px; font-weight: 700; }
+
+/* Mis búsquedas: aviso de pago pendiente en la tarjeta del mural. */
+.aw-card-pay { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; padding: 6px 10px; border-radius: 8px; background: #eaf2ff; font-size: 12.5px; font-weight: 700; color: #0052cc; }
+.aw-card-pay svg { flex-shrink: 0; }
+.aw-card-pay.is-expired { background: #fff7e6; color: #9a5a00; }
+.aw-badge.is-por-pagar { background: #eaf2ff; color: #0052cc; }

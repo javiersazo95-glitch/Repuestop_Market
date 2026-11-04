@@ -144,6 +144,7 @@ export default function AuctionDetailPage() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const focusOfferId = Number(searchParams.get('oferta')) || null;
+  const openOffersParam = searchParams.get('ofertas') === '1';
   const navigate = useNavigate();
   const { user, role } = useAuth();
   const isMobile = useIsMobile();
@@ -218,11 +219,11 @@ export default function AuctionDetailPage() {
   // Aviso de oferta nueva (`?oferta=ID`): al cargar la búsqueda, el comprador cae directo en esa oferta.
   const focusOpened = useRef(false);
   useEffect(() => {
-    if (focusOfferId && auction?.esCreador && !focusOpened.current) {
+    if ((focusOfferId || openOffersParam) && auction?.esCreador && !focusOpened.current) {
       focusOpened.current = true;
       setIsOffersOpen(true);
     }
-  }, [focusOfferId, auction?.esCreador]);
+  }, [focusOfferId, openOffersParam, auction?.esCreador]);
 
   // Cuenta regresiva en vivo.
   useEffect(() => {

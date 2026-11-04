@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  AlertCircle, ArrowRight, ArrowUpDown, CalendarDays, CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, Clock,
+  AlertCircle, ArrowRight, ArrowUpDown, CalendarDays, CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, Clock, CreditCard,
   FileText, Gavel, LayoutGrid, List, Lock, MapPin, MessageCircle, Package, Plus, RotateCcw, Search,
   SlidersHorizontal, Tag, X,
 } from 'lucide-react';
 import { getAuctionMetrics, getAuctions, getMyAuctionRequests, getPendingQuestionCounts } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
+import { paymentDeadlineInfo } from '../utils/paymentDeadline';
 import { auctionDetailPath, ROUTES } from '../routes/paths';
 import CreateAuctionModal from '../components/CreateAuctionModal';
 import { pendingSummary } from '../utils/auctionPending';
@@ -41,7 +42,12 @@ const SCOPE_OPTIONS = [
   { value: 'TODAS', label: 'Todas las búsquedas' },
   { value: 'CON_OFERTAS', label: 'Con ofertas' },
   { value: 'SIN_OFERTAS', label: 'Sin ofertas' },
+  // Solo en "Mis búsquedas": las que tienen ofertas aceptadas esperando el pago.
+  { value: 'POR_PAGAR', label: 'Por pagar' },
 ];
+
+/** Ofertas aceptadas que aún no se pagan (solo existe para quien publicó la búsqueda). */
+const offersToPay = (auction) => Math.max(0, (auction.ofertasAceptadas || 0) - (auction.ofertasPagadas || 0));
 
 const SORT_OPTIONS = [
   { value: 'RECIENTES', label: 'Más recientes' },
@@ -144,7 +150,9 @@ function CheckRow({ checked, onChange, label, count }) {
   );
 }
 
-function AuctionRow({ auction, status, now, onOpen, pendingQuestions = null }) {
+function AuctionRow({ auction, status, now, onOpen, pendingQuestions = null, showPayment = false }) {
+  const toPay = showPayment ? offersToPay(auction) : 0;
+  const deadline = toPay > 0 ? paymentDeadlineInfo(auction.pagoPendienteVenceEn, now) : null;
   const vehicle = [auction.marca, auction.modelo, auction.anio].filter(Boolean).join(' ');
   const detail = [vehicle, auction.motor].filter(Boolean).join(' · ');
   const location = [auction.comuna, auction.region].filter(Boolean).join(', ');
@@ -173,17 +181,22 @@ function AuctionRow({ auction, status, now, onOpen, pendingQuestions = null }) {
         {pendingQuestions != null && pendingSummary(offers, pendingQuestions) && (
           <p className="aw-card-pending"><MessageCircle size={13} aria-hidden="true" /> {pendingSummary(offers, pendingQuestions)}</p>
         )}
+        {toPay > 0 && (
+          <p className={`aw-card-pay ${deadline?.expired ? 'is-expired' : ''}`}>
+            <CreditCard size={13} aria-hidden="true" /> {toPay} {toPay === 1 ? 'tienda aceptada' : 'tiendas aceptadas'} · pago pendiente{deadline ? ` · ${deadline.text}` : ''}
+          </p>
+        )}
       </div>
 
       <div className="aw-card-status">
-        <span className={`aw-badge is-${status.key}`}>{status.label}</span>
+        <span className={`aw-badge is-${toPay > 0 ? 'por-pagar' : status.key}`}>{toPay > 0 ? 'Por pagar' : status.label}</span>
         {status.key !== 'finalizada' && (
           <span className={`aw-remaining is-${status.key}`}><Clock size={16} /> {formatRemaining(status.remaining)}</span>
         )}
       </div>
 
-      <button type="button" className="aw-card-cta" onClick={() => onOpen(auction.id)}>
-        Ver búsqueda <ArrowRight size={16} />
+      <button type="button" className="aw-card-cta" onClick={() => onOpen(auction.id, toPay > 0 ? { offers: true } : undefined)}>
+        {toPay > 0 ? 'Ver ofertas y pagar' : 'Ver búsqueda'} <ArrowRight size={16} />
       </button>
     </article>
   );
@@ -281,6 +294,8 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
     return () => clearInterval(timer);
   }, [loadAuctions, loadMetrics, loadMine]);
 
+  // "Por pagar" solo existe en Mis búsquedas.
+  useEffect(() => { if (tab !== 'MIS' && scope === 'POR_PAGAR') setScope('TODAS'); }, [tab, scope]);
   useEffect(() => { setPage(1); }, [searchQuery, estados, categorias, marcas, regiones, tiempos, scope, sortBy, tab]);
 
   useEffect(() => {
@@ -338,12 +353,14 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
     TODAS: tabMatches.length,
     CON_OFERTAS: tabMatches.filter(({ auction }) => auction.totalCotizaciones > 0).length,
     SIN_OFERTAS: tabMatches.filter(({ auction }) => !(auction.totalCotizaciones > 0)).length,
+    POR_PAGAR: tabMatches.filter(({ auction }) => offersToPay(auction) > 0).length,
   }), [tabMatches]);
 
   const filtered = useMemo(() => {
     const list = tabMatches.filter(({ auction }) => {
       if (scope === 'CON_OFERTAS' && !(auction.totalCotizaciones > 0)) return false;
       if (scope === 'SIN_OFERTAS' && auction.totalCotizaciones > 0) return false;
+      if (scope === 'POR_PAGAR' && offersToPay(auction) === 0) return false;
       return true;
     });
 
@@ -382,7 +399,8 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
     setScope('TODAS');
   };
 
-  const handleOpenAuction = (id) => navigate(auctionDetailPath(id));
+  // `offers`: abre el detalle con el popup de ofertas (donde se paga lo aceptado).
+  const handleOpenAuction = (id, options) => navigate(`${auctionDetailPath(id)}${options?.offers ? '?ofertas=1' : ''}`);
 
   const handleOpenCreateModal = () => {
     if (!isLoggedIn) {
@@ -508,7 +526,8 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
     </>
   );
 
-  if (isMobile) {
+  // Dentro del perfil (escritorio) el espacio es angosto: se usa la misma lista de las tarjetas anchas del celular, con los filtros en cajón.
+  if (isMobile || embedded) {
     return (
       <>
         <AuctionsListMobile
@@ -596,7 +615,7 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
               </div>
             )}
             <div className="aw-scope-chips" role="tablist" aria-label="Tipo de búsqueda">
-              {SCOPE_OPTIONS.map((option) => (
+              {SCOPE_OPTIONS.filter((option) => option.value !== 'POR_PAGAR' || tab === 'MIS').map((option) => (
                 <button key={option.value} type="button" role="tab" aria-selected={scope === option.value} className={scope === option.value ? 'is-active' : ''} onClick={() => setScope(option.value)}>
                   {option.label} ({nf.format(scopeCounts[option.value])})
                 </button>
@@ -609,7 +628,7 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
 
               <label className="aw-select">
                 <select value={scope} onChange={(e) => setScope(e.target.value)} aria-label="Tipo de búsqueda">
-                  {SCOPE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label} ({nf.format(scopeCounts[option.value])})</option>)}
+                  {SCOPE_OPTIONS.filter((option) => option.value !== 'POR_PAGAR' || tab === 'MIS').map((option) => <option key={option.value} value={option.value}>{option.label} ({nf.format(scopeCounts[option.value])})</option>)}
                 </select>
                 <ChevronDown size={16} />
               </label>
@@ -663,7 +682,7 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
               <>
                 <div className={`aw-list ${view === 'grid' ? 'is-grid' : ''}`}>
                   {visible.map(({ auction, status }) => (
-                    <AuctionRow key={auction.id} auction={auction} status={status} now={now} onOpen={handleOpenAuction} pendingQuestions={tab === 'MIS' ? Number(pendingQuestions[auction.id] || 0) : null} />
+                    <AuctionRow key={auction.id} auction={auction} status={status} now={now} onOpen={handleOpenAuction} showPayment={tab === 'MIS'} pendingQuestions={tab === 'MIS' ? Number(pendingQuestions[auction.id] || 0) : null} />
                   ))}
                 </div>
 

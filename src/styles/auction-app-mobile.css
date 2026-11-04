@@ -338,3 +338,8 @@
 /* Dentro de la intranet el botón "+" queda sobre la barra inferior de la cuenta. */
 .am-page.is-embedded .am-fab { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
 .am-card-tracking { padding: 0 12px 8px; }
+
+.am-card-pay { display: flex; align-items: flex-start; gap: 6px; margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: #eaf2ff; font-size: 12.5px; font-weight: 700; line-height: 1.4; color: #0052cc; }
+.am-card-pay svg { flex-shrink: 0; margin-top: 1px; }
+.am-card-pay.is-expired { background: #fff7e6; color: #9a5a00; }
+.am-card-state.is-por-pagar { background: #eaf2ff; color: #0052cc; }

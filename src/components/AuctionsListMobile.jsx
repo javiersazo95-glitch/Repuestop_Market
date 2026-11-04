@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
-  ArrowUpDown, CalendarDays, Car, Check, ChevronRight, Clock, Cog, Eye, Gavel, MapPin, MessageCircle, Package, Plus, Search,
+  ArrowUpDown, CalendarDays, Car, Check, ChevronRight, Clock, Cog, CreditCard, Eye, Gavel, MapPin, MessageCircle, Package, Plus, Search,
   SlidersHorizontal, Store, Tag, Telescope, Wallet, X,
 } from 'lucide-react';
 import SectionHero, { HeroChip } from './ui/SectionHero';
 import { resolveMediaUrl } from '../services/api';
 import { pendingSummary } from '../utils/auctionPending';
+import { paymentDeadlineInfo } from '../utils/paymentDeadline';
 import { useAuth } from '../context/AuthContext';
 import { needNews, newOffersCount } from '../utils/trackingNews';
 import { useTrackingSeen } from '../hooks/useTrackingSeen';
@@ -43,7 +44,9 @@ function formatPublished(iso, now) {
   return `Publicado el ${date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
 }
 
-function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = null, tracking = null }) {
+function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = null, tracking = null, showPayment = false }) {
+  const toPay = showPayment ? Math.max(0, (auction.ofertasAceptadas || 0) - (auction.ofertasPagadas || 0)) : 0;
+  const deadline = toPay > 0 ? paymentDeadlineInfo(auction.pagoPendienteVenceEn, now) : null;
   const vehicle = [auction.marca, auction.modelo, auction.anio].filter(Boolean).join(' ') || 'Vehículo';
   const motor = auction.motor || auction.version;
   const location = [auction.comuna, auction.region].filter(Boolean).join(', ');
@@ -59,9 +62,9 @@ function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = nu
         </div>
         <div className="am-card-body">
           <div className="am-card-head">
-            <span className={`am-card-state is-${status.key}`}>{status.label}</span>
-            <button type="button" className="am-card-view" onClick={() => onOpen(auction.id)} aria-label="Ver búsqueda">
-              <Eye size={13} /> Ver búsqueda <ChevronRight size={13} />
+            <span className={`am-card-state is-${toPay > 0 ? 'por-pagar' : status.key}`}>{toPay > 0 ? 'Por pagar' : status.label}</span>
+            <button type="button" className="am-card-view" onClick={() => onOpen(auction.id, toPay > 0 ? { offers: true } : undefined)} aria-label={toPay > 0 ? 'Ver ofertas y pagar' : 'Ver búsqueda'}>
+              <Eye size={13} /> {toPay > 0 ? 'Ver ofertas y pagar' : 'Ver búsqueda'} <ChevronRight size={13} />
             </button>
           </div>
           <h3 className="am-card-title">{auction.repuestoSolicitado}</h3>
@@ -81,6 +84,11 @@ function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = nu
       </div>
       {pendingQuestions != null && pendingSummary(offers, pendingQuestions) && (
         <p className="am-card-pending"><MessageCircle size={14} aria-hidden="true" /> {pendingSummary(offers, pendingQuestions)}</p>
+      )}
+      {toPay > 0 && (
+        <p className={`am-card-pay ${deadline?.expired ? 'is-expired' : ''}`}>
+          <CreditCard size={14} aria-hidden="true" /> {toPay} {toPay === 1 ? 'tienda aceptada' : 'tiendas aceptadas'} · pago pendiente{deadline ? ` · ${deadline.text}` : ''}
+        </p>
       )}
       {tracking && (() => {
         const key = `need:${auction.id}`;
@@ -247,7 +255,7 @@ export default function AuctionsListMobile({
       ) : (
         <div className="am-list-cards">
           {rows.slice(0, visibleCount).map(({ auction, status }) => (
-            <AuctionCardMobile key={auction.id} auction={auction} status={status} now={now} onOpen={onOpenAuction} pendingQuestions={pendingQuestions ? Number(pendingQuestions[auction.id] || 0) : null} tracking={mineTab && pendingQuestions ? { seen, markSeen, onChanged: onTrackingChanged } : null} />
+            <AuctionCardMobile key={auction.id} auction={auction} status={status} now={now} onOpen={onOpenAuction} showPayment={mineTab} pendingQuestions={pendingQuestions ? Number(pendingQuestions[auction.id] || 0) : null} tracking={mineTab && pendingQuestions ? { seen, markSeen, onChanged: onTrackingChanged } : null} />
           ))}
           {rows.length > visibleCount && (
             <button type="button" className="am-btn am-btn-outline" onClick={() => setVisibleCount((count) => count + 8)}>
