@@ -51,10 +51,10 @@ export default function HeaderWalletButton({ variant = 'header' }) {
   // La guía de "Top Ventas" del modal es solo para vendedores con tienda.
   const isSeller = String(user?.role || role || '').toUpperCase() === 'SELLER' && Boolean(user?.sellerId);
 
-  // Las Monedas sirven a la tienda (destacar repuestos) y al taller (servicio de agendamiento). Un comprador con
-  // saldo de antes lo sigue viendo, para no esconderle plata.
+  // Las Monedas sirven solo a la tienda (marcar un producto como Top Ventas) y al taller (derecho a
+  // agendamiento). El comprador no las usa, así que no ve el indicador.
   const isWorkshop = String(user?.role || role || '').toUpperCase() === 'WORKSHOP';
-  if (!isLoggedIn || (!isSeller && !isWorkshop && balance <= 0 && !isOpen)) return null;
+  if (!isLoggedIn || (!isSeller && !isWorkshop)) return null;
 
   return (
     <>
