@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  X, Upload, Trash2, AlertCircle, CheckCircle2, Plus, Package,
+  X, Upload, Trash2, AlertCircle, CheckCircle2, Plus, Package, Car,
 } from 'lucide-react';
 import { normalizePlate } from '../utils/vehicleLookup';
 import usePlateLookup, { maskPlate } from '../utils/usePlateLookup';
@@ -15,7 +15,6 @@ import { PlateBenefitHint, RecommendedBadge } from './PlateRecommended';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { createAuction, updateAuction, uploadAuctionPhoto } from '../services/auctionApi';
 import { useAuth } from '../context/AuthContext';
-import { useCategories } from '../data/categories';
 import '../styles/auctions.css';
 import '../styles/faults.css';
 import { MAX_PRICE, MAX_QUANTITY, onlyDigits } from '../utils/inputLimits';
@@ -24,7 +23,7 @@ import '../styles/auction-vehicle.css';
 const MAX_ITEMS = 20;
 let itemSeq = 0;
 const NEW_ADDRESS = '__new__';
-const newItem = () => ({ key: `item-${++itemSeq}`, nombre: '', categoria: '', cantidad: 1, descripcion: '', otroVehiculo: false, patente: '' });
+const newItem = (otroVehiculo = false) => ({ key: `item-${++itemSeq}`, nombre: '', cantidad: 1, descripcion: '', otroVehiculo, patente: '' });
 
 /** Sección numerada, igual a la del formulario de registrar falla. */
 function FormSection({ number, title, hint, children }) {
@@ -58,8 +57,8 @@ function VehicleSummary({ vehicle, note }) {
   );
 }
 
-/** Un repuesto del pedido: nombre, cantidad, categoría y, si va para otro auto, su propia patente. */
-function ItemEditor({ item, index, canRemove, categories, onChange, onRemove, onVehicle }) {
+/** Un repuesto del pedido: nombre, cantidad, detalle y, si va para otro auto, su propia patente. */
+function ItemEditor({ item, index, canRemove, forLabel, onChange, onRemove, onVehicle }) {
   const { vehicle, error, looking } = usePlateLookup(item.otroVehiculo ? item.patente : '', { subject: 'el pedido' });
 
   useEffect(() => { onVehicle(item.key, vehicle); }, [vehicle]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -89,13 +88,6 @@ function ItemEditor({ item, index, canRemove, categories, onChange, onRemove, on
           <span>Cantidad *</span>
           <input type="text" inputMode="numeric" maxLength={3} value={item.cantidad} onChange={(e) => onChange(item.key, { cantidad: onlyDigits(e.target.value, 3) })} required />
         </label>
-        <label className="ft-field">
-          <span>Categoría *</span>
-          <select value={item.categoria} onChange={(e) => onChange(item.key, { categoria: e.target.value })} required>
-            <option value="">Selecciona…</option>
-            {categories.map((cat) => <option key={cat.id} value={cat.nombre}>{cat.nombre}</option>)}
-          </select>
-        </label>
         <label className="ft-field acv-field-wide">
           <span>Detalle o falla <small>Opcional</small></span>
           <textarea
@@ -108,14 +100,7 @@ function ItemEditor({ item, index, canRemove, categories, onChange, onRemove, on
         </label>
       </div>
 
-      <label className="acv-other-vehicle">
-        <input
-          type="checkbox"
-          checked={item.otroVehiculo}
-          onChange={(e) => onChange(item.key, { otroVehiculo: e.target.checked, patente: e.target.checked ? item.patente : '' })}
-        />
-        <span><strong>Este repuesto es para otro vehículo</strong><small>Si no, se usa el vehículo del pedido.</small></span>
-      </label>
+      <p className="acv-item-for"><Car size={14} aria-hidden="true" /> {forLabel}</p>
 
       {item.otroVehiculo && (
         <div className="acv-item-vehicle">
@@ -213,7 +198,6 @@ function itemsFromAuction(auction) {
   const list = (auction?.items || []).map((item) => ({
     ...newItem(),
     nombre: item.repuesto || '',
-    categoria: item.categoria || '',
     cantidad: item.cantidad || 1,
     descripcion: item.descripcion || '',
     otroVehiculo: Boolean(item.vehiculoPropio),
@@ -230,7 +214,6 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
   const isEditing = Boolean(auction);
   const source = auction || template;
   const { user } = useAuth();
-  const { HEADER_CATEGORIES } = useCategories();
 
   const userId = user?.userId ?? user?.id;
   // La búsqueda se publica con la ubicación de una dirección registrada: la del comprador o la que cree aquí mismo.
@@ -287,9 +270,22 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
   const changeItem = (key, patch) => setItems((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
   const removeItem = (key) => setItems((current) => current.filter((item) => item.key !== key));
   const registerVehicle = (key, found) => setItemVehicles((current) => (current[key] === found ? current : { ...current, [key]: found }));
-  const addItem = () => setItems((current) => (current.length >= MAX_ITEMS ? current : [...current, newItem()]));
+  const [askingNext, setAskingNext] = useState(false);
+  const addItem = (otroVehiculo) => {
+    setItems((current) => (current.length >= MAX_ITEMS ? current : [...current, newItem(otroVehiculo)]));
+    setAskingNext(false);
+  };
 
   const totalUnits = useMemo(() => items.reduce((sum, item) => sum + (parseInt(item.cantidad, 10) || 0), 0), [items]);
+  const vehicleName = (found, plate) => [[found?.marca, found?.modelo, found?.anio].filter(Boolean).join(' '), plate ? maskPlate(plate) : ''].filter(Boolean).join(' · ');
+  const forLabelFor = (item) => {
+    if (item.otroVehiculo) {
+      const text = vehicleName(itemVehicles[item.key], item.patente);
+      return text ? `Para: ${text}` : 'Para otro vehículo · ingresa su patente';
+    }
+    const text = vehicleName(vehicle, manualVehicle ? '' : patente);
+    return text ? `Para: ${text}` : 'Para el vehículo ingresado';
+  };
   const itemsMissingVehicle = items.filter((item) => item.otroVehiculo && !itemVehicles[item.key]);
 
   const handleFileChange = async (e) => {
@@ -333,11 +329,6 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
       setError(`Indica el nombre del repuesto ${blank + 1}.`);
       return;
     }
-    const noCategory = items.findIndex((item) => !item.categoria);
-    if (noCategory >= 0) {
-      setError(`Selecciona la categoría del repuesto ${noCategory + 1}.`);
-      return;
-    }
     if (itemsMissingVehicle.length > 0) {
       setError('Hay repuestos para otro vehículo sin patente identificada. Ingresa su patente o desmarca la opción.');
       return;
@@ -365,11 +356,9 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
       chasis: vehicle.chasis || undefined,
       // El servidor arma el título del pedido a partir de los repuestos; estos campos son el respaldo.
       repuestoSolicitado: items[0].nombre.trim(),
-      categoria: items[0].categoria,
       cantidad: totalUnits || 1,
       items: items.map((item) => ({
         repuestoSolicitado: item.nombre.trim(),
-        categoria: item.categoria,
         descripcion: item.descripcion.trim() || undefined,
         cantidad: parseInt(item.cantidad, 10) || 1,
         patente: item.otroVehiculo ? normalizePlate(item.patente) : undefined,
@@ -478,17 +467,31 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
                 item={item}
                 index={index}
                 canRemove={items.length > 1}
-                categories={HEADER_CATEGORIES}
+                forLabel={forLabelFor(item)}
                 onChange={changeItem}
                 onRemove={removeItem}
                 onVehicle={registerVehicle}
               />
             ))}
           </div>
-          <button type="button" className="acv-add-item" onClick={addItem} disabled={items.length >= MAX_ITEMS}>
-            <Plus size={16} /> Agregar otro repuesto
-          </button>
+          {items.length < MAX_ITEMS && (askingNext ? (
+            <div className="acv-ask" role="group" aria-label="¿Es para el mismo vehículo?">
+              <strong>¿Es para el mismo vehículo?</strong>
+              <div className="acv-ask-actions">
+                <button type="button" className="ft-btn ft-btn-primary" onClick={() => addItem(false)}>Sí, el mismo</button>
+                <button type="button" className="ft-btn ft-btn-outline" onClick={() => addItem(true)}>No, otro vehículo</button>
+                <button type="button" className="ft-link" onClick={() => setAskingNext(false)}>Cancelar</button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="acv-add-item" onClick={() => setAskingNext(true)}>
+              <Plus size={16} /> Agregar otro repuesto
+            </button>
+          ))}
 
+        </FormSection>
+
+        <FormSection number={3} title="Fotos de muestra" hint="Opcional: el repuesto dañado, su etiqueta o su número de parte ayudan a las tiendas a ofertar lo correcto.">
           <div className="ft-field">
             <span>Fotografías de muestra o falla <small>Opcional · hasta 5 · {fotos.length}/5</small></span>
             <div className="ft-photos" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
@@ -510,37 +513,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
           </div>
         </FormSection>
 
-        <FormSection
-          number={3}
-          title="Dónde se publica"
-          hint="La usamos para ubicar el pedido y para que las tiendas sepan si despachan a tu comuna."
-        >
-          <label className="ft-field">
-            <span>Dirección del pedido <small>Obligatoria</small></span>
-            <select
-              value={addressChoice}
-              onChange={(e) => setAddressChoice(e.target.value)}
-              disabled={!addressesLoaded}
-              aria-label="Dirección de la búsqueda"
-            >
-              {!addressesLoaded && <option value="">Cargando tus direcciones…</option>}
-              {addresses.map((address) => (
-                <option key={address.id} value={String(address.id)}>
-                  {address.calleYNumero} · {[address.comunaNombre, address.regionNombre].filter(Boolean).join(', ')}{address.esPrincipal ? ' (principal)' : ''}
-                </option>
-              ))}
-              <option value={NEW_ADDRESS}>+ Agregar una dirección nueva</option>
-            </select>
-            {addressesLoaded && addresses.length === 0 && addressChoice === NEW_ADDRESS && (
-              <small>Aún no tienes direcciones: agrega una para poder publicar.</small>
-            )}
-          </label>
-          {addressChoice === NEW_ADDRESS && (
-            <QuickAddressForm userId={userId} onCreated={loadAddresses} />
-          )}
-        </FormSection>
-
-        <FormSection number={4} title="Condiciones del pedido" hint="Cuánto tiempo reciben ofertas las tiendas y cómo te llega el repuesto.">
+        <FormSection number={4} title="Plazos y condiciones" hint="Cuánto tiempo reciben ofertas las tiendas, cómo te llega el repuesto y dónde se publica.">
           <div className="ft-row">
             <label className="ft-field">
               <span>Vigencia para ofertas</span>
@@ -586,6 +559,29 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
           <p className="ft-hint">
             Las tiendas de tu comuna podrán ofrecerte retiro en tienda o despacho dentro de la comuna (con el costo del envío). Las de otras comunas solo podrán ofrecer despacho a domicilio por pagar (courier): el envío lo pagas aparte.
           </p>
+          <label className="ft-field">
+            <span>Dirección de entrega <small>Obligatoria</small></span>
+            <select
+              value={addressChoice}
+              onChange={(e) => setAddressChoice(e.target.value)}
+              disabled={!addressesLoaded}
+              aria-label="Dirección de la búsqueda"
+            >
+              {!addressesLoaded && <option value="">Cargando tus direcciones…</option>}
+              {addresses.map((address) => (
+                <option key={address.id} value={String(address.id)}>
+                  {address.calleYNumero} · {[address.comunaNombre, address.regionNombre].filter(Boolean).join(', ')}{address.esPrincipal ? ' (principal)' : ''}
+                </option>
+              ))}
+              <option value={NEW_ADDRESS}>+ Agregar una dirección nueva</option>
+            </select>
+            {addressesLoaded && addresses.length === 0 && addressChoice === NEW_ADDRESS && (
+              <small>Aún no tienes direcciones: agrega una para poder publicar.</small>
+            )}
+          </label>
+          {addressChoice === NEW_ADDRESS && (
+            <QuickAddressForm userId={userId} onCreated={loadAddresses} />
+          )}
         </FormSection>
 
         {error && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}

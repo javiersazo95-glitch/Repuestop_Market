@@ -81,3 +81,7 @@
 .ft-page .acv-plate { border-color: var(--ft-primary-border); background: var(--ft-primary-light); }
 .ft-page .acv-plate.is-confirmed { background: #fff; }
 .ft-page .acv-quick-address { margin-top: 0; }
+
+.acv-item-for { display: flex; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 12.5px; color: var(--ft-primary, #0066ff); }
+.acv-ask { margin-top: 12px; padding: 14px; border: 1px solid #dbe6f3; border-radius: 12px; background: #f5f9ff; display: flex; flex-direction: column; gap: 10px; }
+.acv-ask-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
