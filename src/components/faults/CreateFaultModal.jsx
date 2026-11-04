@@ -11,6 +11,7 @@ import { useAuth } from '../../context/AuthContext';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import { MAX_MILEAGE, MIN_VEHICLE_YEAR, maxVehicleYear } from '../../utils/inputLimits';
 import CharCount from './CharCount';
+import { PlateBenefitHint, RecommendedBadge } from '../PlateRecommended';
 import { maskPlate } from '../../utils/usePlateLookup';
 import { ANIOS_DISPONIBLES } from '../../data/sampleVehicles';
 import { useCombustibles } from '../../data/vehicleOptions';
@@ -439,10 +440,11 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
           <div className="ft-vehicle-step">
             <div className="ft-field">
               <div className="ft-tabs" role="tablist" aria-label="Cómo indicar el vehículo">
-                <button type="button" role="tab" aria-selected={mode === 'plate'} className={`ft-tab ${mode === 'plate' ? 'is-active' : ''}`} onClick={() => setMode('plate')}>Por patente</button>
+                <button type="button" role="tab" aria-selected={mode === 'plate'} className={`ft-tab ${mode === 'plate' ? 'is-active' : ''}`} onClick={() => setMode('plate')}>Por patente<RecommendedBadge /></button>
                 <button type="button" role="tab" aria-selected={mode === 'manual'} className={`ft-tab ${mode === 'manual' ? 'is-active' : ''}`} onClick={() => setMode('manual')}>Búsqueda manual</button>
               </div>
             </div>
+            {mode === 'plate' && <PlateBenefitHint />}
             {mode === 'plate' ? (
               <label className="ft-field">
                 <span>Patente</span>
@@ -458,7 +460,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
                 )}
                 {plateStatus === 'loading' && <small><Loader2 size={12} className="spin-icon" /> Consultando patente…</small>}
                 {plateStatus === 'notfound' && <small>No pudimos identificar esta patente. Revísala o <button type="button" className="ft-link" onClick={() => setMode('manual')}>ingresa los datos a mano</button>.</small>}
-                {(plateStatus === 'idle') && <small>Con tu patente obtenemos la marca, el modelo y el año. ¿No la tienes a mano? <button type="button" className="ft-link" onClick={() => setMode('manual')}>Ingresa el vehículo a mano</button>.</small>}
+                {(plateStatus === 'idle') && <small>¿No la tienes a mano? <button type="button" className="ft-link" onClick={() => setMode('manual')}>Ingresa el vehículo a mano</button>.</small>}
               </label>
             ) : (
               <div className="hero-manual-form">

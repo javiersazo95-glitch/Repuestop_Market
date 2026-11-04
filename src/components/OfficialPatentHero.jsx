@@ -21,6 +21,7 @@ import {
 import { adaptVehicle } from '../services/adapters';
 import { normalizePlate, sanitizePlateInput, isValidPlate, getRecentPlates, addRecentPlate } from '../utils/vehicleLookup';
 import CategoryIconTile from './CategoryIconTile';
+import { PlateBenefitHint, RecommendedBadge } from './PlateRecommended';
 
 // La búsqueda por código OEM o nombre de repuesto vive ahora en la barra del
 // header (con sugerencias en vivo); este panel solo resuelve el vehículo.
@@ -588,11 +589,12 @@ export default function OfficialPatentHero({
                           className={searchMode === item.id ? 'active' : ''}
                           onClick={() => selectMode(item.id)}
                         >
-                          <Icon size={18} /> <span>{item.label}</span>
+                          <Icon size={18} /> <span>{item.label}</span>{item.id === 'patente' && <RecommendedBadge />}
                         </button>
                       );
                     })}
                   </div>
+                  {searchMode === 'patente' && <PlateBenefitHint className="light-search-benefit" />}
 
                   <div className={`light-search-form ${searchMode !== 'patente' ? 'mode-no-country' : ''}`}>
                     {searchMode === 'manual' ? (
