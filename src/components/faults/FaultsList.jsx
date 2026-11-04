@@ -62,7 +62,7 @@ const diagnosisCountOf = (fault) => Number(
 ) || 0;
 
 /** Tarjeta de la falla en el celular: la de la app (vehículo, la falla, contexto y diagnósticos, separados por líneas). */
-function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking, ownerActions }) {
+function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking }) {
   const symptoms = (fault.sintomas || []).slice(0, 3);
   return (
     <article className="ftm-card">
@@ -134,7 +134,6 @@ function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, on
           </div>
         );
       })()}
-      {ownerActions && <div className="ftm-tracking"><MyFaultActions fault={fault} diagnosisCount={diagnosisCount} onChanged={ownerActions.onChanged} /></div>}
     </article>
   );
 }
@@ -155,7 +154,7 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
   const mobility = fault.seMueve === true ? 'Sí, se puede mover' : fault.seMueve === false ? 'No se puede mover' : 'No informado';
 
   if (isMobile) {
-    return <FaultCardMobile {...{ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking, ownerActions }} />;
+    return <FaultCardMobile {...{ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking }} />;
   }
 
   return (

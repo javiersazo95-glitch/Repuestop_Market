@@ -1,20 +1,19 @@
 import React, { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ClipboardList, Loader2, Lock, MessageCircle, Pencil, X } from 'lucide-react';
+import { ArrowRight, ClipboardList, Loader2, Lock, MessageCircle, Pencil } from 'lucide-react';
 import { faultDetailPath } from '../../routes/paths';
 import { getFault } from '../../services/faultApi';
-import FallaTrackingDetail from '../tracking/FallaTrackingDetail';
+import { FaultCommentsModal, FaultDiagnosesModal } from './FaultOwnerModals';
 import CreateFaultModal from './CreateFaultModal';
 import '../../styles/profile-auctions.css';
 
 /**
- * Acciones de una falla propia del comprador en Mis fallas, las mismas de Mis búsquedas en Encargar repuesto: ver el detalle
- * de la falla, ver y responder los diagnósticos y las preguntas de los talleres (con el aviso de cuántas esperan respuesta) y
- * editarla mientras siga abierta.
+ * Acciones de una falla propia del comprador en Mis fallas (solo web; el celular tiene su propio seguimiento), las mismas de Mis
+ * búsquedas en Encargar repuesto: ver el detalle de la falla, abrir por separado los diagnósticos y los comentarios de los talleres
+ * (con el aviso de cuántos esperan respuesta) y editarla, con el lápiz de la esquina, mientras siga abierta.
  */
 export default function MyFaultActions({ fault, diagnosisCount = 0, onChanged }) {
-  const [panel, setPanel] = useState(false);
+  const [panel, setPanel] = useState(null); // 'diagnoses' | 'comments'
   const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -54,37 +53,26 @@ export default function MyFaultActions({ fault, diagnosisCount = 0, onChanged })
         <Link className="pa-btn-link" to={faultDetailPath(fault)} aria-label={`Ver el detalle de la falla de ${vehicle}`}>
           Ver detalle <ArrowRight size={14} />
         </Link>
-        <button type="button" className="pa-btn-secondary" onClick={() => setPanel(true)} aria-label={`Ver diagnósticos (${diagnosisCount})`}>
+        <button type="button" className="pa-btn-secondary" onClick={() => setPanel('diagnoses')} aria-label={`Ver diagnósticos (${diagnosisCount})`}>
           <ClipboardList size={15} /> Diagnósticos ({diagnosisCount})
         </button>
         <button
           type="button"
-          className="pa-btn-secondary pa-btn-icon"
-          onClick={() => setPanel(true)}
-          aria-label={pending > 0 ? `Preguntas de los talleres (${pending} sin responder)` : 'Preguntas de los talleres'}
-          title="Preguntas de los talleres"
+          className="pa-btn-secondary"
+          onClick={() => setPanel('comments')}
+          aria-label={pending > 0 ? `Comentarios de los talleres (${pending} sin responder)` : 'Comentarios de los talleres'}
         >
-          <MessageCircle size={15} />
-          {pending > 0 && <span className="pa-q-badge">{pending > 99 ? '99+' : pending}</span>}
+          <MessageCircle size={15} /> Comentarios
+          {pending > 0 && <span className="mfa-badge">{pending > 99 ? '99+' : pending}</span>}
         </button>
       </div>
       {notice && <p className="pa-edit-notice" role="alert"><Lock size={14} /> {notice}</p>}
 
-      {panel && createPortal(
-        <div className="ft-modal-backdrop" role="dialog" aria-modal="true" aria-label="Diagnósticos y preguntas de la falla" onClick={() => setPanel(false)}>
-          <div className="ft-modal" onClick={(event) => event.stopPropagation()}>
-            <div className="ft-modal-head">
-              <h2><ClipboardList size={16} /> Diagnósticos y preguntas · {vehicle}</h2>
-              <button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => setPanel(false)}><X size={20} /></button>
-            </div>
-            <div className="trk">
-              <div className="trk-body">
-                <FallaTrackingDetail faultId={fault.id} vigente={open} newDiagnoses={0} onChanged={onChanged} />
-              </div>
-            </div>
-          </div>
-        </div>,
-        document.body,
+      {panel === 'diagnoses' && (
+        <FaultDiagnosesModal fault={fault} vehicle={vehicle} canAct={open} onChanged={onChanged} onClose={() => setPanel(null)} />
+      )}
+      {panel === 'comments' && (
+        <FaultCommentsModal fault={fault} vehicle={vehicle} canReply={open} onChanged={onChanged} onClose={() => setPanel(null)} />
       )}
 
       {editing && (

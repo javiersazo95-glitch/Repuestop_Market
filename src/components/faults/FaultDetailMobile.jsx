@@ -253,18 +253,15 @@ export default function FaultDetailMobile({
           return (
             <div key={group.key} className="ftd-card">
               <div className="ftd-group-head">
-                {/* El toggle es un div: adentro va el enlace "Ver perfil" junto al nombre, y un enlace no puede ir dentro de un botón. El chevron es el control accesible. */}
-                <div className="ftd-group-toggle" onClick={() => setOpenGroups((current) => ({ ...current, [group.key]: !current[group.key] }))}>
+                <button type="button" className="ftd-group-toggle" aria-expanded={open} onClick={() => setOpenGroups((current) => ({ ...current, [group.key]: !current[group.key] }))}>
                   <Avatar name={group.author} src={group.photo} />
                   <span className="ftd-group-copy">
-                    <span className="ftd-name-row">
-                      <strong>{group.author}</strong>
-                      {group.taller && <Link className="ftd-profile" to={workshopPath(group.taller.tallerId)} onClick={(event) => event.stopPropagation()}>Ver perfil ›</Link>}
-                    </span>
+                    <strong>{group.author}</strong>
                     <small>{[group.taller ? 'Taller' : null, group.taller?.comuna, `${count} ${count === 1 ? 'comentario' : 'comentarios'}`].filter(Boolean).join(' · ')}</small>
                     {group.taller && <TallerRating rating={group.taller.calificacion} count={group.taller.opiniones} />}
                   </span>
-                </div>
+                </button>
+                {group.taller && <Link className="ftd-profile" to={workshopPath(group.taller.tallerId)}>Ver perfil ›</Link>}
                 <button type="button" className="ftd-chevron" aria-label={open ? 'Ocultar comentarios' : 'Ver comentarios'} onClick={() => setOpenGroups((current) => ({ ...current, [group.key]: !current[group.key] }))}>
                   {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                 </button>
