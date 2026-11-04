@@ -259,3 +259,13 @@
 .av-cancel-btn { color: #b42318; border-color: #f3c7c2; }
 .av-cancel-btn:hover { background: #fef3f2; border-color: #e8a59d; }
 .av-cancel-reason { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #fef3f2; border: 1px solid #f3c7c2; color: #b42318; font-size: 12px; font-weight: 700; }
+
+/* ---------- Pantallas medianas: la columna central queda angosta y nada debe desbordarse ---------- */
+.av-two { grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.av-top-meta { flex-wrap: wrap; overflow: visible; }
+.av-title-actions { flex-wrap: wrap; flex-shrink: 1; }
+.av-items .as-title { flex-wrap: wrap; row-gap: 6px; }
+.av-items .as-title > span:first-child { flex: 1 1 auto; min-width: 0; flex-wrap: wrap; }
+.av-items .as-title small { order: 2; }
+.av-items-list.is-compact li { align-items: flex-start; }
+.av-items-list.is-compact .av-item-number, .av-items-list.is-compact .av-item-msg { align-self: center; }
