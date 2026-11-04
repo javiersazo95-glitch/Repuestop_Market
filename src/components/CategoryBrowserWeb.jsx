@@ -20,6 +20,9 @@ export default function CategoryBrowserWeb({ categories, onPick, counts = {}, no
   const countOf = (category, subcategory) => (counts[category.id]?.loaded ? (counts[category.id].subs?.[normalizeKey(subcategory)] ?? 0) : undefined);
   const totalOf = (category) => (counts[category.id]?.loaded ? (counts[category.id].count ?? 0) : undefined);
   const total = totalOf(active);
+  // La subcategoría es opcional al publicar: lo que no la tiene se cuenta aparte para que "Ver todo" calce con la suma.
+  const subsSum = Object.values(counts[active.id]?.subs || {}).reduce((sum, n) => sum + (Number(n) || 0), 0);
+  const withoutSubcategory = total !== undefined ? Math.max(0, total - subsSum) : 0;
   const plural = (n) => `${n} ${n === 1 ? 'repuesto' : 'repuestos'}`;
 
   return (
@@ -86,6 +89,13 @@ export default function CategoryBrowserWeb({ categories, onPick, counts = {}, no
               </button>
             );
           })}
+          {withoutSubcategory > 0 && (
+            <button type="button" className="cbw-sub" onClick={() => onPick({ category: active, subcategory: null })} aria-label={`Sin subcategoría, ${plural(withoutSubcategory)}`}>
+              <span className="cbw-sub-img cbw-sub-img-empty"><img src={active.image} alt="" loading="lazy" /></span>
+              <span className="cbw-sub-name">Sin subcategoría</span>
+              <span className="cbw-sub-count">{plural(withoutSubcategory)}</span>
+            </button>
+          )}
         </div>
       </div>
     </section>

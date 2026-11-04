@@ -13,6 +13,10 @@ export default function CategoryBrowserMobile({ categories, visuals, onPick, cou
   const active = categories.find((category) => category.id === activeId) || categories[0];
   if (!active) return null;
   const total = counts[active.id]?.count;
+  // La subcategoría es opcional al publicar: lo que no la tiene se cuenta aparte, como en la app, para que "Ver todo"
+  // calce con lo que suman las subcategorías.
+  const subsSum = Object.values(counts[active.id]?.subs || {}).reduce((sum, n) => sum + (Number(n) || 0), 0);
+  const withoutSubcategory = total !== undefined ? Math.max(0, total - subsSum) : 0;
 
   return (
     <div className="cbm" aria-label="Explora por categorías">
@@ -49,6 +53,13 @@ export default function CategoryBrowserMobile({ categories, visuals, onPick, cou
               <span className="cbm-count">{(counts[active.id]?.subs?.[normalizeKey(subcategory)] ?? 0)} {(counts[active.id]?.subs?.[normalizeKey(subcategory)] ?? 0) === 1 ? 'repuesto' : 'repuestos'}</span>
             </button>
           ))}
+          {withoutSubcategory > 0 && (
+            <button type="button" className="cbm-sub" onClick={() => onPick({ category: active, subcategory: null })} aria-label={`Sin subcategoría, ${withoutSubcategory} repuestos`}>
+              <span className="cbm-circle cbm-circle-empty"><CategoryIconTile iconName={visuals[active.id]?.iconName} iconUrl={visuals[active.id]?.iconUrl} color={visuals[active.id]?.color} size={24} /></span>
+              <span className="cbm-name">Sin subcategoría</span>
+              <span className="cbm-count">{withoutSubcategory} {withoutSubcategory === 1 ? 'repuesto' : 'repuestos'}</span>
+            </button>
+          )}
         </div>
       </div>
     </div>

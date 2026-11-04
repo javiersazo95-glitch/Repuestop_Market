@@ -37,3 +37,4 @@
 .cbw-all-products { margin-left: auto; background: #0056bf; border-color: #0056bf; color: #fff; }
 .cbw-all-products + .cbw-all { margin-left: 0; }
 .catalog-back-categories { display: inline-flex; align-items: center; gap: 4px; min-height: 34px; padding: 0 12px; margin-right: 12px; border: 1px solid #bfd6f7; border-radius: 999px; background: #eaf2ff; color: #0056bf; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.cbw-sub-img-empty { border-style: dashed; }

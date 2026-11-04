@@ -140,3 +140,4 @@
   }
   .cbm-left, .cbm-right { max-height: none; }
 }
+.cbm-circle-empty { display: flex; align-items: center; justify-content: center; border-style: dashed; }
