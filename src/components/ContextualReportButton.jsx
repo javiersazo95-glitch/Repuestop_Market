@@ -45,6 +45,7 @@ const FAULT_REASONS = [
 const REASONS = {
   OPINION_PRODUCTO: OPINION_REASONS,
   OPINION_TIENDA: OPINION_REASONS,
+  TALLER_OPINION: OPINION_REASONS,
   TIENDA: [
     'Información comercial engañosa',
     'Incumplimientos reiterados',
@@ -90,7 +91,7 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
   const [errorMessage, setErrorMessage] = useState('');
 
   const reasons = REASONS[tipoObjeto];
-  const isOpinion = tipoObjeto === 'OPINION_PRODUCTO' || tipoObjeto === 'OPINION_TIENDA';
+  const isOpinion = tipoObjeto === 'OPINION_PRODUCTO' || tipoObjeto === 'OPINION_TIENDA' || tipoObjeto === 'TALLER_OPINION';
   const entityLabel = isOpinion
     ? 'opinión'
     : tipoObjeto === 'TIENDA'

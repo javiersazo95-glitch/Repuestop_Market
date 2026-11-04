@@ -12,7 +12,7 @@ import { getAutomotiveServiceAccreditationApi, getAutomotiveServiceOnboardingApi
  * La app móvil hace lo mismo en `mobile/hooks/use-automotive-accreditation.ts`.
  */
 
-const KNOWN_STATUSES = ['SIN_SOLICITUD', 'PENDIENTE', 'POR_CORREGIR', 'RECHAZADO', 'APROBADO'];
+const KNOWN_STATUSES = ['SIN_SOLICITUD', 'PENDIENTE', 'POR_CORREGIR', 'RECHAZADO', 'SUSPENDIDO', 'APROBADO'];
 
 export function useAutomotiveAccreditation(enabled = true) {
   const [record, setRecord] = useState(null);

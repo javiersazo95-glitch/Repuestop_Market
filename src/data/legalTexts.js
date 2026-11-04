@@ -12,7 +12,7 @@
  */
 
 /** Fecha de la version vigente, para mostrar en pantalla. */
-export const LEGAL_VERSION = '22 de octubre de 2026';
+export const LEGAL_VERSION = '4 de noviembre de 2026';
 
 /**
  * Codigo estable de la misma version, el que viaja al backend y queda guardado en
@@ -23,7 +23,7 @@ export const LEGAL_VERSION = '22 de octubre de 2026';
  * Debe coincidir con `repuestop.legal.version-vigente` del backend y con
  * LEGAL_VERSION_CODE de la app.
  */
-export const LEGAL_VERSION_CODE = '2026-10-22';
+export const LEGAL_VERSION_CODE = '2026-11-04';
 
 /**
  * Declaracion de la tienda de ser contribuyente de IVA (art. 3° bis LIVS, Circular SII 39 de
@@ -60,47 +60,60 @@ const IDENTIFICACION_EMPRESA = `${EMPRESA.razonSocial}, RUT ${EMPRESA.rut}, con 
 const REPRESENTANTE_LEGAL = `${EMPRESA.razonSocial}, administradora de la Plataforma, designa como sus representantes legales a ${EMPRESA.representantes}, ambos con domicilio en ${EMPRESA.domicilio}. Esta designación no se extiende a los vendedores, que actúan por cuenta propia y tienen sus propios representantes legales.`;
 
 // Bloques compartidos por los Términos del comprador y del vendedor: un comprador o una tienda pueden
-// acreditar un servicio automotriz y publicar en el Mural, y cualquiera de los dos puede comprar Monedas.
-const MURAL_SERVICIOS_TERMS = `RepuesTop ofrece un Mural de Anuncios donde talleres y servicios automotrices acreditados publican sus servicios, y una agenda para pedir citas con ellos.
+// acreditar un servicio automotriz como taller, y cualquiera de los dos puede comprar Monedas.
+const MURAL_SERVICIOS_TERMS = `RepuesTop ofrece a los talleres y servicios automotrices acreditados un perfil público, un buscador de talleres, una agenda para pedir citas y la posibilidad de responder las fallas que registran los compradores. Esta sección rige para quienes usan esas funciones, sean clientes o talleres.
 
 A. ROL DE REPUESTOP:
-En el Mural, RepuesTop actúa solo como vitrina y medio de contacto y agenda. No presta, supervisa ni garantiza los servicios publicados, no los cobra ni recibe su pago, y no media en controversias sobre su calidad, precio, plazo o resultado. El servicio, su precio, su garantía y la boleta o factura correspondiente son de exclusiva responsabilidad del taller o servicio que lo presta. Los reclamos sobre un servicio deben dirigirse al taller; el usuario puede además reportar el anuncio en la Plataforma y ejercer sus derechos ante el SERNAC o los tribunales competentes.
+RepuesTop actúa solo como vitrina y medio de contacto y agenda. No presta, supervisa ni garantiza los servicios de los talleres, no los cobra ni recibe su pago, y no media en controversias sobre su calidad, precio, plazo o resultado. El servicio, su precio, su garantía y la boleta o factura correspondiente son de exclusiva responsabilidad del taller que lo presta. Los reclamos sobre un servicio deben dirigirse al taller; el usuario puede además reportar el perfil, el comentario o el diagnóstico en la Plataforma y ejercer sus derechos ante el SERNAC o los tribunales competentes. La mediación de RepuesTop cubre solo las compras de productos pagadas en la Plataforma.
 
-B. ACREDITACIÓN DEL SERVICIO:
-Solo pueden publicar quienes acrediten su servicio automotriz con documento de identidad, inicio de actividades y patente municipal, además de los datos del negocio que pida la Plataforma. RepuesTop puede aprobar la acreditación, pedir correcciones o rechazarla; el anunciante puede corregir sus antecedentes y volver a enviarlos.
+B. CUENTA Y ACREDITACIÓN DEL TALLER:
+El taller se registra con su propia cuenta de taller e informa el nombre y los datos de contacto de su responsable, el nombre del negocio, su RUT, giro, dirección y horario de atención (o que atiende las 24 horas), y acepta estos Términos y la Política de Privacidad. Solo queda acreditado, y puede aparecer ante el público, quien acredita su servicio automotriz con documento de identidad, inicio de actividades y patente municipal. RepuesTop puede aprobar la acreditación, pedir correcciones o rechazarla; el taller puede corregir sus antecedentes y volver a enviarlos. Un taller puede además comprar repuestos y registrar necesidades de compra como cualquier comprador.
 
-C. PUBLICACIÓN Y PLANES:
-Cada anuncio se publica por períodos de 30 días, pagados con Monedas según el plan: Básica (100 Monedas), Destacada (200), Premium (400) y Empresarial (800). El primer anuncio Básico de cada cuenta es gratis durante su primer período. Cada plan define la cantidad de fotos, etiquetas e historias, el botón de WhatsApp y, en el plan Empresarial, la agenda de citas.
-Las Monedas se descuentan al enviar el anuncio. Subir de plan cuesta el valor completo del plan nuevo, no la diferencia; bajar de plan no tiene costo ni devolución. La renovación no es automática: el anunciante puede renovar por otros 30 días pagando el valor de su plan, y la Plataforma le avisa 3 días antes del vencimiento. Al vencer, el anuncio deja de mostrarse.
+C. PERFIL PÚBLICO Y BUSCADOR:
+El perfil del taller es público: lo ve cualquier visitante, sin iniciar sesión. Muestra el nombre del negocio, el logo y las fotos, la descripción, los servicios con su precio «desde», las categorías y marcas que atiende, el horario, el servicio a domicilio, la información que el taller completa (descripción, años de experiencia, equipamiento y garantía que ofrece) y las calificaciones que recibió. La dirección exacta y el mapa se muestran mientras el taller tiene el servicio Diagnóstico vigente; sin él se muestra solo la comuna. El teléfono y el WhatsApp son públicos solo en los talleres que atienden las 24 horas y tienen el Diagnóstico vigente; en los demás, el taller los entrega al cliente con la cita. No se publican los documentos de acreditación, el RUT ni el correo del taller. Los precios «desde» son referenciales; el precio final lo acuerda el taller con el cliente. El taller debe mantener sus datos, servicios, precios y horarios correctos. RepuesTop puede ocultar o retirar perfiles, fotos o contenidos engañosos, fraudulentos, ilegales o contrarios a estos Términos.
 
-D. REVISIÓN Y DEVOLUCIÓN DE MONEDAS:
-La primera publicación de cada anuncio pasa por una revisión de RepuesTop. Si el anuncio se rechaza en esa primera revisión, o el anunciante lo elimina mientras está en revisión, se devuelven las Monedas cobradas. Si el anunciante corrige el anuncio rechazado y lo vuelve a enviar a revisión, se cobran nuevamente las Monedas devueltas. Una vez aprobado, eliminar el anuncio no devuelve Monedas.
-RepuesTop puede rechazar, ocultar o retirar anuncios engañosos, fraudulentos, ilegales, duplicados, con datos de contacto falsos o contrarios a estos Términos, incluso después de aprobados.
+D. SERVICIO DIAGNÓSTICO Y MONEDAS:
+El Diagnóstico es el servicio con que el taller acreditado aparece en el buscador, muestra su dirección y mapa, recibe citas en línea y registra diagnósticos privados en las fallas de los compradores (letra F). Cuesta hoy 400 Monedas ($20.000, IVA incluido) por 30 días, que se pagan con Monedas. Para activarlo el taller debe estar acreditado y haber registrado su horario de atención, salvo que atienda solo las 24 horas. Al activarlo por primera vez se encienden sus citas en línea. Se vende en packs de 1, 3, 6 o 12 meses (400, 1.200, 2.400 o 4.800 Monedas), sin descuento. La renovación no es automática: RepuesTop le avisa 3 días antes del vencimiento y, si lo activa estando vigente, el nuevo período comienza cuando termina el actual. Un período ya activado no se devuelve en Monedas. Al vencer, el taller deja de aparecer en el buscador y de ofrecer citas desde las fallas, pero puede seguir comentándolas en el hilo público.
+Hay períodos gratis: (i) un regalo de bienvenida para los primeros 100 talleres acreditados, que queda activo de inmediato y se registra en su monedero como las Monedas de un período, sin que el taller deba pagar nada; (ii) un período por cada 10 necesidades de compra que el taller registra y no cancela; y (iii) un período por cada 25 compradores que se registran con el código de referido del taller con su correo verificado (letra H). RepuesTop puede cambiar el valor, la duración y estos premios, informándolo en la Plataforma, sin afectar los períodos ya activados.
 
 E. AGENDA DE CITAS:
-Para pedir una cita, el usuario debe iniciar sesión, elegir una hora disponible e indicar su nombre, teléfono y correo y, si quiere, la patente, el vehículo y una descripción. Esos datos se comparten con el taller. La cita queda solicitada hasta que el taller la acepte o la rechace; si llega la hora sin respuesta, vence.
-El usuario puede reagendar o cancelar su cita, y el taller puede cancelar las citas que ya aceptó, en ambos casos hasta 24 horas antes de la hora de la cita. Dentro de las 24 horas previas, la cita, confirmada o solicitada, ya no se puede cancelar ni reagendar por ninguna de las partes, aunque el taller sí puede aceptar o rechazar una solicitud pendiente; RepuesTop avisa a ambos antes de que comience ese plazo. Si el taller elimina su anuncio, sus citas vigentes se cancelan y se avisa al usuario; no puede eliminarlo mientras tenga citas confirmadas dentro de las 24 horas siguientes. Pedir una cita no tiene costo en RepuesTop: el servicio se paga directamente al taller. El anunciante no puede pedir citas en su propio anuncio.
+Para pedir una cita, el usuario debe iniciar sesión, elegir una hora disponible e indicar su nombre, teléfono y correo y, si quiere, la patente, el vehículo y una descripción; si el servicio es a domicilio, también la dirección. Si la cita viene de una falla, el taller ve además el título, la descripción y la ubicación de esa falla. Esos datos, junto con la foto de perfil del usuario y su calificación como cliente, se comparten con el taller. La cita queda solicitada hasta que el taller la acepte o la rechace; si llega la hora sin respuesta, vence.
+El usuario puede reagendar o cancelar su cita, y el taller puede cancelar las citas que ya aceptó, en ambos casos hasta 24 horas antes de la hora de la cita. Dentro de las 24 horas previas, la cita, confirmada o solicitada, ya no se puede cancelar ni reagendar por ninguna de las partes, aunque el taller sí puede aceptar o rechazar una solicitud pendiente; RepuesTop avisa a ambos antes de que comience ese plazo. Mientras la cita está vigente, cliente y taller pueden comunicarse por el chat de la cita, donde no se pueden compartir correos, enlaces, redes sociales ni RUT (el teléfono sí), y ambos reciben recordatorios por notificación y correo. La patente del cliente deja de mostrarse al taller en la Plataforma cuando la cita termina; el correo de resumen de la cita sí la incluye.
+Pedir una cita no tiene costo en RepuesTop: el servicio se paga directamente al taller. Las cuentas de taller no piden citas a otros talleres.
+Terminada la cita, el taller registra su resultado (realizada, el cliente no asistió o no realizada), con un detalle y, si se realizó, su costo, y califica al cliente. El cliente puede calificar al taller una vez por cita confirmada, desde la hora de la cita, con una nota de 1 a 5 y un comentario de hasta 500 caracteres, que es público en el perfil del taller con su nombre abreviado y su foto de perfil. La calificación que recibe el cliente de los talleres se suma a la que le dejan las tiendas y forma su reputación como comprador, que pueden ver los talleres con que interactúa. El taller no puede ocultar ni eliminar las calificaciones que recibe, pero puede reportar las que incumplan las normas de la comunidad: RepuesTop puede ocultar el comentario (la nota se mantiene) y retirar las calificaciones fraudulentas o manipuladas.
 
-F. OBLIGACIONES DEL ANUNCIANTE:
-El nombre, la dirección, el teléfono y el WhatsApp que publica el anunciante quedan visibles para cualquier visitante del Mural. El anunciante debe mantener esos datos y sus horarios correctos, atender las citas que acepte y cumplir la normativa aplicable a los servicios que presta, incluida la protección de los consumidores.`;
+F. FALLAS AUTOMOTRICES, COMENTARIOS Y DIAGNÓSTICOS:
+El comprador (y la tienda con perfil de comprador) puede registrar una falla de su vehículo; las cuentas de taller no registran fallas: la patente (opcional; sin ella declara marca, modelo y año), la descripción, los síntomas, fotos, su ubicación y si el vehículo se mueve o requiere recogida, y elige a qué talleres avisar (de su comuna, su región o varias regiones). Cada falla nueva se avisa a los talleres acreditados dentro de ese alcance por la campana de la Plataforma, notificación en el teléfono y correo. Cada persona puede registrar hasta 5 fallas por día. El mural de fallas es público y muestra solo un resumen: la patente nunca se muestra a otros usuarios ni a talleres.
+Los talleres acreditados pueden comentar la falla en un hilo público para afinar el diagnóstico. El diagnóstico es privado: solo lo ven el dueño de la falla y el taller que lo escribió, puede incluir un precio estimado (mínimo y máximo), exige tener el Diagnóstico vigente y se registra una vez por falla. El público ve solo qué talleres diagnosticaron, con su nombre, logo, comuna y calificación, sin el contenido. El dueño de la falla puede responder a los talleres y aceptar un diagnóstico; al aceptarlo puede agendar una cita con ese taller. El diagnóstico es una orientación a distancia, no reemplaza la revisión del vehículo en el taller, y su precio estimado es referencial y no obliga al taller ni al cliente. Cada usuario puede escribir hasta 10 comentarios por hora.
+Ni en los comentarios ni en los diagnósticos se pueden compartir teléfonos, correos, enlaces, redes sociales ni otros datos de contacto. La única excepción es el teléfono, en el diagnóstico privado, una vez que el taller confirmó una cita de esa falla, para coordinar la llegada. Cada falla permanece abierta 30 días y su dueño puede cerrarla antes; RepuesTop puede cerrar una falla, quitar un comentario o un diagnóstico que incumpla estos Términos, dejando registro del motivo y avisando a la persona afectada.
 
-const MONEDAS_TERMS = `Las Monedas son créditos de uso interno de RepuesTop que permiten pagar los planes del Mural de Anuncios y destacar productos (productos Top).
+G. OBLIGACIONES DEL TALLER:
+El taller es el único responsable de los servicios que presta y de sus precios, plazos, garantías, repuestos que instale y de la boleta o factura de cada servicio, y debe cumplir la normativa aplicable, incluida la protección de los consumidores. Debe atender las citas que acepte, responder con veracidad y sin ofrecer servicios que no presta, y no usar los diagnósticos ni las citas para sacar el trabajo fuera de RepuesTop con datos de contacto no autorizados.
+Los datos que el taller recibe de un cliente (nombre, teléfono, correo, vehículo, patente, foto, dirección, descripción de la falla, historial de citas y calificaciones) los recibe para atender ese servicio y los trata bajo su propia responsabilidad. Solo puede usarlos para atender y facturar la cita, la garantía y los reclamos de ese servicio; no puede venderlos, cederlos, usarlos para publicidad o mensajes masivos ni publicarlos, y debe mantenerlos seguros y eliminarlos cuando ya no los necesite. RepuesTop puede suspender al taller que los use de otro modo.
+
+H. REFERIDOS DE TALLER:
+Cada taller acreditado tiene un código propio de referido (con el formato TL-XXXXXX) y un código QR que enlaza a la Plataforma. Cuando un comprador se registra con ese código y verifica su correo, se cuenta para el premio de la letra D. El referido de taller no genera comisiones ni pagos en dinero. No se pueden usar medios engañosos, masivos o abusivos para obtener referidos; RepuesTop puede anular los que no cumplan estos Términos y retirar los períodos obtenidos con ellos.
+
+I. SUSPENSIÓN:
+RepuesTop puede suspender o cerrar la cuenta de un taller por información falsa, documentos falsos, engaño a los clientes, uso indebido de los datos de clientes, incumplimiento de estos Términos o riesgo para la Plataforma. Al suspenderlo, su perfil sale del buscador, no recibe citas nuevas, no puede comentar ni diagnosticar fallas, y sus citas vigentes se cancelan con aviso a los clientes. Si deja de estar acreditado, su perfil deja de mostrarse.`;
+
+const MONEDAS_TERMS = `Las Monedas son créditos de uso interno de RepuesTop que permiten pagar el servicio Diagnóstico de los talleres y destacar productos (productos Top).
 • Valor y compra: cada Moneda equivale a $50, IVA incluido, y se compran en packs desde 100 Monedas ($5.000), pagando mediante la pasarela de pago de la Plataforma. Se acreditan cuando la pasarela confirma el pago. Por cada compra, RepuesTop emite la boleta o factura que el usuario elija antes de pagar y se la envía por correo.
-• Uso: solo sirven para planes del Mural, si el usuario tiene un servicio automotriz acreditado, y para productos Top, si tiene una tienda aprobada. Comprar Monedas no da por sí solo acceso a esos servicios.
+• Uso: solo sirven para el servicio Diagnóstico, si el usuario tiene un taller acreditado, y para productos Top, si tiene una tienda aprobada. Comprar Monedas no da por sí solo acceso a esos servicios.
 • Las Monedas no vencen, son personales, no se pueden transferir a otra cuenta y no se pueden canjear por dinero.
 • Retracto y devoluciones: conforme al artículo 3° bis letra b) de la Ley N° 19.496, RepuesTop excluye expresamente el derecho a retracto respecto de las Monedas una vez acreditadas, por tratarse de un servicio digital que queda disponible de inmediato. Las Monedas ya gastadas solo se devuelven en los casos previstos en estos Términos. Lo anterior no afecta los derechos del usuario si una compra no se acredita o se cobra por error: en ese caso puede pedir a soporte su corrección o reembolso.
 • Si el pago de una compra de Monedas se anula o se desconoce ante la pasarela o el emisor del medio de pago, RepuesTop puede descontar las Monedas correspondientes.
 • Al cerrar la cuenta, el saldo de Monedas no usado se pierde. Antes de confirmar el cierre, la Plataforma informa el saldo disponible.`;
 
 export const COMPRADOR_TERMS = `1. IDENTIFICACIÓN DE LA PLATAFORMA
-RepuesTop es una plataforma de comercio electrónico, disponible como aplicación móvil y sitio web, administrada por ${IDENTIFICACION_EMPRESA}, en adelante también "RepuesTop", "la Plataforma" o "la Empresa". Estos Términos regulan el registro, acceso y uso de la Plataforma por parte de compradores.
+RepuesTop es una plataforma de comercio electrónico, disponible como aplicación móvil y sitio web, administrada por ${IDENTIFICACION_EMPRESA}, en adelante también "RepuesTop", "la Plataforma" o "la Empresa". Estos Términos regulan el registro, acceso y uso de la Plataforma por parte de compradores y talleres automotrices.
 
 2. ACEPTACIÓN DE LOS TÉRMINOS
 Al crear una cuenta, acceder a la Plataforma, realizar una búsqueda, solicitar una cotización, comprar un producto, pedir una cita o usar cualquier funcionalidad, el comprador declara haber leído, entendido y aceptado estos Términos y la Política de Privacidad.
 La aceptación se realiza mediante una casilla u otro mecanismo digital equivalente. RepuesTop registra la fecha, hora, cuenta, versión del documento aceptado y los antecedentes técnicos necesarios para acreditar dicha aceptación.
 
 3. NATURALEZA DE REPUESTOP
-RepuesTop no fabrica, almacena, revisa físicamente, importa ni vende directamente los productos publicados por los vendedores. Su función principal es facilitar la conexión entre compradores y vendedores formalizados, permitiendo búsqueda, cotización, pago, comunicación, seguimiento, soporte y mediación. Además ofrece un Mural de Anuncios de talleres y servicios automotrices, regulado en la sección 15.
+RepuesTop no fabrica, almacena, revisa físicamente, importa ni vende directamente los productos publicados por los vendedores. Su función principal es facilitar la conexión entre compradores y vendedores formalizados, permitiendo búsqueda, cotización, pago, comunicación, seguimiento, soporte y mediación. Además ofrece un buscador de talleres y servicios automotrices, una agenda de citas y el registro de fallas, regulados en la sección 15.
 El vendedor es el único responsable de la existencia, calidad, estado, origen, compatibilidad, precio, stock, despacho, garantía, emisión de boleta o factura y cumplimiento tributario asociado al producto vendido.
 RepuesTop recauda el pago de cada compra por cuenta del vendedor y lo mantiene retenido durante 11 días desde la entrega, o mientras exista un reclamo o una mediación abiertos. La mediación es un servicio de la Plataforma para resolver las diferencias entre comprador y vendedor; los reembolsos que ordena se pagan con cargo a ese dinero retenido de la venta del vendedor. RepuesTop no es el vendedor de los productos, no otorga su garantía ni responde por ella, sin perjuicio de las obligaciones que la ley le impone como operador de la Plataforma.
 
@@ -189,7 +202,7 @@ No se permite compartir teléfonos, correos, enlaces, usuarios de redes sociales
 Los mensajes no podrán ser eliminados por los usuarios, salvo que RepuesTop implemente una funcionalidad específica conforme a sus políticas internas y obligaciones legales.
 RepuesTop no revisará conversaciones de manera general o indiscriminada. Sin embargo, podrá acceder y revisar conversaciones relacionadas con una compra, cotización, reclamo, denuncia, sospecha de fraude, mal uso de la Plataforma, solicitud de soporte o mediación.
 
-15. MURAL DE ANUNCIOS, SERVICIOS AUTOMOTRICES Y CITAS
+15. TALLERES Y SERVICIOS AUTOMOTRICES, DIAGNÓSTICO, CITAS Y FALLAS
 ${MURAL_SERVICIOS_TERMS}
 
 16. MONEDAS
@@ -201,9 +214,9 @@ ${MONEDAS_TERMS}
 • Insultar, amenazar, acosar o discriminar a otros usuarios.
 • Manipular precios, calificaciones, reclamos o evidencias.
 • Publicar opiniones, preguntas o mensajes que no cumplan las normas de la comunidad (sección 13).
-• Pedir citas que no se piensa atender, publicar anuncios engañosos o reportar anuncios de mala fe.
+• Pedir citas que no se piensa atender, publicar perfiles, comentarios o diagnósticos engañosos o reportar de mala fe.
 • Usar bots, scraping, extracción masiva de datos o herramientas que afecten la Plataforma.
-• Utilizar la Plataforma para fines distintos a buscar, cotizar o comprar repuestos y accesorios permitidos, o a usar el Mural de Anuncios.
+• Utilizar la Plataforma para fines distintos a buscar, cotizar o comprar repuestos y accesorios permitidos, o a usar los servicios de taller (buscador, citas y fallas).
 
 18. SUSPENSIÓN, BLOQUEO Y CIERRE DE CUENTA
 RepuesTop podrá suspender o bloquear una cuenta cuando exista mal uso de la Plataforma, fraude, suplantación, incumplimiento grave, operaciones externas, agresiones, entrega de evidencia falsa o afectación a la seguridad de la Plataforma. La suspensión puede ser por un plazo determinado o indefinida. El comprador puede pedir la revisión de la medida desde la Plataforma, y RepuesTop podrá mantenerla, modificarla o levantarla.
@@ -269,7 +282,7 @@ Después del pago, el vendedor no podrá modificar unilateralmente las condicion
 
 8. VENTAS, PAGOS, COMISIÓN Y LIQUIDACIÓN
 Las ventas iniciadas en RepuesTop deberán pagarse dentro de la Plataforma. Se prohíbe indicar al comprador que pague por fuera, compartir datos de contacto externos o utilizar el chat para evitar comisiones. La Plataforma no publica las preguntas, respuestas ni mensajes que traen teléfonos, correos, enlaces, usuarios de redes sociales o RUT; cuando el comprador tiene una compra pagada que aún no se entrega, se permite compartir un teléfono solo para coordinar la entrega.
-RepuesTop cobrará al vendedor una comisión por uso de la Plataforma, intermediación tecnológica, procesamiento, soporte, seguimiento, reclamos y mediación. La comisión estándar de RepuesTop para tiendas verificadas es de 7% más el 19% de IVA, calculada sobre el valor de cada venta (productos, menos descuentos, más el despacho dentro de la comuna cobrado por el vendedor), sin tramos ni tope. Las tiendas con condición de Tienda Fundadora tienen una marcha blanca con tarifa de servicio de 0% (sin comisión de RepuesTop) durante los primeros dos (2) meses contados desde la aprobación de su tienda; durante ese período solo es de su cargo el costo de la pasarela de pagos indicado en el párrafo siguiente. El beneficio es para las primeras cien (100) tiendas aprobadas, sin perjuicio de que RepuesTop pueda ampliar su cupo o duración. Cumplido el plazo, rige la comisión estándar de 7% más IVA.
+RepuesTop cobrará al vendedor una comisión por uso de la Plataforma, intermediación tecnológica, procesamiento, soporte, seguimiento, reclamos y mediación. La comisión estándar de RepuesTop para tiendas verificadas es de 7% más el 19% de IVA, calculada sobre el valor de cada venta (productos, menos descuentos, más el despacho dentro de la comuna cobrado por el vendedor), sin tramos ni tope. Las tiendas con condición de Tienda Fundadora no pagan comisión de RepuesTop (0%) durante una marcha blanca de dos (2) meses contados desde la aprobación de su tienda, periodo en el que solo es de su cargo el costo de la pasarela de pagos; el beneficio es para las primeras cien (100) tiendas aprobadas, sin perjuicio de que RepuesTop pueda ampliar su cupo o duración. Cumplido ese plazo, rige la comisión estándar de 7% más IVA.
 El costo de recaudación y procesamiento de pagos vía pasarela electrónica (Flow: 2,89% más IVA, total 3,4391%) es de cargo del vendedor y se deducirá al liquidar la venta, sobre la misma base que la comisión.
 El dinero de cada venta queda disponible para retiro 11 días después de la entrega al comprador, una vez finalizado el pedido y siempre que no existan reclamos en mediación, devoluciones pendientes o sospechas de fraude.
 
@@ -316,8 +329,8 @@ Ambas partes podrán subir evidencia en los formatos que la Plataforma habilite 
 El vendedor puede destacar productos como "Top" para que aparezcan primero cuando el comprador ordena los resultados por "Recomendados". Cada producto Top cuesta 200 Monedas por 30 días; la tienda puede tener hasta 10 productos Top a la vez y cuenta con 2 activaciones gratis, por una sola vez. Renovar antes del vencimiento suma 30 días; al vencer, el producto deja de destacarse sin cobro automático. Quitar la marca Top antes de tiempo no devuelve Monedas.
 ${MONEDAS_TERMS}
 
-16. MURAL DE ANUNCIOS, SERVICIOS AUTOMOTRICES Y CITAS
-Si el vendedor también presta un servicio automotriz y lo acredita, puede publicarlo en el Mural de Anuncios en las siguientes condiciones:
+16. TALLERES Y SERVICIOS AUTOMOTRICES, DIAGNÓSTICO, CITAS Y FALLAS
+Si el vendedor también presta un servicio automotriz y lo acredita como taller, rigen las siguientes condiciones:
 ${MURAL_SERVICIOS_TERMS}
 
 17. SUSPENSIÓN, SANCIONES Y REVISIÓN
@@ -346,6 +359,45 @@ Estos Términos se rigen por las leyes de Chile. El vendedor acepta utilizar pre
 22. REPRESENTANTE LEGAL
 ${REPRESENTANTE_LEGAL}`;
 
+export const TALLER_TERMS = `CONDICIONES DEL TALLER AUTOMOTRIZ
+${IDENTIFICACION_EMPRESA} (en adelante, "RepuesTop" o "la Plataforma"), y el taller individualizado en la cuenta que se registra (en adelante, "el Taller"), acuerdan estas Condiciones. Contacto: ${EMPRESA.correo}.
+
+1. OBJETO
+Estas Condiciones regulan el uso por el Taller de su perfil público, el buscador de talleres, el servicio Diagnóstico, la agenda de citas, los comentarios y diagnósticos en las fallas de los compradores, los referidos y las Monedas. Se complementan con la sección 15 de los Términos del comprador, que describe cada una de esas funciones, y con la Política de Privacidad. Como el Taller también puede comprar repuestos y registrar necesidades de compra, en esa calidad se rige además por los Términos del comprador. Si hay diferencias sobre una función de taller, prevalecen estas Condiciones.
+
+2. NATURALEZA DE LA RELACIÓN
+RepuesTop es una plataforma tecnológica de vitrina, contacto y agenda. El Taller presta sus servicios por cuenta propia, bajo su responsabilidad. Estas Condiciones no crean sociedad, mandato, agencia, franquicia, representación ni relación laboral. RepuesTop no presta, supervisa, garantiza ni cobra los servicios del Taller, no recibe su pago y no media en controversias sobre su calidad, precio, plazo o resultado; la mediación de RepuesTop cubre solo las compras de productos pagadas en la Plataforma.
+
+3. ACREDITACIÓN Y VERACIDAD
+El Taller declara que sus antecedentes y documentos (cédula de identidad de su responsable, inicio de actividades y patente municipal) son verdaderos y vigentes, y se obliga a mantenerlos actualizados e informar a RepuesTop cualquier cambio de giro, dirección o término de actividades. Solo se muestra al público el Taller acreditado. RepuesTop puede aprobar la acreditación, pedir correcciones, rechazarla, ocultar el perfil o revocarla si los antecedentes son falsos o inconsistentes, o si el Taller incumple estas Condiciones. RepuesTop puede pedir documentos actualizados en el futuro.
+
+4. SERVICIO DIAGNÓSTICO Y MONEDAS
+El Taller puede activar el servicio Diagnóstico pagando su valor vigente en Monedas (hoy 400 Monedas, $20.000 con IVA incluido, por 30 días), o en packs de varios meses, y puede recibir períodos gratis según la sección 15 de los Términos del comprador. El período activado no es reembolsable ni transferible, salvo error de cobro atribuible a RepuesTop. La renovación no es automática: RepuesTop avisa al Taller antes del vencimiento, pero el servicio vence igual si no lo renueva. RepuesTop puede modificar el valor, la duración y los premios, informándolo en la Plataforma, sin afectar los períodos ya activados. Las Monedas se rigen por la sección 16 de los Términos del comprador. RepuesTop emite al Taller la boleta o factura que este elija antes de pagar por las Monedas que compre.
+
+5. RESPONSABILIDAD POR LOS SERVICIOS
+El Taller es el único responsable de sus servicios, precios, plazos y garantías, de los repuestos e insumos que use y de emitir la boleta o factura de cada servicio, y debe cumplir la normativa aplicable, incluida la protección de los consumidores (Ley N° 19.496). Los precios «desde» de su perfil y los precios estimados de sus diagnósticos son referenciales y el Taller debe respetar el presupuesto que acuerde con el cliente. El diagnóstico hecho a distancia es una orientación y no reemplaza la revisión del vehículo en el Taller. El Taller no puede ofrecer servicios que no presta ni usar la marca RepuesTop para otros fines.
+
+6. CITAS Y RESULTADOS
+El Taller debe mantener correcto su horario, responder las solicitudes de cita a tiempo, atender las citas que acepte y respetar las reglas de cancelación y reagendamiento de la sección 15. Debe registrar con veracidad el resultado de cada cita y la calificación que da al cliente. Las calificaciones que recibe son públicas; el Taller no puede ocultarlas ni eliminarlas, ni ofrecer beneficios a cambio de ellas, aunque puede reportar las que incumplan las normas de la comunidad. RepuesTop puede retirar las calificaciones fraudulentas o manipuladas.
+
+7. DATOS PERSONALES DE LOS CLIENTES
+El Taller recibe datos de sus clientes (nombre, teléfono, correo, vehículo, patente, foto de perfil, dirección, descripción de la falla, historial de citas y calificaciones) para atender ese servicio, emitir su documento tributario y atender la garantía y los reclamos del servicio. Los trata como responsable independiente, conforme a la Ley N° 19.628 y, desde el 1 de diciembre de 2026, a la Ley N° 21.719. El Taller se obliga a: (a) usarlos solo para esas finalidades; (b) no venderlos, cederlos, usarlos para publicidad, mensajes masivos o perfilamiento, ni publicarlos; (c) resguardarlos con medidas de seguridad razonables; (d) eliminarlos cuando ya no los necesite, salvo obligación legal de conservarlos; (e) atender los derechos que los clientes ejerzan ante él; y (f) avisar a RepuesTop de inmediato si sufre una filtración o acceso no autorizado que los afecte. El incumplimiento de esta cláusula es causal de suspensión inmediata.
+
+8. CONDUCTA
+El Taller no puede compartir teléfonos, correos, enlaces, redes sociales ni otros datos de contacto en los comentarios o diagnósticos de las fallas (salvo el teléfono permitido en el diagnóstico privado una vez confirmada una cita) ni en el chat de la cita con fines ajenos a ella; no puede manipular calificaciones, diagnósticos ni referidos, ni obtener referidos por medios engañosos, masivos o abusivos, y debe respetar las normas de la comunidad de los Términos del comprador.
+
+9. SUSPENSIÓN Y TÉRMINO
+RepuesTop puede suspender al Taller por información o documentos falsos, engaño a los clientes, incumplimiento de estas Condiciones, uso indebido de datos de clientes o riesgo para la Plataforma. Al suspenderlo, su perfil sale del buscador, no recibe citas nuevas, no puede comentar ni diagnosticar fallas, y sus citas vigentes se cancelan y se avisa a los clientes. El Taller puede pedir la revisión de la medida desde la Plataforma, y RepuesTop puede mantenerla, modificarla o levantarla. El Taller puede cerrar su cuenta desde la Plataforma; el cierre se hace efectivo 30 días después de solicitarlo y en ese plazo puede revertirlo iniciando sesión nuevamente. El saldo de Monedas no usado y el período de Diagnóstico vigente se pierden al cerrar la cuenta. Al cierre efectivo se eliminan los documentos de acreditación y se anonimizan los datos personales de sus citas y chats, salvo lo que deba conservarse por obligación legal. Las obligaciones sobre datos personales subsisten al término.
+
+10. MODIFICACIONES
+RepuesTop puede modificar estas Condiciones por razones legales, operativas, comerciales, tecnológicas o de seguridad. Los cambios relevantes se informan mediante la Plataforma, aviso al iniciar sesión, correo u otro canal disponible, y pueden exigir una nueva aceptación; el Taller que no la acepte no podrá seguir usando las funciones de taller.
+
+11. ACEPTACIÓN DIGITAL Y LEY APLICABLE
+La aceptación mediante casilla u otro mecanismo digital equivalente es manifestación expresa de voluntad y equivale a firma electrónica simple. RepuesTop registra la fecha, hora, cuenta, versión, dirección IP y datos técnicos necesarios para acreditarla. Estas Condiciones se rigen por las leyes de la República de Chile. El Taller puede usar los canales de soporte de RepuesTop, sin perjuicio de los derechos y acciones que la ley le reconozca ante los tribunales competentes.
+
+12. REPRESENTANTE LEGAL
+${REPRESENTANTE_LEGAL}`;
+
 export const PRIVACIDAD_POLICY = `1. RESPONSABLE DEL TRATAMIENTO
 El responsable del tratamiento de datos personales es ${IDENTIFICACION_EMPRESA}, titular de RepuesTop, disponible como aplicación móvil y sitio web (en adelante, "la Plataforma"). Para asuntos de privacidad, el canal de contacto es contacto@repuestop.cl, sin perjuicio de otros canales que se habiliten dentro de la Plataforma.
 Esta Política se ajusta a la Ley N° 19.628 y a las modificaciones introducidas por la Ley N° 21.719, que entran en vigencia el 1 de diciembre de 2026, así como a la normativa chilena aplicable en materia de datos personales, comercio electrónico y protección de los consumidores.
@@ -356,20 +408,24 @@ RepuesTop recopila los datos que el usuario ingresa en formularios, los que se g
 • Datos del comprador: RUT, dirección, comuna y región de entrega, datos para boleta o factura (razón social y giro, si los ingresa), historial de compras y cotizaciones, calificaciones y opiniones (nota, comentario y fotos), preguntas publicadas, favoritos, reclamos y evidencias.
 • Datos del vendedor: razón social, RUT de la empresa, giro, dirección, teléfono, correo, datos bancarios para el pago de sus ventas, documentos de validación, situación tributaria ante el SII (verificada al alta y cada seis meses), información de la tienda y datos del representante legal.
 • Datos del representante legal: nombre, RUT, cédula de identidad, datos de contacto y antecedentes necesarios para validar su identidad y representación.
-• Datos de talleres, servicios automotrices y otros anunciantes del Mural de Anuncios: nombre del negocio, dirección, teléfono o WhatsApp, horarios, fotos y documentos de acreditación.
-• Datos de las recargas de Monedas: packs comprados, pagos, documentos de compra y su uso en planes de difusión de anuncios y productos destacados.
-• Datos de las citas que el usuario agenda con un taller o servicio: nombre, teléfono, correo, patente, datos del vehículo y descripción del servicio solicitado.
+• Datos de los talleres y servicios automotrices: nombre y datos de contacto del responsable, nombre del negocio, RUT, giro, dirección y su ubicación en el mapa, teléfono o WhatsApp, horarios, logo y fotos, descripción, servicios y precios, documentos de acreditación (cédula de identidad del responsable, inicio de actividades y patente municipal), calificaciones recibidas, uso del servicio Diagnóstico y código de referido.
+• Datos de las recargas de Monedas: packs comprados, pagos, documentos de compra y su uso en el servicio Diagnóstico de los talleres y en productos destacados.
+• Datos de las citas que el usuario agenda con un taller: nombre, teléfono, correo, foto de perfil, patente, datos del vehículo, dirección si el servicio es a domicilio, descripción del servicio solicitado, mensajes del chat de la cita, resultado que registra el taller (realizada, no asistió o no realizada, con su detalle y costo) y las calificaciones que se dan el taller y el cliente.
+• Datos de las fallas automotrices que registra el comprador: patente (opcional), marca, modelo, año, versión, motor, combustible, kilometraje, descripción, síntomas, fotos, comuna y región, dirección de recogida si la pide, y los comentarios y diagnósticos que reciben de los talleres, con sus precios estimados.
 • Datos de los captadores del programa de referidos: nombre, RUT, comuna, fotografía de la cédula de identidad por ambos lados, certificado de antecedentes, datos bancarios para el pago de comisiones, contenido que publican en redes sociales para el programa y registro de las tiendas y compradores que refieren.
 • Datos del vehículo consultado: patente, marca, modelo, versión, año, VIN, chasis u otros datos ingresados o derivados de la consulta.
 • Datos de ubicación: solo cuando el usuario lo autoriza, en los términos de la sección 5.
 • Datos técnicos y de seguridad: fecha y hora de las acciones dentro de la Plataforma, dirección IP y navegador o dispositivo con que se aceptan los documentos legales, dirección IP de cada solicitud en los registros técnicos, identificador del dispositivo para notificaciones, incidencias y datos necesarios para prevenir fraude o abuso.
 
 3. FINALIDADES DEL TRATAMIENTO
-• Crear y administrar cuentas de comprador, vendedor, anunciante y captador.
-• Validar vendedores formalizados, anunciantes, captadores, sus documentos y representantes legales.
+• Crear y administrar cuentas de comprador, vendedor, taller y captador.
+• Validar vendedores formalizados, talleres, captadores, sus documentos y representantes legales.
 • Permitir la búsqueda de repuestos por patente, VIN, chasis, modelo, año, versión o búsqueda manual.
 • Procesar cotizaciones, compras, pagos, despachos, retiro en tienda y seguimiento de pedidos.
-• Publicar anuncios en el Mural de Anuncios, gestionar la agenda de citas con talleres y servicios, y procesar las recargas de Monedas y los planes de difusión.
+• Publicar el perfil de los talleres y su buscador, gestionar la agenda de citas, su chat, sus recordatorios y su resultado, y procesar las recargas de Monedas y el servicio Diagnóstico.
+• Gestionar las fallas automotrices: avisar a los talleres dentro del alcance elegido por el comprador, mostrar el mural de fallas y los comentarios y diagnósticos, y moderarlos.
+• Calcular la reputación del comprador y las calificaciones de los talleres a partir de las citas y de las calificaciones de tiendas y talleres.
+• Gestionar los códigos de referido de los talleres y los períodos gratis del servicio Diagnóstico que obtienen.
 • Mostrar al usuario, si lo autoriza, las casas de repuestos, talleres y servicios más cercanos a su ubicación.
 • Gestionar el programa de captadores: atribuir los referidos, calcular y pagar las comisiones y revisar el contenido publicado para el programa.
 • Compartir los datos mínimos necesarios entre las partes para concretar una compra, cita, facturación, entrega, garantía o reclamo.
@@ -387,19 +443,20 @@ El vehículo con el que el usuario busca se guarda en su propio dispositivo. Cua
 
 5. UBICACIÓN (GEOLOCALIZACIÓN)
 RepuesTop usa la ubicación del dispositivo con una sola finalidad: mostrar al usuario a qué distancia están las casas de repuestos, talleres y servicios automotrices publicados en la Plataforma, ordenarlos del más cercano al más lejano y sugerirle su comuna para filtrar resultados cercanos.
-• Cuándo se usa: solo con la Plataforma abierta y en uso. El permiso se pide únicamente cuando el usuario elige una opción de cercanía, como el ícono de ubicación ("cerca de mí"), ordenar por "más cercano" o "usar mi ubicación" en el filtro de comuna. Si ya lo otorgó, la Plataforma muestra la distancia al abrir el directorio de tiendas, el Mural de Anuncios o el detalle de un anuncio. RepuesTop no accede a la ubicación en segundo plano ni con la aplicación cerrada.
+• Cuándo se usa: solo con la Plataforma abierta y en uso. El permiso se pide únicamente cuando el usuario elige una opción de cercanía, como el ícono de ubicación ("cerca de mí"), ordenar por "más cercano" o "usar mi ubicación" en el filtro de comuna. Si ya lo otorgó, la Plataforma muestra la distancia al abrir el directorio de tiendas, el buscador de talleres o el perfil de un taller. RepuesTop no accede a la ubicación en segundo plano ni con la aplicación cerrada.
 • Qué dato se usa: la posición aproximada del dispositivo, sin el modo de alta precisión, y el nombre de la comuna y región que se deriva de ella.
 • Autorización: el usuario la otorga mediante el permiso de ubicación de su teléfono o de su navegador. Es voluntaria: sin ella, la Plataforma funciona igual y el usuario puede elegir su comuna o región manualmente; solo dejará de ver la distancia a cada tienda o taller.
 • Conservación: las coordenadas se procesan en el dispositivo del usuario para calcular las distancias. No se envían a los servidores de RepuesTop, no se guardan en la cuenta ni se asocian al historial del usuario. En el sitio web se mantienen en la memoria del navegador solo mientras la página permanezca abierta.
-• Terceros: la ubicación no se comparte con tiendas, talleres, anunciantes ni captadores, y no se usa para publicidad, elaboración de perfiles ni venta de datos. Si el teléfono o el navegador no logra identificar la comuna, la Plataforma envía las coordenadas, sin ningún dato de la cuenta, a un servicio externo de mapas ubicado en Alemania, con el único fin de obtener el nombre de la comuna.
+• Terceros: la ubicación no se comparte con tiendas, talleres ni captadores, y no se usa para publicidad, elaboración de perfiles ni venta de datos. Si el teléfono o el navegador no logra identificar la comuna, la Plataforma envía las coordenadas, sin ningún dato de la cuenta, a un servicio externo de mapas ubicado en Alemania, con el único fin de obtener el nombre de la comuna.
 • Retiro del permiso: el usuario puede retirarlo en cualquier momento desde los ajustes de su teléfono o de su navegador. Desde ese momento la Plataforma deja de usar su ubicación.
-La ubicación de las tiendas y talleres es distinta: RepuesTop convierte en coordenadas la dirección pública que cada tienda o anunciante publica, para mostrarla en el mapa y calcular distancias. Esa información es pública por decisión de quien la publica.
+La ubicación de las tiendas y talleres es distinta: RepuesTop convierte en coordenadas la dirección pública que cada tienda o taller publica, para mostrarla en el mapa y calcular distancias. Esa información es pública por decisión de quien la publica.
 
 6. COMPARTICIÓN DE DATOS
 RepuesTop comparte datos del comprador con el vendedor solo cuando es necesario para gestionar una cotización, compra, boleta o factura, despacho, retiro, garantía, devolución, reclamo o mediación.
 RepuesTop comparte datos del vendedor con el comprador solo en el detalle de la compra, publicación, tienda, soporte, garantía, despacho o reclamo.
 En una mediación, RepuesTop entrega al comprador la dirección de la tienda para que devuelva el producto, y al vendedor la dirección de entrega del comprador cuando debe enviarle un reemplazo o el producto reparado. Lo que cada parte escribe o elige en el chat de mediación, y las fotografías que adjunta, quedan en el expediente del caso, visible para esa parte y el mediador.
-Cuando el usuario agenda una cita, sus datos de contacto, los datos del vehículo y la descripción del servicio se comparten con el taller o servicio que eligió. El nombre, la dirección, el teléfono y el WhatsApp que publica un anunciante quedan visibles para quienes visitan el Mural de Anuncios.
+Cuando el usuario agenda una cita, sus datos de contacto, los datos del vehículo y la descripción del servicio se comparten con el taller o servicio que eligió. El perfil público de un taller (nombre del negocio, logo, fotos, descripción, servicios y precios, horario, teléfono, WhatsApp y calificaciones, y su dirección y mapa mientras tiene el servicio Diagnóstico vigente) es visible para cualquier visitante, sin documentos de acreditación, RUT ni correo. Las calificaciones de un taller muestran el nombre abreviado y la foto de perfil de quien lo calificó. Cuando un comprador registra una falla, el mural público muestra la falla con el nombre abreviado, la foto de perfil y la fecha de creación de la cuenta de su dueño, sin patente; los talleres acreditados de su alcance ven además las fotos, el chasis y, si el dueño pide recogida, la dirección de recogida, y el comprador ve los comentarios y diagnósticos de los talleres. El diagnóstico es privado: solo lo ven el dueño de la falla y el taller que lo escribió. La reputación del comprador, la calificación que le dejan los talleres y las tiendas, puede ser vista por los talleres con que interactúa.
+El taller que recibe los datos de un cliente (contacto, vehículo, patente, foto, dirección y descripción de la falla) los trata como responsable independiente y solo puede usarlos para atender ese servicio, su facturación, garantía y reclamos, según los Términos; no puede venderlos, cederlos, usarlos para publicidad ni publicarlos. La patente se muestra al taller mientras la cita está vigente y deja de mostrarse al terminar.
 Las opiniones que publica el comprador (nota, comentario y fotos) son visibles para cualquier visitante de la Plataforma, con su nombre abreviado y su foto de perfil; las preguntas y respuestas de una publicación también son públicas. Cuando un usuario reporta un contenido, RepuesTop revisa ese contenido y los datos necesarios para resolver el reporte.
 RepuesTop no comparte la ubicación del usuario con ninguna de las partes anteriores.
 
@@ -410,7 +467,7 @@ RepuesTop utiliza proveedores externos que tratan datos por su cuenta y solo en 
 • Infraestructura tecnológica: alojamiento del servidor, de la base de datos y del sitio web, y almacenamiento de archivos (fotos, documentos, boletas, comprobantes y evidencias).
 • Comunicaciones: envío de correos, notificaciones en el teléfono y actualizaciones de la aplicación.
 • Inicio de sesión con Google: Google, cuando el usuario elige esa opción. En el sitio web, las fuentes tipográficas y el botón de inicio de sesión se cargan desde Google, que recibe la dirección IP y los datos del navegador del visitante.
-• Direcciones y mapas: servicios de autocompletado de direcciones y de mapas; al abrir el mapa de un anuncio, Google Maps o Apple Maps. RepuesTop también usa el catastro de direcciones del Instituto Nacional de Estadísticas, alojado en sus propios servidores.
+• Direcciones y mapas: servicios de autocompletado de direcciones y de mapas; al abrir el mapa de un taller, Google Maps o Apple Maps. RepuesTop también usa el catastro de direcciones del Instituto Nacional de Estadísticas, alojado en sus propios servidores.
 • Información vehicular por patente: un proveedor chileno de datos vehiculares, que recibe solo la patente consultada. RepuesTop guarda la respuesta para no repetir la consulta, sin asociarla a la cuenta del usuario.
 • Video tutorial para tiendas en el sitio web y el panel de inventario: YouTube (Google), en su modo de privacidad mejorada; solo recibe datos del navegador cuando la tienda abre y reproduce el video.
 • Monitoreo y registros técnicos: servicios que reciben el detalle de los errores del sitio web y los registros del servidor, que pueden incluir el correo o la patente asociados a una acción.
@@ -421,11 +478,12 @@ RepuesTop conserva los datos durante el tiempo necesario para cumplir las finali
 El expediente de los reclamos y mediaciones (mensajes, opciones elegidas, evidencias y veredicto) se conserva hasta cinco (5) años desde el cierre del caso, para atender reclamaciones y defender derechos; después se anonimiza.
 El usuario puede cerrar su cuenta desde la Plataforma. El cierre se hace efectivo 30 días después de solicitarlo; en ese plazo puede revertirlo iniciando sesión nuevamente. Al vencer, los datos de la cuenta se anonimizan y se eliminan su foto de perfil, sus documentos de validación y las fotos de sus opiniones; sus opiniones quedan sin nombre ni foto de perfil. Se exceptúa la información que deba conservarse por obligaciones legales o tributarias, seguridad, prevención de fraude, compras, reclamos, mediaciones, liquidaciones pendientes o defensa ante reclamaciones, la que se conserva solo por el plazo que esas obligaciones exijan.
 Las opiniones se conservan mientras su publicación exista o hasta que RepuesTop las oculte por moderación.
+Al cierre efectivo de la cuenta de un taller se eliminan sus documentos de acreditación y se anonimiza su ficha; y al cierre de cualquier cuenta se anonimizan los datos personales que dejó en sus citas como cliente (nombre, teléfono, correo, patente, vehículo y notas) y se borran los mensajes de los chats de sus citas. Se conservan la fecha, el estado y el resultado de la cita.
 La ubicación del dispositivo no se conserva, según lo indicado en la sección 5.
 
 9. DERECHOS DEL USUARIO
 El usuario puede ejercer los derechos de acceso, rectificación, supresión, oposición, portabilidad y bloqueo de sus datos personales, y los demás que le reconozca la normativa chilena.
-Las solicitudes se realizan a contacto@repuestop.cl o por los canales que RepuesTop habilite, y se responden dentro de los plazos legales. RepuesTop puede pedir antecedentes para verificar la identidad del solicitante antes de responder. En el caso de la portabilidad, RepuesTop entrega los datos en un formato electrónico estructurado y de uso común.
+Las solicitudes se realizan a contacto@repuestop.cl o por los canales que RepuesTop habilite, y se responden dentro de los plazos legales. RepuesTop puede pedir antecedentes para verificar la identidad del solicitante antes de responder. En el caso de la portabilidad, RepuesTop entrega los datos en un formato electrónico estructurado y de uso común. La exportación de datos incluye la ficha del taller, sus citas (como taller o como cliente) y las opiniones que el usuario escribió.
 Cuando el tratamiento se basa en la autorización del usuario, como ocurre con la ubicación, este puede retirarla en cualquier momento, sin efecto retroactivo.
 
 10. SEGURIDAD
@@ -433,10 +491,10 @@ RepuesTop adopta medidas razonables de seguridad técnica, administrativa y orga
 Ningún sistema es absolutamente seguro. El usuario debe proteger sus credenciales, no compartir sus claves y avisar a RepuesTop si detecta accesos no autorizados.
 
 11. MENORES DE EDAD
-RepuesTop está dirigido a personas mayores de edad. No se permite el registro de menores de edad como compradores, vendedores, anunciantes ni captadores.
+RepuesTop está dirigido a personas mayores de edad. No se permite el registro de menores de edad como compradores, vendedores, talleres ni captadores.
 
 12. NOTIFICACIONES
-RepuesTop envía notificaciones en el teléfono y correos transaccionales relacionados con seguridad, pagos, pedidos, citas, reclamos, mediaciones, cambios de los documentos legales y funcionamiento de la cuenta. El usuario puede desactivar las notificaciones en el teléfono desde sus ajustes; los correos esenciales sobre sus operaciones y su cuenta se seguirán enviando.
+RepuesTop envía notificaciones en el teléfono y correos transaccionales relacionados con seguridad, pagos, pedidos, citas y sus recordatorios, resultados y calificaciones, fallas nuevas dentro del alcance de un taller y los comentarios y diagnósticos sobre una falla, los premios del servicio Diagnóstico, reclamos, mediaciones, cambios de los documentos legales y funcionamiento de la cuenta. El usuario puede desactivar las notificaciones en el teléfono desde sus ajustes; los correos esenciales sobre sus operaciones y su cuenta se seguirán enviando.
 RepuesTop no envía comunicaciones comerciales o promocionales. Si en el futuro lo hace, pedirá antes la autorización correspondiente.
 
 13. CAMBIOS A ESTA POLÍTICA
@@ -454,7 +512,7 @@ Sin perjuicio de lo anterior, el usuario puede presentar reclamos ante el Servic
 export const PRIVACIDAD_WEB_EXTRA = `15. COOKIES Y ALMACENAMIENTO LOCAL EN EL SITIO WEB
 RepuesTop utiliza almacenamiento local en el navegador únicamente para operar la Plataforma: mantener la sesión iniciada, proteger la cuenta, conservar el carrito y el pedido en curso, los favoritos, las direcciones guardadas, el saldo de Monedas y las preferencias de avisos, y recordar el vehículo y las patentes consultadas para mostrar repuestos compatibles. Si el usuario llega mediante el enlace de un captador, también se guarda el código de referido mientras dure la visita. La ubicación del navegador no se guarda en este almacenamiento (ver sección 5). Todas estas tecnologías son necesarias para prestar el servicio que el usuario solicita.
 
-El sitio no utiliza cookies ni tecnologías de publicidad, marketing, analítica de audiencia, elaboración de perfiles ni seguimiento entre sitios. No hay rastreadores de terceros incorporados y no se venden ni ceden datos personales mediante estas tecnologías. Algunas páginas cargan recursos de Google: las fuentes tipográficas, el botón de inicio de sesión y el mapa del detalle de un anuncio. Al cargarlos, Google recibe la dirección IP y los datos del navegador del visitante, y el mapa puede usar cookies propias de Google conforme a sus políticas. Las tiendas pueden ver un video tutorial alojado en YouTube, en su modo de privacidad mejorada (youtube-nocookie.com): no se carga hasta que la tienda lo abre, y YouTube solo guarda datos en el navegador si se reproduce.
+El sitio no utiliza cookies ni tecnologías de publicidad, marketing, analítica de audiencia, elaboración de perfiles ni seguimiento entre sitios. No hay rastreadores de terceros incorporados y no se venden ni ceden datos personales mediante estas tecnologías. Algunas páginas cargan recursos de Google: las fuentes tipográficas, el botón de inicio de sesión y el mapa del perfil de un taller. Al cargarlos, Google recibe la dirección IP y los datos del navegador del visitante, y el mapa puede usar cookies propias de Google conforme a sus políticas. Las tiendas pueden ver un video tutorial alojado en YouTube, en su modo de privacidad mejorada (youtube-nocookie.com): no se carga hasta que la tienda lo abre, y YouTube solo guarda datos en el navegador si se reproduce.
 
 RepuesTop utiliza un servicio externo de monitoreo de errores para detectar y corregir fallas de la Plataforma. Ese servicio recibe el detalle técnico del error y la ruta del sitio donde ocurrió, con los identificadores numéricos y los datos sensibles de la dirección removidos antes del envío. No recibe datos de contacto, datos bancarios, contraseñas ni grabaciones de la sesión del usuario. El tratamiento se funda en el interés legítimo de mantener la seguridad, la disponibilidad y el correcto funcionamiento del servicio, y no en el consentimiento. Los servidores de este proveedor se encuentran fuera de Chile, conforme a lo indicado en la sección 7.
 

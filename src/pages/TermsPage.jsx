@@ -3,7 +3,7 @@ import HelpHeader from '../components/help/HelpHeader';
 import LegalDocument from '../components/help/LegalDocument';
 import Footer from '../components/Footer';
 import { useAuth } from '../context/AuthContext';
-import { COMPRADOR_TERMS, VENDEDOR_TERMS } from '../data/legalTexts';
+import { COMPRADOR_TERMS, TALLER_TERMS, VENDEDOR_TERMS } from '../data/legalTexts';
 import { HELP_ROLES, resolveReportType } from '../data/helpContent';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 
@@ -15,7 +15,7 @@ export default function TermsPage() {
   useDocumentTitle('Términos y condiciones');
   const { user, role } = useAuth();
   const reportType = resolveReportType(role, user);
-  const [tab, setTab] = useState(reportType === HELP_ROLES.SELLER ? 'vendedor' : 'comprador');
+  const [tab, setTab] = useState(reportType === HELP_ROLES.SELLER ? 'vendedor' : role === 'WORKSHOP' ? 'taller' : 'comprador');
 
   return (
     <div className="help-center-page">
@@ -29,6 +29,9 @@ export default function TermsPage() {
           <button type="button" className={tab === 'vendedor' ? 'active' : ''} onClick={() => setTab('vendedor')}>
             Para vendedores
           </button>
+          <button type="button" className={tab === 'taller' ? 'active' : ''} onClick={() => setTab('taller')}>
+            Para talleres
+          </button>
         </nav>
 
         {tab === 'comprador' ? (
@@ -36,6 +39,12 @@ export default function TermsPage() {
             titulo="Términos y condiciones para compradores"
             descripcion="Reglas de uso de RepuesTop al buscar, cotizar y comprar repuestos."
             texto={COMPRADOR_TERMS}
+          />
+        ) : tab === 'taller' ? (
+          <LegalDocument
+            titulo="Condiciones del taller automotriz"
+            descripcion="Reglas de uso de RepuesTop para talleres: perfil, Diagnóstico, citas, fallas y datos de clientes."
+            texto={TALLER_TERMS}
           />
         ) : (
           <LegalDocument

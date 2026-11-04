@@ -4,7 +4,7 @@ import { AlertTriangle, Loader2, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import LegalDocument from './help/LegalDocument';
 import {
-  COMPRADOR_TERMS, PRIVACIDAD_POLICY, PRIVACIDAD_WEB_EXTRA, VENDEDOR_TERMS,
+  COMPRADOR_TERMS, PRIVACIDAD_POLICY, PRIVACIDAD_WEB_EXTRA, TALLER_TERMS, VENDEDOR_TERMS,
 } from '../data/legalTexts';
 import { HELP_ROLES, resolveReportType } from '../data/helpContent';
 import { ROUTES } from '../routes/paths';
@@ -35,6 +35,7 @@ export default function TermsReacceptanceModal() {
   if (!isLoggedIn || !user?.requiereAceptarTerminos || enPaginaLegal) return null;
 
   const esVendedor = resolveReportType(role, user) === HELP_ROLES.SELLER;
+  const esTaller = role === 'WORKSHOP';
 
   const aceptar = async () => {
     setEnviando(true);
@@ -78,8 +79,8 @@ export default function TermsReacceptanceModal() {
         <div className="terms-reaccept-scroll" tabIndex={0}>
           {documento === 'terminos' ? (
             <LegalDocument
-              titulo={esVendedor ? 'Términos y condiciones para vendedores' : 'Términos y condiciones para compradores'}
-              texto={esVendedor ? VENDEDOR_TERMS : COMPRADOR_TERMS}
+              titulo={esVendedor ? 'Términos y condiciones para vendedores' : esTaller ? 'Condiciones del taller automotriz' : 'Términos y condiciones para compradores'}
+              texto={esVendedor ? VENDEDOR_TERMS : esTaller ? TALLER_TERMS : COMPRADOR_TERMS}
             />
           ) : (
             <LegalDocument

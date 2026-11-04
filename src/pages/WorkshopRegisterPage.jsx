@@ -388,7 +388,7 @@ export default function WorkshopRegisterPage() {
 
       <label className="auth-terms">
         <input type="checkbox" checked={accepts} onChange={(e) => setAccepts(e.target.checked)} />
-        <span>He leído y acepto los <a href={ROUTES.terms} target="_blank" rel="noreferrer">Términos y Condiciones</a> y la <a href={ROUTES.privacy} target="_blank" rel="noreferrer">Política de Privacidad</a>.</span>
+        <span>He leído y acepto los <a href={ROUTES.terms} target="_blank" rel="noreferrer">Condiciones del Taller y Términos</a> y la <a href={ROUTES.privacy} target="_blank" rel="noreferrer">Política de Privacidad</a>.</span>
       </label>
 
       {missing && <div className="auth-validation-summary"><span><AlertCircle size={13} /> {missing}</span></div>}

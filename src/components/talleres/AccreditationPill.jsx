@@ -23,11 +23,12 @@ const THEME = {
   SIN_SOLICITUD: { tone: 'warn', Icon: ShieldAlert, label: 'Sin acreditar', sub: 'Requerido para aparecer', cta: 'Comenzar acreditación' },
   PENDIENTE: { tone: 'info', Icon: Hourglass, label: 'En revisión', sub: 'Acreditación', cta: 'Ver expediente' },
   POR_CORREGIR: { tone: 'warn', Icon: AlertTriangle, label: 'Corrige tu acreditación', sub: 'Observaciones', cta: 'Corregir y reenviar' },
-  RECHAZADO: { tone: 'bad', Icon: XCircle, label: 'Acreditación rechazada', sub: 'Revisa y reenvía', cta: 'Revisar y reenviar' }
+  RECHAZADO: { tone: 'bad', Icon: XCircle, label: 'Acreditación rechazada', sub: 'Revisa y reenvía', cta: 'Revisar y reenviar' },
+  SUSPENDIDO: { tone: 'bad', Icon: XCircle, label: 'Taller suspendido', sub: 'Sin buscador ni citas', cta: 'Ver motivo' }
 };
 
 function describe(status, businessName, reviewNotes) {
-  if (reviewNotes.trim() && (status === 'POR_CORREGIR' || status === 'RECHAZADO')) return reviewNotes.trim();
+  if (reviewNotes.trim() && (status === 'POR_CORREGIR' || status === 'RECHAZADO' || status === 'SUSPENDIDO')) return reviewNotes.trim();
   if (status === 'PENDIENTE') {
     return businessName.trim()
       ? `Estamos validando los documentos de ${businessName.trim()}. Te avisaremos por correo.`

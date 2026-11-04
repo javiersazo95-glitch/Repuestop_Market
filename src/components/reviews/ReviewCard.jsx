@@ -29,7 +29,7 @@ export default function ReviewCard({ review, kind, onBeforeLogin }) {
   const hidden = review.contentHidden === true;
   const comment = hidden ? '' : review.comment?.trim();
   const avatar = !avatarFailed && review.buyerAvatarUrl ? resolveMediaUrl(review.buyerAvatarUrl) : null;
-  const reportType = kind === 'product' ? 'OPINION_PRODUCTO' : kind === 'store' ? 'OPINION_TIENDA' : null;
+  const reportType = kind === 'product' ? 'OPINION_PRODUCTO' : kind === 'store' ? 'OPINION_TIENDA' : kind === 'workshop' ? 'TALLER_OPINION' : null;
 
   useLayoutEffect(() => {
     const node = textRef.current;
