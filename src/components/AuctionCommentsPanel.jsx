@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MessageCircle, Send } from 'lucide-react';
 import AuctionAvatar from './AuctionAvatar';
+import AuctionQuestionsModal from './AuctionQuestionsModal';
 import StoreProfileLink, { commentStoreId } from './StoreProfileLink';
 import { getAuctionComments, postAuctionComment } from '../services/auctionApi';
 import { useAuth } from '../context/AuthContext';
@@ -19,20 +20,18 @@ function timeAgo(iso) {
   return `Hace ${days} ${days === 1 ? 'día' : 'días'}`;
 }
 
-/** Comentarios públicos de la búsqueda: las tiendas preguntan para afinar la cotización. */
-const VISIBLE_COMMENTS = 3;
-
-export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = true, isCreator = false, quotes = [] }) {
+/**
+ * Comentarios públicos de la búsqueda: las tiendas preguntan para afinar la cotización. La tarjeta muestra solo el
+ * mensaje más nuevo (igual que Ofertas recibidas muestra la última oferta); "Ver más" abre el popup con todos.
+ */
+export default function AuctionCommentsPanel({ auctionId, title = '', isOpen, canComment = true, isCreator = false, quotes = [] }) {
   const { isLoggedIn } = useAuth();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
-  const [sortBy, setSortBy] = useState('RECIENTES');
-  const [replyingId, setReplyingId] = useState(null);
-  const [replyText, setReplyText] = useState('');
-  const [showAll, setShowAll] = useState(false);
+  const [allOpen, setAllOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -61,34 +60,11 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
     }
   };
 
-  const submitReply = async (event, question) => {
-    event.preventDefault();
-    const value = replyText.trim();
-    if (!value) return;
-    setSending(true);
-    setError('');
-    try {
-      const created = await postAuctionComment(auctionId, value, question.id);
-      setComments((current) => [...current, created]);
-      setReplyText('');
-      setReplyingId(null);
-    } catch (err) {
-      setError(err?.message || 'No pudimos publicar tu respuesta.');
-    } finally {
-      setSending(false);
-    }
-  };
-
-  // Las respuestas del creador cuelgan de la pregunta que contestan; el orden aplica a las preguntas.
-  const repliesByQuestion = comments.reduce((acc, comment) => {
-    if (comment.respondeAId == null) return acc;
-    return { ...acc, [comment.respondeAId]: [...(acc[comment.respondeAId] || []), comment] };
-  }, {});
-  const questions = comments.filter((comment) => comment.respondeAId == null || !comments.some((c) => c.id === comment.respondeAId));
-  const ordered = sortBy === 'RECIENTES' ? [...questions].reverse() : questions;
-  // Se ven los primeros y el resto se despliega hacia abajo con "Ver más": el panel no crece sin límite.
-  const visible = showAll ? ordered : ordered.slice(0, VISIBLE_COMMENTS);
-  const hiddenCount = ordered.length - visible.length;
+  // El mensaje más nuevo, sea una pregunta de una tienda o una respuesta del cliente.
+  const latest = [...comments].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  const isReply = latest?.respondeAId != null;
+  const unansweredQuestion = latest && !isReply && !latest.autorEsComprador
+    && !comments.some((comment) => comment.respondeAId === latest.id);
 
   return (
     <section className="as-card as-comments" aria-label="Comentarios de la búsqueda">
@@ -97,15 +73,6 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
           <span><MessageCircle size={18} /> Comentarios de usuarios</span>
           <small>{comments.length}</small>
         </h2>
-        {comments.length > 1 && (
-          <label className="as-sort">
-            <span>Ordenar por:</span>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-              <option value="RECIENTES">Más recientes</option>
-              <option value="ANTIGUOS">Más antiguos</option>
-            </select>
-          </label>
-        )}
       </div>
 
       {!isOpen ? (
@@ -113,7 +80,7 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
       ) : isLoggedIn && !canComment ? (
         <p className="as-muted as-closed">Solo las tiendas pueden comentar esta búsqueda para afinar su oferta; el comprador responde aquí.</p>
       ) : isCreator ? (
-        <p className="as-muted as-closed">Responde cada pregunta con el botón «Responder» bajo ella; tu respuesta queda anidada en esa pregunta.</p>
+        <p className="as-muted as-closed">Responde cada pregunta desde «Ver más comentarios»: tu respuesta queda anidada en esa pregunta.</p>
       ) : isLoggedIn ? (
         <form className="as-composer" onSubmit={submit}>
           <input
@@ -135,54 +102,46 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
 
       {loading ? (
         <p className="as-muted">Cargando comentarios…</p>
-      ) : comments.length === 0 ? (
+      ) : !latest ? (
         <p className="as-muted as-empty">Aún no hay comentarios sobre esta búsqueda. Pregunta lo que necesites saber para afinar tu cotización.</p>
       ) : (
         <ul className="as-comment-list">
-          {visible.map((comment) => (
-            <li key={comment.id} className="as-comment">
-              <StoreProfileLink storeId={commentStoreId(comment, quotes)} name={comment.autor}>
-                <AuctionAvatar className="as-comment-avatar" src={comment.autorFotoUrl} name={comment.autor} isStore={comment.autorEsTienda} />
-              </StoreProfileLink>
-              <div className="as-comment-body">
-                <div className="as-comment-head">
-                  <StoreProfileLink storeId={commentStoreId(comment, quotes)} name={comment.autor} showLabel><strong>{comment.autor}</strong></StoreProfileLink>
-                  {comment.autorEsComprador && <span className="as-tag">Comprador</span>}
-                  <small>{timeAgo(comment.createdAt)}</small>
-                </div>
-                <p>{comment.texto}</p>
-                {(repliesByQuestion[comment.id] || []).map((reply) => (
-                  <div key={reply.id} className="as-reply">
-                    <div className="as-comment-head">
-                      <strong>{reply.autor}</strong>
-                      <span className="as-tag">Respuesta del cliente</span>
-                      <small>{timeAgo(reply.createdAt)}</small>
-                    </div>
-                    <p>{reply.texto}</p>
-                  </div>
-                ))}
-                {isCreator && isOpen && !comment.autorEsComprador && comment.respondeAId == null && (
-                  replyingId === comment.id ? (
-                    <form className="as-reply-form" onSubmit={(event) => submitReply(event, comment)}>
-                      <input type="text" autoFocus value={replyText} onChange={(e) => setReplyText(e.target.value)} maxLength={MAX_LENGTH} placeholder="Escribe tu respuesta…" aria-label={`Responder a ${comment.autor}`} />
-                      <button type="submit" className="as-btn-primary" disabled={sending || !replyText.trim()}><Send size={14} /> Responder</button>
-                      <button type="button" className="as-reply-cancel" onClick={() => setReplyingId(null)}>Cancelar</button>
-                    </form>
-                  ) : (
-                    <button type="button" className="as-reply-btn" onClick={() => { setReplyingId(comment.id); setReplyText(''); }}>
-                      {(repliesByQuestion[comment.id] || []).length === 0 ? 'Responder' : 'Agregar otra respuesta'}
-                    </button>
-                  )
-                )}
+          <li key={latest.id} className="as-comment">
+            <StoreProfileLink storeId={commentStoreId(latest, quotes)} name={latest.autor}>
+              <AuctionAvatar className="as-comment-avatar" src={latest.autorFotoUrl} name={latest.autor} isStore={latest.autorEsTienda} />
+            </StoreProfileLink>
+            <div className="as-comment-body">
+              <div className="as-comment-head">
+                <StoreProfileLink storeId={commentStoreId(latest, quotes)} name={latest.autor} showLabel><strong>{latest.autor}</strong></StoreProfileLink>
+                {isReply ? <span className="as-tag">Respuesta del cliente</span> : latest.autorEsComprador && <span className="as-tag">Comprador</span>}
+                <small>{timeAgo(latest.createdAt)}</small>
               </div>
-            </li>
-          ))}
+              <p>{latest.texto}</p>
+              {isCreator && isOpen && unansweredQuestion && (
+                <button type="button" className="as-reply-btn" onClick={() => setAllOpen(true)}>Responder</button>
+              )}
+            </div>
+          </li>
         </ul>
       )}
-      {!loading && ordered.length > VISIBLE_COMMENTS && (
-        <button type="button" className="as-more" onClick={() => setShowAll((value) => !value)} aria-expanded={showAll}>
-          {showAll ? 'Ver menos comentarios' : `Ver más comentarios (${hiddenCount})`}
+
+      {!loading && comments.length > 1 && (
+        <button type="button" className="as-more" onClick={() => setAllOpen(true)}>
+          Ver más comentarios ({comments.length - 1})
         </button>
+      )}
+
+      {allOpen && (
+        <AuctionQuestionsModal
+          auctionId={auctionId}
+          title={title}
+          eyebrow={isCreator ? 'Preguntas a tu búsqueda' : 'Comentarios de la búsqueda'}
+          canReply={isCreator && isOpen}
+          onClose={() => {
+            setAllOpen(false);
+            getAuctionComments(auctionId).then((data) => setComments(Array.isArray(data) ? data : [])).catch(() => {});
+          }}
+        />
       )}
     </section>
   );
