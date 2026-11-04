@@ -28,6 +28,7 @@ import AuctionsPage from '../pages/AuctionsPage';
 import CatalogPage from '../pages/CatalogPage';
 import { useIsMobile } from '../hooks/useIsMobile';
 import ProfileAuctionManagementPanel from './ProfileAuctionManagementPanel';
+import ProfileMyAuctions from './ProfileMyAuctions';
 import ProfileCatalogPanel from './ProfileCatalogPanel';
 import ProfileMyQuestionsPanel from './ProfileMyQuestionsPanel';
 import ProfileStoreSummaryPanel from './ProfileStoreSummaryPanel';
@@ -1847,7 +1848,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               {/* Se monta cuando la URL ya es /perfil/repuestos: el catálogo escribe sus filtros en la URL y con la ruta vieja la devolvía a la pestaña anterior. */}
               {activeTab === 'repuestos' && location.pathname.endsWith('/repuestos') && <CatalogPage />}
               {activeTab === 'buscan' && <AuctionsPage embedded initialTab="MURAL" />}
-              {activeTab === 'subastas' && <AuctionsPage embedded initialTab="MIS" />}
+              {activeTab === 'subastas' && (isMobileView ? <AuctionsPage embedded initialTab="MIS" /> : <ProfileMyAuctions />)}
               {activeTab === 'gestion_subastas' && isSeller && <ProfileAuctionManagementPanel />}
 
               {activeTab === 'mis_preguntas' && (

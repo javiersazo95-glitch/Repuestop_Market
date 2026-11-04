@@ -526,8 +526,7 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
     </>
   );
 
-  // Dentro del perfil (escritorio) el espacio es angosto: se usa la misma lista de las tarjetas anchas del celular, con los filtros en cajón.
-  if (isMobile || embedded) {
+  if (isMobile) {
     return (
       <>
         <AuctionsListMobile
