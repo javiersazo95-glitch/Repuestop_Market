@@ -12,7 +12,7 @@ import {
   isValidPlate, normalizePlate, lookupVehicleByPlate, formatVehicleLabel, getRecentPlates, addRecentPlate
 } from '../../utils/vehicleLookup';
 import {
-  buildTallerSuggestionIndex, matchTallerSuggestions, tallerMatchesSearch, normalizeSearchText, tallerServiceNames,
+  buildTallerSuggestionIndex, matchTallerSuggestions, searchTalleres, normalizeSearchText, tallerServiceNames,
   matchingServices
 } from '../../utils/tallerSearch';
 import { useAuth } from '../../context/AuthContext';
@@ -341,7 +341,7 @@ export default function TalleresDirectoryView() {
     let result = [...talleres];
 
     if (searchQuery.trim()) {
-      result = result.filter((taller) => tallerMatchesSearch(taller, searchQuery));
+      result = searchTalleres(result, searchQuery);
     }
     if (selectedCategory !== 'TODAS') {
       result = result.filter((taller) => taller.categories.includes(selectedCategory));

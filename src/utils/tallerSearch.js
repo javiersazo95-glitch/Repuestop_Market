@@ -80,7 +80,6 @@ export function tallerMatchesSearch(taller, query) {
 
   const haystack = [
     taller.name,
-    taller.description,
     taller.commune,
     ...tallerServiceNames(taller),
     ...(taller.specialistBrands || []),
@@ -110,4 +109,21 @@ export function matchingServices(taller, terms = []) {
     const name = normalizeSearchText(service.name);
     return wanted.some((words) => words.every((word) => name.includes(word)));
   });
+}
+
+/**
+ * Talleres que responden a lo escrito en el buscador. Si lo escrito es un servicio ("cambio de aceite") salen SOLO los
+ * talleres que lo ofrecen (en su nombre o en lo que incluye): antes tambien aparecian los que solo coincidian por su
+ * descripcion, nombre, comuna o marcas, sin ofrecer el servicio. Si ningun taller ofrece algo asi, se busca por su nombre,
+ * comuna o marcas, para que seguir buscando un taller por su nombre funcione. Misma regla que la app.
+ */
+export function searchTalleres(talleres, query) {
+  if (!normalizeSearchText(query)) return talleres;
+  const words = normalizeSearchText(query).split(/\s+/).filter((word) => word.length >= 3).map(singular);
+  const offers = (taller) => matchingServices(taller, [query]).length > 0
+    || (words.length > 0 && (taller.services || []).some((service) => (service.includes || [])
+      .some((item) => words.every((word) => normalizeSearchText(item).includes(word)))));
+  const offering = talleres.filter(offers);
+  if (offering.length > 0) return offering;
+  return talleres.filter((taller) => tallerMatchesSearch(taller, query));
 }
