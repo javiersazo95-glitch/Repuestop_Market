@@ -610,3 +610,9 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-location-line .ft-link { margin-left: auto; }
 
 .ft-recent-plates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+
+/* Formularios de falla y de encargo: cada sección es una tarjeta blanca sobre fondo gris suave. */
+.ft-modal.ft-form { background: #f4f6f9; }
+.ft-modal.ft-form .ft-section,
+.ft-modal.ft-form > .ft-section:first-of-type { background: #fff; border: 1px solid var(--ft-border); border-radius: 14px; padding: 16px; }
+.ft-modal.ft-form .ft-vehicle-step { background: #f7f9fb; }
