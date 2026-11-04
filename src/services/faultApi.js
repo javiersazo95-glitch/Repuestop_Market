@@ -10,6 +10,11 @@ export async function getOpenFaults() {
   return fetchApi('/fallas-automotrices');
 }
 
+/** Cifras del día del mural (abiertas, nuevas hoy, diagnósticos hoy): públicas, las mismas que muestra la app. */
+export async function getFaultMetrics() {
+  return fetchApi('/fallas-automotrices/metricas', { anonymous: true });
+}
+
 export async function getFaultCategories() {
   return fetchApi('/fallas-automotrices/categorias', { anonymous: true });
 }

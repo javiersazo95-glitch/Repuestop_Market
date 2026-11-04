@@ -140,7 +140,12 @@ export function notificationTargetPath(notification, context = {}) {
   if (!route) return null;
   // Búsqueda de repuestos: el aviso trae `/subastas/{id}` con el id ya incluido en la ruta.
   const auctionMatch = /^\/subastas\/(\d+)$/.exec(route);
-  if (auctionMatch) return auctionDetailPath(auctionMatch[1]);
+  if (auctionMatch) {
+    // Aviso de una oferta nueva: `oferta` abre directo el detalle de esa oferta (como en la app).
+    const offerId = notification?.targetParams?.oferta;
+    const base = auctionDetailPath(auctionMatch[1]);
+    return /^\d+$/.test(String(offerId ?? '')) ? `${base}?oferta=${offerId}` : base;
+  }
   // Fallas automotrices: el aviso trae `/fallas/{id}` (nueva falla, diagnostico de un taller o respuesta del cliente).
   const faultMatch = /^\/fallas\/(\d+)$/.exec(route);
   if (faultMatch) return faultDetailPath(faultMatch[1]);

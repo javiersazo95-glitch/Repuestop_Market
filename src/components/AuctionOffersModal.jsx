@@ -129,8 +129,8 @@ function DeliveryBox({ quote }) {
   );
 }
 
-function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, confirming, busy, onAskConfirm, onCancel, onAccept, onReject, compact = false }) {
-  const [expanded, setExpanded] = useState(false);
+function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, confirming, busy, onAskConfirm, onCancel, onAccept, onReject, compact = false, focused = false }) {
+  const [expanded, setExpanded] = useState(focused);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -386,7 +386,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
  * (qué repuestos incluye y cuáles faltan). El comprador acepta las que le sirven, completas o parciales; lo
  * que no se adjudica sigue disponible para otras tiendas. Lo aceptado se paga junto desde "Tu pedido".
  */
-export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChanged, onOpenPurchase, fullScreen = false }) {
+export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChanged, onOpenPurchase, fullScreen = false, focusOfferId = null }) {
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -654,6 +654,7 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
                   onAccept={() => handleAccept(quote)}
                   onReject={(reason) => handleReject(quote, reason)}
                   compact={fullScreen}
+                  focused={focusOfferId === quote.id}
                 />
               );
             })}

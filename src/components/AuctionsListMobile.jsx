@@ -5,7 +5,6 @@ import {
 } from 'lucide-react';
 import SectionHero, { HeroChip } from './ui/SectionHero';
 import { resolveMediaUrl } from '../services/api';
-import { auctionTrackingCode } from '../services/auctionApi';
 import { pendingSummary } from '../utils/auctionPending';
 import { useAuth } from '../context/AuthContext';
 import { needNews, newOffersCount } from '../utils/trackingNews';
@@ -66,7 +65,6 @@ function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = nu
             </button>
           </div>
           <h3 className="am-card-title">{auction.repuestoSolicitado}</h3>
-          <span className="am-card-code">Código: {auctionTrackingCode(auction.id)}</span>
           <div className="am-card-info">
             {open && <p className={`am-card-timeline is-${status.key}`}><Clock size={14} /><span>{formatRemaining(status.remaining)} restantes</span></p>}
             <p><Car size={14} /><span>{vehicle}{motor ? ` · Motor ${motor}` : ''}</span></p>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { CarFront, ClipboardList, Plus, Stethoscope } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { ClipboardList, Plus, Stethoscope, Wrench } from 'lucide-react';
+import { getFaultMetrics } from '../services/faultApi';
 import FaultsHero from '../components/faults/FaultsHero';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { Link, useNavigate } from 'react-router-dom';
@@ -19,6 +20,15 @@ export default function FaultsPage() {
   const isWorkshop = role === 'WORKSHOP';
   const [creating, setCreating] = useState(false);
   const [metrics, setMetrics] = useState({ loading: true, failed: false, faults: 0, withoutDiagnosis: 0, immobilized: 0 });
+  // Cifras del día (igual que la app); si el servidor aún no las entrega, las abiertas salen de la lista.
+  const [daily, setDaily] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => getFaultMetrics().then((data) => { if (!cancelled) setDaily(data); }).catch(() => {});
+    load();
+    const timer = setInterval(load, 60000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, []);
   const formatMetric = (value) => new Intl.NumberFormat('es-CL').format(value);
   const metricValue = (value) => metrics.loading || metrics.failed ? '—' : formatMetric(value);
 
@@ -48,15 +58,15 @@ export default function FaultsPage() {
         <section className="ft-index-value-row" aria-label="Cómo funciona Fallas automotrices">
           <article>
             <span className="ft-index-value-icon"><ClipboardList size={19} /></span>
-            <span><strong>{metricValue(metrics.faults)}</strong><small>fallas abiertas</small></span>
+            <span><strong>{daily ? formatMetric(daily.fallasAbiertas) : metricValue(metrics.faults)}</strong><small>fallas abiertas</small></span>
           </article>
           <article>
             <span className="ft-index-value-icon"><Stethoscope size={19} /></span>
-            <span><strong>{metricValue(metrics.withoutDiagnosis)}</strong><small>fallas sin diagnóstico</small></span>
+            <span><strong>{daily ? formatMetric(daily.registradasHoy) : '—'}</strong><small>nuevas hoy</small></span>
           </article>
           <article>
-            <span className="ft-index-value-icon"><CarFront size={19} /></span>
-            <span><strong>{metricValue(metrics.immobilized)}</strong><small>vehículos inmovilizados</small></span>
+            <span className="ft-index-value-icon"><Wrench size={19} /></span>
+            <span><strong>{daily ? formatMetric(daily.diagnosticosHoy) : '—'}</strong><small>diagnósticos hoy</small></span>
           </article>
         </section>
       </div>

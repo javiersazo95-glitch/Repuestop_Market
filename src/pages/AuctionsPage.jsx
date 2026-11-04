@@ -1,11 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, ArrowUpDown, CalendarDays, CalendarPlus, ChevronDown, ChevronLeft, ChevronRight, Clock,
   FileText, Gavel, LayoutGrid, List, Lock, MapPin, MessageCircle, Package, Plus, RotateCcw, Search,
   SlidersHorizontal, Tag, X,
 } from 'lucide-react';
-import { auctionTrackingCode, getAuctionMetrics, getAuctions, getMyAuctionRequests, getPendingQuestionCounts } from '../services/auctionApi';
+import { getAuctionMetrics, getAuctions, getMyAuctionRequests, getPendingQuestionCounts } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
 import { auctionDetailPath, ROUTES } from '../routes/paths';
 import CreateAuctionModal from '../components/CreateAuctionModal';
@@ -159,7 +159,6 @@ function AuctionRow({ auction, status, now, onOpen, pendingQuestions = null }) {
 
       <div className="aw-card-main">
         <h3 className="aw-card-title">{auction.repuestoSolicitado}</h3>
-        <p className="aw-card-code">Código: {auctionTrackingCode(auction.id)}</p>
         {detail && <p className="aw-card-vehicle">{detail}</p>}
         <div className="aw-card-meta">
           <span><CalendarDays size={14} /> {formatPublished(auction.createdAt, now)}</span>
@@ -222,6 +221,8 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
   const canSeeMine = isLoggedIn && (role === 'BUYER' || role === 'WORKSHOP');
   const [tab, setTab] = useState(initialTab);
   const [myAuctions, setMyAuctions] = useState([]);
+  const [mineLoaded, setMineLoaded] = useState(false);
+  const initialTabApplied = useRef(false);
   const [pendingQuestions, setPendingQuestions] = useState({});
   const [sortBy, setSortBy] = useState('RECIENTES');
   const [view, setView] = useState('list');
@@ -256,12 +257,18 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
       const [list, pending] = await Promise.all([getMyAuctionRequests(), getPendingQuestionCounts().catch(() => ({}))]);
       setMyAuctions(Array.isArray(list) ? list : []);
       setPendingQuestions(pending && typeof pending === 'object' ? pending : {});
-    } catch { /* sin la lista propia, la pestaña queda vacía; el mural sigue */ }
+    } catch { /* sin la lista propia, la pestaña queda vacía; el mural sigue */ } finally { setMineLoaded(true); }
   }, [canSeeMine]);
 
   useEffect(() => { loadAuctions(); loadMetrics(); }, [loadAuctions, loadMetrics]);
   useEffect(() => { loadMine(); }, [loadMine]);
   useEffect(() => { if (!canSeeMine) setTab('MURAL'); }, [canSeeMine]);
+  // Una sola vez, al conocer sus búsquedas: quien ya publicó abre en lo suyo (solo si nadie pidió otra pestaña).
+  useEffect(() => {
+    if (initialTabApplied.current || !canSeeMine || !mineLoaded) return;
+    initialTabApplied.current = true;
+    if (initialTab === 'MURAL' && myAuctions.length > 0) setTab('MIS');
+  }, [canSeeMine, mineLoaded, myAuctions, initialTab]);
 
   // "Actualizadas en tiempo real": la lista se refresca sola y los cronómetros avanzan cada minuto.
   useEffect(() => {
@@ -347,10 +354,10 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
     };
     return [...list].sort(sorters[sortBy]);
   }, [tabMatches, scope, sortBy]);
-  const tabs = canSeeMine ? [
-    { value: 'MURAL', label: 'Mural público', count: muralMatches.length },
-    { value: 'MIS', label: 'Mis búsquedas', count: mineMatches.length },
-  ] : null;
+  // Sin búsquedas propias el mural va primero (muestra que hay actividad); con búsquedas, lo propio abre la lista.
+  const tabMural = { value: 'MURAL', label: 'Mural público', count: muralMatches.length };
+  const tabMine = { value: 'MIS', label: 'Mis búsquedas', count: mineMatches.length };
+  const tabs = canSeeMine ? (myAuctions.length > 0 ? [tabMine, tabMural] : [tabMural, tabMine]) : null;
 
   // Métricas generales de búsquedas de repuestos: no cambian con los filtros del listado.
   const activeCount = metrics?.solicitudesActivas ?? rows.filter(({ status }) => status.key !== 'finalizada').length;

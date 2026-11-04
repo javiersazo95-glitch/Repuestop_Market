@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { availabilityLabel } from '../utils/availability';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, Gavel,
   Bookmark, BookmarkCheck, ChevronDown, Star, HelpCircle, Pencil, RotateCcw, XCircle, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
@@ -140,6 +140,8 @@ function QuoteRow({ quote, index, onViewPhoto }) {
 
 export default function AuctionDetailPage() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const focusOfferId = Number(searchParams.get('oferta')) || null;
   const navigate = useNavigate();
   const { user, role } = useAuth();
   const isMobile = useIsMobile();
@@ -208,6 +210,15 @@ export default function AuctionDetailPage() {
   useEffect(() => {
     loadDetail();
   }, [id]);
+
+  // Aviso de oferta nueva (`?oferta=ID`): al cargar la búsqueda, el comprador cae directo en esa oferta.
+  const focusOpened = useRef(false);
+  useEffect(() => {
+    if (focusOfferId && auction?.esCreador && !focusOpened.current) {
+      focusOpened.current = true;
+      setIsOffersOpen(true);
+    }
+  }, [focusOfferId, auction?.esCreador]);
 
   // Cuenta regresiva en vivo.
   useEffect(() => {
@@ -386,7 +397,7 @@ export default function AuctionDetailPage() {
                           {miCotizacion ? <Pencil size={16} /> : <Gavel size={16} />} {miCotizacion ? 'Modificar oferta' : 'Enviar oferta'}
                         </button>
                       )}
-                      <p className="av-code">Código: <strong>{auctionTrackingCode(auction.id)}</strong></p>
+                      {esCreador && <p className="av-code">Código: <strong>{auctionTrackingCode(auction.id)}</strong></p>}
                     </div>
                     <div className="av-title-actions">
                       <ShareLinkButton
@@ -648,6 +659,7 @@ export default function AuctionDetailPage() {
       {esCreador && (
         <AuctionOffersModal
           isOpen={isOffersOpen}
+          focusOfferId={focusOfferId}
           auctionId={auction.id}
           onClose={() => setIsOffersOpen(false)}
           onChanged={loadDetail}
