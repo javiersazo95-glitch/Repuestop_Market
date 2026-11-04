@@ -7,6 +7,7 @@ import { acceptAuctionOffer, markAuctionOfferSeen, rejectAuctionOffer } from '..
 import { resolveMediaUrl } from '../../services/api';
 import { auctionCheckoutPath } from '../../routes/paths';
 import ConfirmDialog from '../ConfirmDialog';
+import StoreProfileLink from '../StoreProfileLink';
 import { TrackingCells, TrackingTag } from './TrackingDetail';
 
 const DELIVERY_ORDER = ['Mismo día / Retiro inmediato', '24 horas', '48 horas', '3 a 5 días hábiles', 'A coordinar con cliente'];
@@ -92,7 +93,7 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
           <div className="ofd-store">
             <span className="ofd-logo">{quote.tiendaLogoUrl ? <img src={resolveMediaUrl(quote.tiendaLogoUrl)} alt="" /> : (quote.nombreTienda || 'T').slice(0, 1)}</span>
             <div>
-              <strong>{quote.nombreTienda}</strong>
+              <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda} showLabel><strong>{quote.nombreTienda}</strong></StoreProfileLink>
               <small><Star size={12} /> {quote.tiendaRating ? `Evaluación ${Number(quote.tiendaRating).toFixed(1)} de 5` : 'Sin evaluaciones aún'}</small>
             </div>
             <TrackingTag label={status.label} tone={status.tone} />

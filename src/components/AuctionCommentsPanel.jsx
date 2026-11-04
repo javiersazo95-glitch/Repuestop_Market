@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MessageCircle, Send } from 'lucide-react';
 import AuctionAvatar from './AuctionAvatar';
+import StoreProfileLink, { commentStoreId } from './StoreProfileLink';
 import { getAuctionComments, postAuctionComment } from '../services/auctionApi';
 import { useAuth } from '../context/AuthContext';
 import '../styles/auction-social.css';
@@ -19,7 +20,7 @@ function timeAgo(iso) {
 }
 
 /** Comentarios públicos de la búsqueda: las tiendas preguntan para afinar la cotización. */
-export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = true, isCreator = false }) {
+export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = true, isCreator = false, quotes = [] }) {
   const { isLoggedIn } = useAuth();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -134,10 +135,12 @@ export default function AuctionCommentsPanel({ auctionId, isOpen, canComment = t
         <ul className="as-comment-list">
           {ordered.map((comment) => (
             <li key={comment.id} className="as-comment">
-              <AuctionAvatar className="as-comment-avatar" src={comment.autorFotoUrl} name={comment.autor} isStore={comment.autorEsTienda} />
+              <StoreProfileLink storeId={commentStoreId(comment, quotes)} name={comment.autor}>
+                <AuctionAvatar className="as-comment-avatar" src={comment.autorFotoUrl} name={comment.autor} isStore={comment.autorEsTienda} />
+              </StoreProfileLink>
               <div className="as-comment-body">
                 <div className="as-comment-head">
-                  <strong>{comment.autor}</strong>
+                  <StoreProfileLink storeId={commentStoreId(comment, quotes)} name={comment.autor} showLabel><strong>{comment.autor}</strong></StoreProfileLink>
                   {comment.autorEsComprador && <span className="as-tag">Comprador</span>}
                   <small>{timeAgo(comment.createdAt)}</small>
                 </div>

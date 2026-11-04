@@ -10,6 +10,7 @@ import { faultDetailPath } from '../../routes/paths';
 import { resolveMediaUrl } from '../../services/api';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import CreateFaultModal from './CreateFaultModal';
+import MyFaultActions from './MyFaultActions';
 import FaultsHero from './FaultsHero';
 import TrackingDetail from '../tracking/TrackingDetail';
 import FallaTrackingDetail, { DiagnosticoTrackingDetail } from '../tracking/FallaTrackingDetail';
@@ -61,7 +62,7 @@ const diagnosisCountOf = (fault) => Number(
 ) || 0;
 
 /** Tarjeta de la falla en el celular: la de la app (vehículo, la falla, contexto y diagnósticos, separados por líneas). */
-function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking }) {
+function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking, ownerActions }) {
   const symptoms = (fault.sintomas || []).slice(0, 3);
   return (
     <article className="ftm-card">
@@ -133,12 +134,13 @@ function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, on
           </div>
         );
       })()}
+      {ownerActions && <div className="ftm-tracking"><MyFaultActions fault={fault} diagnosisCount={diagnosisCount} onChanged={ownerActions.onChanged} /></div>}
     </article>
   );
 }
 
 /** Tarjeta de una falla del mural. Tambien la usa Favoritos, con `onToggleSaved` para quitarla de los guardados. */
-export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = false, onToggleSaved, tracking = null }) {
+export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = false, onToggleSaved, tracking = null, ownerActions = null }) {
   const place = [fault.comuna, fault.region].filter(Boolean).join(', ');
   const vehicle = [fault.marca, fault.modelo].filter(Boolean).join(' ') || fault.vehiculo;
   const vehicleData = [fault.anio, fault.motor || fault.combustible].filter(Boolean);
@@ -153,7 +155,7 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
   const mobility = fault.seMueve === true ? 'Sí, se puede mover' : fault.seMueve === false ? 'No se puede mover' : 'No informado';
 
   if (isMobile) {
-    return <FaultCardMobile {...{ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking }} />;
+    return <FaultCardMobile {...{ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking, ownerActions }} />;
   }
 
   return (
@@ -194,6 +196,7 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
         <Link to={faultDetailPath(fault)} state={{ fromMural }} className="ft-btn ft-btn-primary ft-detail-button" aria-label={`Ver detalle de ${vehicle}`}>
           Ver detalle <ChevronRight size={16} />
         </Link>
+        {ownerActions && <MyFaultActions fault={fault} diagnosisCount={diagnosisCount} onChanged={ownerActions.onChanged} />}
         {onToggleSaved && (
           <button type="button" className={`ft-btn ft-btn-outline ${isSaved ? 'is-saved' : ''}`} aria-pressed={isSaved} onClick={() => onToggleSaved(fault)}>
             <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} /> {isSaved ? 'Guardada' : 'Guardar'}
@@ -341,7 +344,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   const results = loading ? <div className="ft-empty"><Loader2 size={20} className="spin-icon" /> Cargando fallas…</div>
     : error ? <div className="ft-empty" role="alert"><AlertCircle size={20} /><strong>No pudimos cargar las fallas</strong>{error}<br /><button type="button" className="ft-btn ft-btn-outline" onClick={load}>Reintentar</button></div>
       : items.length === 0 ? <div className="ft-empty"><Wrench size={22} /><strong>{empty[0]}</strong>{empty[1]}</div>
-        : <><div className="ft-fault-list">{pageItems.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div><ListPager pagerProps={pagerProps} itemLabel="fallas" /></>;
+        : <><div className="ft-fault-list">{pageItems.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} ownerActions={!isWorkshop && view === 'MINE' ? { onChanged: () => load() } : null} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div><ListPager pagerProps={pagerProps} itemLabel="fallas" /></>;
 
   if (!heading && !mineOnly) {
     const mine = lists[isWorkshop ? 'COMMENTED' : 'MINE'];

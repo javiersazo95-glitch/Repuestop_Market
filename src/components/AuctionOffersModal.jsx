@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { acceptAuctionOffer, getAuctionDetail, markAuctionOfferSeen, rejectAuctionOffer } from '../services/auctionApi';
 import AuctionAvatar from './AuctionAvatar';
+import StoreProfileLink from './StoreProfileLink';
 import AuctionImageViewer from './AuctionImageViewer';
 import { resolveMediaUrl } from '../services/api';
 import { evaluateOffer, shippingClass, suggestOffer } from '../utils/auctionOfferFit';
@@ -172,7 +173,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
           <div className="ao-row-store" role="cell">
             <AuctionAvatar className="ao-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
             <div>
-              <strong title={quote.nombreTienda}>{quote.nombreTienda}</strong>
+              <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda} showLabel><strong title={quote.nombreTienda}>{quote.nombreTienda}</strong></StoreProfileLink>
               <small><Star size={11} className={quote.tiendaRating ? 'is-rated' : ''} /> {quote.tiendaRating ? Number(quote.tiendaRating).toFixed(1) : 'Sin evaluaciones'} · {formatShortDate(quote.fechaEnvio)}</small>
             </div>
           </div>
@@ -221,7 +222,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
           <AuctionAvatar className="ao-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
         )}
         <div className="ao-offer-store">
-          <strong>{quote.nombreTienda}</strong>
+          <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda} showLabel><strong>{quote.nombreTienda}</strong></StoreProfileLink>
           <small className="ao-offer-meta">
             <span><Star size={12} className={quote.tiendaRating ? 'is-rated' : ''} /> {quote.tiendaRating ? `Evaluación ${Number(quote.tiendaRating).toFixed(1)} de 5` : 'Sin evaluaciones aún'}</span>
             <span>Oferta enviada el {formatDateTime(quote.fechaEnvio)}</span>

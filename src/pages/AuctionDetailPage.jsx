@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { availabilityLabel } from '../utils/availability';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import StoreProfileLink from '../components/StoreProfileLink';
 import {
   AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, Gavel,
   Bookmark, BookmarkCheck, ChevronDown, Star, HelpCircle, Pencil, RotateCcw, XCircle, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
@@ -94,7 +95,7 @@ function QuoteRow({ quote, index, onViewPhoto }) {
         <span className="av-offer-rank">{index + 1}</span>
         <StoreAvatar quote={quote} onViewPhoto={onViewPhoto} />
         <div className="av-offer-info">
-          <strong>{quote.nombreTienda || 'Tienda verificada'}</strong>
+          <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda} showLabel><strong>{quote.nombreTienda || 'Tienda verificada'}</strong></StoreProfileLink>
           <QuoteMeta quote={quote} />
           <small>{quote.aceptada ? <><Trophy size={11} /> Oferta aceptada</> : <><Lock size={11} /> Oferta confidencial</>}</small>
         </div>
@@ -112,7 +113,7 @@ function QuoteRow({ quote, index, onViewPhoto }) {
       <div className="av-offer-top">
         <StoreAvatar quote={quote} onViewPhoto={onViewPhoto} />
         <div className="av-offer-info">
-          <strong>{quote.nombreTienda}</strong>
+          <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda} showLabel><strong>{quote.nombreTienda}</strong></StoreProfileLink>
           <QuoteMeta quote={quote} />
         </div>
         <span className="av-offer-price">{formatCLP(valid.length ? valid.reduce((sum, line) => sum + Number(line.precioTotal || 0), 0) : (quote.precioFinal || quote.precio))}</span>
@@ -474,7 +475,7 @@ export default function AuctionDetailPage() {
 
             <div className={`av-fold av-fold-comments ${openFolds.comments ? 'is-open' : ''}`}>
               <button type="button" className="av-fold-toggle" onClick={() => toggleFold('comments')} aria-expanded={Boolean(openFolds.comments)} aria-label="Mostrar u ocultar los comentarios"><ChevronDown size={18} /></button>
-              <AuctionCommentsPanel auctionId={auction.id} isOpen={isOpen} canComment={isSeller || esCreador} isCreator={Boolean(esCreador)} />
+              <AuctionCommentsPanel auctionId={auction.id} isOpen={isOpen} canComment={isSeller || esCreador} isCreator={Boolean(esCreador)} quotes={cotizaciones} />
             </div>
           </div>
 

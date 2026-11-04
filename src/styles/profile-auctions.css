@@ -66,3 +66,8 @@
 .pa-q-badge { position: absolute; top: -7px; right: -7px; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 999px; background: #d92d20; color: #fff; font-size: 11px; font-weight: 800; line-height: 20px; text-align: center; box-shadow: 0 0 0 2px #fff; }
 .pa-q-banner { display: flex; align-items: center; gap: 10px; margin: 0 0 14px; padding: 10px 14px; border: 1px solid #f5d38a; border-radius: 12px; background: #fff8e6; color: #7a4d00; font-size: 13px; }
 .pa-q-banner svg { flex: 0 0 auto; }
+
+/* Acciones de una falla propia (Mis fallas): mismas de Mis búsquedas. */
+.mfa { display: grid; gap: 8px; }
+.mfa-actions { flex-wrap: wrap; }
+.mfa .pa-btn-icon { position: relative; }

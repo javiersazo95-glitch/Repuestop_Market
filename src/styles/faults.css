@@ -610,3 +610,16 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-location-line .ft-link { margin-left: auto; }
 
 .ft-recent-plates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+
+/* Registros de diagnóstico visibles para cualquier perfil (invitado, comprador o taller): existe el registro, no su detalle. */
+.fdt-records { margin-top: 12px; display: grid; gap: 8px; }
+.fdt-records h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: #166534; }
+.fdt-records ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.fdt-record { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #bbf7d0; border-radius: 12px; background: #f0fdf4; color: inherit; text-decoration: none; }
+.fdt-record:hover { background: #e6fbed; }
+.fdt-record-body { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.fdt-record-body strong { font-size: 13px; color: #14532d; }
+.fdt-record-body small { color: #4b6a58; font-size: 11.5px; }
+.fdt-record em { font-style: normal; padding: 2px 8px; border-radius: 999px; background: #15803d; color: #fff; font-size: 11px; font-weight: 700; }
+.fdt-record-lock { display: inline-flex; align-items: center; gap: 4px; color: #64748b; font-size: 11.5px; white-space: nowrap; }
+@media (max-width: 640px) { .fdt-record-lock { display: none; } }

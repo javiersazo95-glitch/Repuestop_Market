@@ -393,10 +393,10 @@ export default function FaultDetailPage() {
             )}
             <section className="fdt fdt-diag" aria-label="Diagnósticos de talleres">
               <div className="fdt-banner">
-                <span className="fdt-count">{diagnostics.length}</span>
+                <span className="fdt-count">{diagnosisCount}</span>
                 <div className="fdt-banner-text">
-                  <h2>{diagnostics.length === 1 ? 'Diagnóstico de taller' : 'Diagnósticos de talleres'}</h2>
-                  <small>{fault.propia ? 'Compáralos y acepta el que te convenza para agendar.' : isWorkshop ? 'Tu diagnóstico lo ven solo tú y el cliente.' : 'Cada diagnóstico es privado entre el cliente y el taller.'}</small>
+                  <h2>{diagnosisCount === 1 ? 'Diagnóstico de taller' : 'Diagnósticos de talleres'}</h2>
+                  <small>{fault.propia ? 'Compáralos y acepta el que te convenza para agendar.' : isWorkshop ? 'Tu diagnóstico lo ven solo tú y el cliente. De los demás talleres solo se ve que existe un registro.' : 'Cada diagnóstico es privado entre el cliente y el taller. Aquí ves qué talleres ya diagnosticaron.'}</small>
                 </div>
                 {diagnostics.length > 0 && (
                   <span className="fdt-stack" aria-hidden="true">
@@ -405,9 +405,11 @@ export default function FaultDetailPage() {
                 )}
                 <span className="fdt-private"><Lock size={13} /> Privado</span>
               </div>
-              <p className="fdt-note"><Lock size={14} /> {fault.propia ? 'Solo tú y el taller que lo escribió ven cada diagnóstico.' : isWorkshop ? 'Los diagnósticos de otros talleres no se muestran.' : 'El detalle de cada diagnóstico solo lo ve quien publicó la falla.'}</p>
+              <p className="fdt-note"><Lock size={14} /> {fault.propia ? 'Solo tú y el taller que lo escribió ven cada diagnóstico.' : 'El detalle de cada diagnóstico solo lo ve quien publicó la falla y el taller que lo escribió.'}</p>
               {diagnostics.length === 0 ? (
-                <div className="fdt-empty"><Wrench size={22} /><strong>{!fault.propia && !isWorkshop && publicDiagnoses.length > 0 ? `${publicDiagnoses.length} ${publicDiagnoses.length === 1 ? 'taller ya diagnosticó' : 'talleres ya diagnosticaron'} esta falla` : 'Aún no hay diagnósticos'}</strong><p>{!fault.propia && !isWorkshop && publicDiagnoses.length > 0 ? 'El detalle solo lo ve quien la publicó.' : 'Cuando un taller la diagnostique, lo verás aquí.'}</p></div>
+                !fault.propia && publicDiagnoses.length > 0 ? null : (
+                  <div className="fdt-empty"><Wrench size={22} /><strong>Aún no hay diagnósticos</strong><p>Cuando un taller la diagnostique, lo verás aquí.</p></div>
+                )
               ) : (
                 <ul className="fdt-list">
                   {diagnostics.map((diagnosis) => {
@@ -441,6 +443,24 @@ export default function FaultDetailPage() {
                     );
                   })}
                 </ul>
+              )}
+              {!fault.propia && publicDiagnoses.length > 0 && (
+                <div className="fdt-records" aria-label="Talleres que ya diagnosticaron">
+                  <h3><Wrench size={14} /> {publicDiagnoses.length === 1 ? '1 taller ya diagnosticó esta falla' : `${publicDiagnoses.length} talleres ya diagnosticaron esta falla`}</h3>
+                  <ul>
+                    {publicDiagnoses.map((item) => (
+                      <li key={`${item.tallerId}-${item.createdAt}`}>
+                        <Link className="fdt-record" to={workshopPath(item.tallerId)} aria-label={`Ver el perfil del taller ${item.nombre}`}>
+                          <span className="ft-thread-avatar"><Wrench size={15} /></span>
+                          <span className="fdt-record-body"><strong>{item.nombre}</strong><small>{[item.comuna, timeSince(item.createdAt)].filter(Boolean).join(' · ')}</small><TallerRating rating={item.calificacion} count={item.opiniones} /></span>
+                          {item.aceptado && <em>Aceptado</em>}
+                          <span className="fdt-record-lock"><Lock size={12} /> Detalle privado</span>
+                          <ChevronRight size={15} />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
               {isWorkshop && fault.vigente && <button type="button" className="fdt-cta" onClick={() => setDiagModal(myDiagnosis ? myDiagnosis.id : 'new')}>{myDiagnosis ? 'Ver mi diagnóstico' : 'Agregar diagnóstico'}</button>}
             </section>
