@@ -8,7 +8,7 @@
   background: #f7f9fb; border-radius: 16px; box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3); overflow: hidden; color: #243442;
 }
 .ao-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 18px 22px; background: #fff; border-bottom: 1px solid #dbe6f3; }
-.ao-eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #0056bf; }
+.ao-eyebrow { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #0066ff; }
 .ao-modal-head h2 { margin: 4px 0 0; font-family: var(--font-display, inherit); font-size: 20px; font-weight: 800; color: #0f172a; }
 .ao-modal-head p { margin: 3px 0 0; font-size: 12.5px; color: #5a6b7a; }
 .ao-close { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border: none; border-radius: 50%; background: transparent; color: #5a6b7a; cursor: pointer; }
@@ -27,9 +27,9 @@
 .ao-offer.is-winner { border-color: #86d9a8; box-shadow: 0 0 0 3px #eafbf1; }
 .ao-offer.is-discarded { opacity: 0.72; }
 .ao-offer-head:hover { background: #f5f9ff; }
-.ao-offer-head:focus-visible { outline: 2px solid #0056bf; outline-offset: -2px; }
+.ao-offer-head:focus-visible { outline: 2px solid #0066ff; outline-offset: -2px; }
 .ao-offer-head { cursor: pointer; display: grid; grid-template-columns: auto auto minmax(0, 1fr) auto auto auto; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #e6eaef; background: #fbfcfe; }
-.ao-offer-index { padding: 3px 10px; border-radius: 999px; background: #eaf2ff; color: #00459a; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.ao-offer-index { padding: 3px 10px; border-radius: 999px; background: #eaf2ff; color: #0052cc; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .ao-offer-avatar { width: 40px; height: 40px; font-size: 15px; border: 1px solid #dbe6f3; }
 .ao-offer-store { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .ao-offer-store strong { font-size: 13px; font-weight: 800; color: #0f172a; overflow-wrap: anywhere; }
@@ -41,7 +41,7 @@
 .ao-tag.is-muted { background: #f3f5f7; color: #5a6b7a; }
 .ao-offer-total { text-align: right; display: flex; flex-direction: column; }
 .ao-offer-total small { font-size: 11px; font-weight: 600; color: #5a6b7a; }
-.ao-offer-total strong { font-family: var(--font-display, inherit); font-size: 22px; line-height: 1.15; font-weight: 800; color: #0056bf; }
+.ao-offer-total strong { font-family: var(--font-display, inherit); font-size: 22px; line-height: 1.15; font-weight: 800; color: #0066ff; }
 
 .ao-offer-body { display: flex; flex-direction: column; gap: 14px; padding: 16px 18px; }
 .ao-product { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 10px; background: #f3f5f7; }
@@ -66,8 +66,8 @@
   display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 40px; padding: 0 18px;
   border-radius: 10px; font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; white-space: nowrap;
 }
-.ao-btn-primary { border: none; background: #0056bf; color: #fff; }
-.ao-btn-primary:hover:not(:disabled) { background: #00459a; }
+.ao-btn-primary { border: none; background: #0066ff; color: #fff; }
+.ao-btn-primary:hover:not(:disabled) { background: #0052cc; }
 .ao-btn-outline { border: 1.5px solid #d9e0e7; background: #fff; color: #3b4e5d; }
 .ao-btn-primary:disabled, .ao-btn-outline:disabled { opacity: 0.6; cursor: default; }
 
@@ -90,7 +90,7 @@ i.fit-ok { background: #18a957; } i.fit-warn { background: #f59e0b; } i.fit-bad 
 .ao-offer.fit-ok { border-left: 4px solid #18a957; }
 .ao-offer.fit-warn { border-left: 4px solid #f59e0b; }
 .ao-offer.fit-bad { border-left: 4px solid #d92d20; }
-.ao-tag.is-suggested { background: #eaf2ff; color: #00459a; }
+.ao-tag.is-suggested { background: #eaf2ff; color: #0052cc; }
 .ao-tag.fit-ok { background: #eafbf1; color: #0e7038; }
 .ao-tag.fit-warn { background: #fff7e6; color: #9a5a00; }
 .ao-tag.fit-bad { background: #fff0f0; color: #b42318; }
@@ -123,7 +123,7 @@ i.fit-ok { background: #18a957; } i.fit-warn { background: #f59e0b; } i.fit-bad 
 .ao-preview-checks li.is-warn { background: #fff7e6; color: #9a5a00; }
 .ao-preview-checks li.is-bad { background: #fff0f0; color: #b42318; }
 .ao-preview-checks li.is-neutral { background: #f3f5f7; color: #5a6b7a; }
-.ao-toggle { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 700; color: #0056bf; cursor: pointer; }
+.ao-toggle { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: none; background: none; font-family: inherit; font-size: 12.5px; font-weight: 700; color: #0066ff; cursor: pointer; }
 .ao-toggle svg { transition: transform 0.2s ease; }
 .ao-offer-body { border-top: 1px solid #e6eaef; }
 .ao-offer-head { border-bottom: none; }
@@ -164,14 +164,14 @@ i.fit-ok { background: #18a957; } i.fit-warn { background: #f59e0b; } i.fit-bad 
 .ao-terms { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .ao-pending-banner { display: flex; flex-direction: column; gap: 2px; padding: 10px 14px; border-radius: 10px; background: #fff7e6; border: 1px solid #fde3a7; font-size: 12.5px; color: #6f4a00; }
 .ao-pending-banner strong { color: #9a5a00; }
-.ao-summary-cta { margin-left: auto; padding: 6px 14px; border: none; border-radius: 999px; background: #0056bf; color: #fff; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
-.ao-summary-cta:hover { background: #00459a; }
+.ao-summary-cta { margin-left: auto; padding: 6px 14px; border: none; border-radius: 999px; background: #0066ff; color: #fff; font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.ao-summary-cta:hover { background: #0052cc; }
 .ao-secure { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 12px; color: #5a6b7a; }
 .ao-secure svg { color: #0e7038; flex-shrink: 0; }
 @media (max-width: 760px) { .ao-terms { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
 /* Cómo y desde dónde se entrega la oferta. */
-.ao-delivery { display: flex; align-items: flex-start; gap: 10px; margin: 0 18px 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid #bfd6f7; background: #f5f9ff; color: #0056bf; }
+.ao-delivery { display: flex; align-items: flex-start; gap: 10px; margin: 0 18px 12px; padding: 10px 12px; border-radius: 10px; border: 1px solid #bfd6f7; background: #f5f9ff; color: #0066ff; }
 .ao-delivery svg { flex-shrink: 0; margin-top: 2px; }
 .ao-delivery div { display: flex; flex-direction: column; gap: 2px; }
 .ao-delivery strong { font-size: 13px; color: #243442; }
@@ -202,8 +202,8 @@ i.fit-ok { background: #18a957; } i.fit-warn { background: #f59e0b; } i.fit-bad 
 .ao-modal.is-full .ao-modal-head { align-items: center; padding: 14px 28px; }
 .ao-modal.is-full .ao-modal-head > div { flex: 1; min-width: 0; }
 .ao-modal.is-full .ao-modal-head h2 { font-size: 22px; }
-.ao-back { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; min-height: 40px; padding: 0 14px; border: 1px solid #dbe6f3; border-radius: 10px; background: #fff; font: inherit; font-size: 13px; font-weight: 700; color: #0056bf; cursor: pointer; }
-.ao-back:hover { background: #eaf2ff; border-color: #0056bf; }
+.ao-back { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; min-height: 40px; padding: 0 14px; border: 1px solid #dbe6f3; border-radius: 10px; background: #fff; font: inherit; font-size: 13px; font-weight: 700; color: #0066ff; cursor: pointer; }
+.ao-back:hover { background: #eaf2ff; border-color: #0066ff; }
 .ao-modal.is-full .ao-close { width: 40px; height: 40px; background: #f3f5f7; }
 .ao-modal.is-full .ao-summary { padding: 12px 28px; }
 .ao-modal.is-full .ao-modal-body { width: 100%; max-width: none; box-sizing: border-box; margin: 0; gap: 10px; padding: 14px 24px 28px; }
@@ -221,9 +221,9 @@ i.fit-ok { background: #18a957; } i.fit-warn { background: #f59e0b; } i.fit-bad 
 .ao-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
 .ao-tabs button { min-height: 34px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 12.5px; font-weight: 700; color: #3b4e5d; cursor: pointer; }
 .ao-tabs button:hover { background: #eef3f9; }
-.ao-tabs button.is-active { background: #0056bf; color: #fff; }
+.ao-tabs button.is-active { background: #0066ff; color: #fff; }
 .ao-toolbar select { min-height: 38px; padding: 0 10px; border: 1px solid #dbe3ec; border-radius: 10px; background: #fff; font: inherit; font-size: 12.5px; font-weight: 600; color: #243442; }
-.ao-clear { min-height: 34px; padding: 0 10px; border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 700; color: #0056bf; cursor: pointer; text-decoration: underline; }
+.ao-clear { min-height: 34px; padding: 0 10px; border: 0; background: none; font: inherit; font-size: 12.5px; font-weight: 700; color: #0066ff; cursor: pointer; text-decoration: underline; }
 .ao-modal.is-full { --ao-cols: 28px minmax(170px, 1.1fr) minmax(220px, 1.4fr) 100px minmax(108px, 0.8fr) minmax(120px, 1fr) minmax(88px, 0.6fr) 150px 180px 100px; }
 .ao-table-head, .ao-row { display: grid; grid-template-columns: var(--ao-cols); align-items: center; column-gap: 12px; }
 .ao-table-head { position: sticky; top: -14px; z-index: 2; padding: 9px 14px; border: 1px solid #dbe6f3; border-radius: 10px; background: #eef3f9; font-size: 11px; font-weight: 800; letter-spacing: 0.02em; text-transform: uppercase; color: #5a6b7a; }
@@ -244,7 +244,7 @@ i.fit-ok { background: #18a957; } i.fit-warn { background: #f59e0b; } i.fit-bad 
 .ao-items-line svg { flex: 0 0 auto; }
 .ao-items-line.is-ok { color: #0e7038; }
 .ao-items-line.is-miss { color: #9a5a00; font-weight: 700; }
-.ao-col-price { text-align: right; font-size: 14.5px; font-weight: 800; color: #0056bf; white-space: nowrap; }
+.ao-col-price { text-align: right; font-size: 14.5px; font-weight: 800; color: #0066ff; white-space: nowrap; }
 .ao-col-text { overflow: hidden; font-size: 12.5px; color: #243442; text-overflow: ellipsis; white-space: nowrap; }
 .ao-row-tags { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
 .ao-row-tags .ao-tag { max-width: 100%; white-space: nowrap; }

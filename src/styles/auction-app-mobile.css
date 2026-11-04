@@ -1,11 +1,11 @@
 /* ===========================================================================
    NECESIDADES DE COMPRA — VISTAS MÓVILES IDÉNTICAS A LA APP (listado y detalle)
    Componentes: AuctionsListMobile y AuctionDetailMobile. Tokens y tamaños copiados de la app:
-   azul #0056bf, bordes #d9e0e7, divisores #e6eaef, letra 12/13/15/17/20, radios 8/12/16.
+   azul #0066ff, bordes #d9e0e7, divisores #e6eaef, letra 12/13/15/17/20, radios 8/12/16.
    =========================================================================== */
 
 .am-page {
-  --am-primary: #0056bf;
+  --am-primary: #0066ff;
   --am-primary-light: #eaf2ff;
   --am-primary-border: #bfd6f7;
   --am-primary-wash: #f5f9ff;

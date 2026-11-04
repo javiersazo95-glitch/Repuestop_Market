@@ -51,7 +51,7 @@ function toList(res) {
 // Tokens de la app (`theme/colors.ts`) para los badges, inline porque dependen del estado.
 const TONES = {
   warning: { color: '#9A5A00', background: '#FFF7E6' },
-  primary: { color: '#0056BF', background: '#EAF2FF' },
+  primary: { color: '#0066ff', background: '#EAF2FF' },
   success: { color: '#0E7038', background: '#EAFBF1' },
   mediation: { color: '#5B3AD6', background: '#F3F0FF' },
   error: { color: '#B42318', background: '#FFF0F0' },

@@ -5,8 +5,8 @@
    ========================================================================== */
 
 .ad-detail-page {
-  --adp-primary: #0056BF;
-  --adp-primary-dark: #00459A;
+  --adp-primary: #0066ff;
+  --adp-primary-dark: #0052cc;
   --adp-text: #1B2A3A;
   --adp-muted: #5A6B7A;
   --adp-border: #E1E7EE;
@@ -475,7 +475,7 @@
 .ad-detail-side-title svg { color: var(--adp-primary); }
 .ad-detail-address { margin: 0 0 6px; font-size: 13px; line-height: 1.5; color: var(--adp-muted); }
 .ad-detail-address-note { display: flex; align-items: flex-start; gap: 6px; margin: 0; padding: 10px; border-radius: 10px; background: #eaf2ff; color: #243442; font-size: 12.5px; line-height: 1.5; }
-.ad-detail-address-note svg { flex: 0 0 auto; margin-top: 2px; color: #0056bf; }
+.ad-detail-address-note svg { flex: 0 0 auto; margin-top: 2px; color: #0066ff; }
 .ad-detail-mapslink {
   display: inline-flex;
   align-items: center;
@@ -510,7 +510,7 @@
   transform: translate(-50%, -100%);
   border-radius: 50% 50% 50% 0;
   background: var(--adp-primary);
-  box-shadow: 0 6px 10px -4px rgba(0, 86, 191, 0.5);
+  box-shadow: 0 6px 10px -4px rgba(0, 102, 255, 0.5);
 }
 .ad-detail-map iframe {
   position: relative;

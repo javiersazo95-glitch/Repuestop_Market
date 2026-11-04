@@ -6,7 +6,7 @@
 
 import { remoteConfig } from '../remoteConfig/remoteConfig';
 
-export const BRAND_COLORS = ['#155EEF', '#0E9384', '#7A5AF8', '#B54708', '#C11574', '#067647', '#2563EB', '#D97706'];
+export const BRAND_COLORS = ['#155EEF', '#0E9384', '#7A5AF8', '#B54708', '#C11574', '#067647', '#0066ff', '#D97706'];
 
 export function getBrandColor(brandName = '') {
   const clean = String(brandName || '').trim();

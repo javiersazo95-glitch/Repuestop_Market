@@ -5,8 +5,8 @@ import { Crown, X, Clock, ShieldCheck, CheckCircle2, Sparkles, ArrowRight, Perce
 import '../styles/founder.css';
 
 const BENEFITS = [
-  { icon: Percent, gradient: 'linear-gradient(135deg, #0056bf, #10c8e8)', title: 'Servicio gratis por 2 meses', text: 'Tarifa de servicio RepuesTop 0% durante tus primeros 2 meses de marcha blanca desde la aprobación: solo pagas Flow (2,89% + IVA). Después: 7% + IVA por venta.' },
-  { icon: Award, gradient: 'linear-gradient(135deg, #071b45, #0056bf)', title: 'Distintivo en publicaciones', text: 'Un sello oficial de "Fundador" que destaca tu tienda y genera mayor confianza con compradores.' },
+  { icon: Percent, gradient: 'linear-gradient(135deg, #0066ff, #10c8e8)', title: 'Servicio gratis por 2 meses', text: 'Tarifa de servicio RepuesTop 0% durante tus primeros 2 meses de marcha blanca desde la aprobación: solo pagas Flow (2,89% + IVA). Después: 7% + IVA por venta.' },
+  { icon: Award, gradient: 'linear-gradient(135deg, #071b45, #0066ff)', title: 'Distintivo en publicaciones', text: 'Un sello oficial de "Fundador" que destaca tu tienda y genera mayor confianza con compradores.' },
   { icon: Radar, gradient: 'linear-gradient(135deg, #7257ff, #10c8e8)', title: 'Mayor visibilidad en RepuesTop', text: 'Tus repuestos aparecen destacados en las búsquedas por patente dentro de la plataforma web.' },
   { icon: Rocket, gradient: 'linear-gradient(135deg, #ffb800, #ff8a00)', title: 'Panel de gestión en tiempo real', text: 'Gestiona stock masivo, cotizaciones y pedidos desde tu panel de vendedor, sincronizado al instante con la vitrina pública.' }
 ];

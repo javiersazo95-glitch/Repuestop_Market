@@ -42,7 +42,7 @@ export default function AccreditationModal({ user, onClose, onSaved }) {
       <div className="booking-modal-card acc-modal-card">
         <div className="booking-modal-header">
           <div>
-            <h3><ShieldCheck size={22} style={{ color: '#2563eb' }} /> Acreditar servicio automotriz</h3>
+            <h3><ShieldCheck size={22} style={{ color: '#0066ff' }} /> Acreditar servicio automotriz</h3>
             <p>Requisito para aparecer en el buscador de talleres. Nuestro equipo revisa tus documentos.</p>
           </div>
           <button

@@ -1044,7 +1044,7 @@
   .light-market-header .primary-nav-inner > button,
   .light-market-header .categories-nav-wrap > button {
     --tile-bg: #eaf2ff;
-    --tile-fg: #1d4ed8;
+    --tile-fg: #0052cc;
     position: relative;
     width: 100%;
     min-height: 54px;
@@ -1088,7 +1088,7 @@
     transform: rotate(45deg);
   }
   .light-market-header .categories-nav-wrap > button { --tile-bg: #fff1e6; --tile-fg: #c2410c; }
-  .light-market-header .primary-nav-inner > .nav-item-catalog { --tile-bg: #eaf2ff; --tile-fg: #1d4ed8; }
+  .light-market-header .primary-nav-inner > .nav-item-catalog { --tile-bg: #eaf2ff; --tile-fg: #0052cc; }
   .light-market-header .primary-nav-inner > .nav-item-auctions { --tile-bg: #fff4e0; --tile-fg: #b45309; }
   .light-market-header .primary-nav-inner > .nav-item-faults { --tile-bg: #fdebe4; --tile-fg: #c2410c; }
   .light-market-header .primary-nav-inner > .nav-item-stores { --tile-bg: #e6f7ef; --tile-fg: #047857; }
@@ -1576,8 +1576,8 @@
 .app-invite__logo { width: 64px; height: 64px; flex: 0 0 64px; object-fit: contain; border-radius: 16px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15); }
 .app-invite__sheet h2 { margin: 0; font-size: 20px; line-height: 26px; font-weight: 700; color: #243442; }
 .app-invite__sheet p { margin: 0; max-width: 340px; font-size: 14px; line-height: 20px; color: #5a6b7a; }
-.app-invite__cta { display: inline-flex; align-items: center; justify-content: center; width: 100%; max-width: 360px; min-height: 48px; margin-top: 4px; border-radius: 12px; background: #0056bf; color: #fff; font-size: 15px; font-weight: 700; text-decoration: none; }
-.app-invite__skip { min-height: 44px; border: 0; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: #0056bf; cursor: pointer; }
+.app-invite__cta { display: inline-flex; align-items: center; justify-content: center; width: 100%; max-width: 360px; min-height: 48px; margin-top: 4px; border-radius: 12px; background: #0066ff; color: #fff; font-size: 15px; font-weight: 700; text-decoration: none; }
+.app-invite__skip { min-height: 44px; border: 0; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: #0066ff; cursor: pointer; }
 @media (min-width: 769px) {
   .app-invite { display: none; }
 }

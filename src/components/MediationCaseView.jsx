@@ -1813,7 +1813,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                   (pruebas en dev, 2026-10-09: antes solo se veia el primero). */}
               {caseVehicles.length > 0 ? caseVehicles.map((vehiculo, index) => (
                 <div key={`${vehiculo.patente || vehiculo.chasis || ''}-${index}`} className="dispute-vehicle-card" style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, display: 'grid', gap: 6 }}>
-                  <small style={{ fontWeight: 700, color: '#0056BF', letterSpacing: '.04em' }}>
+                  <small style={{ fontWeight: 700, color: '#0066ff', letterSpacing: '.04em' }}>
                     {caseVehicles.length > 1 ? `VEHÍCULO ${index + 1} DE ${caseVehicles.length}` : 'VEHÍCULO CONFIRMADO'}
                   </small>
                   <span><small style={{ color: '#64748b' }}>Vehículo</small><br /><strong>{[vehiculo.marca, vehiculo.modelo, vehiculo.version, vehiculo.anio].filter(Boolean).join(' ') || 'Marca y modelo no identificados'}</strong></span>
@@ -1825,7 +1825,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                 </div>
               )) : (
                 <div className="dispute-vehicle-card" style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, display: 'grid', gap: 6 }}>
-                  <small style={{ fontWeight: 700, color: '#0056BF', letterSpacing: '.04em' }}>VEHÍCULO CONFIRMADO</small>
+                  <small style={{ fontWeight: 700, color: '#0066ff', letterSpacing: '.04em' }}>VEHÍCULO CONFIRMADO</small>
                   <small style={{ color: '#64748b' }}>El comprador no informó su vehículo en esta compra.</small>
                 </div>
               )}
@@ -1833,9 +1833,9 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
                 <small style={{ color: '#64748b' }}>La patente se muestra parcial para proteger los datos del comprador; el chasis basta para validar el repuesto.</small>
               )}
               <div className="dispute-vehicle-card" style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, display: 'grid', gap: 8 }}>
-                <small style={{ fontWeight: 700, color: '#0056BF', letterSpacing: '.04em' }}>BOLETA DE LA TIENDA</small>
+                <small style={{ fontWeight: 700, color: '#0066ff', letterSpacing: '.04em' }}>BOLETA DE LA TIENDA</small>
                 {chat?.boletaVentaDisponible ? (
-                  <button type="button" onClick={() => setReceiptOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifySelf: 'start', padding: '8px 12px', borderRadius: 8, border: '1px solid #0056BF', background: '#fff', color: '#0056BF', fontWeight: 600, cursor: 'pointer' }}>
+                  <button type="button" onClick={() => setReceiptOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifySelf: 'start', padding: '8px 12px', borderRadius: 8, border: '1px solid #0066ff', background: '#fff', color: '#0066ff', fontWeight: 600, cursor: 'pointer' }}>
                     <FileText size={15} /> {chat.boletaVentaNombre || 'Ver boleta'}
                   </button>
                 ) : (

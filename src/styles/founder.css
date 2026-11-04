@@ -31,7 +31,7 @@
   padding-right: env(safe-area-inset-right, 0px);
 
   /* Variables locales de diseño alineadas al marketplace */
-  --about-blue: var(--color-brand-blue, #0056bf);
+  --about-blue: var(--color-brand-blue, #0066ff);
   --about-blue-dark: var(--color-brand-blue-hover, #003e8a);
   --about-blue-soft: #eaf2ff;
   --about-cyan: #00c2e8;
@@ -111,7 +111,7 @@
   background: var(--about-blue);
   font-weight: 700;
   font-size: 0.95rem;
-  box-shadow: 0 8px 22px rgba(0, 86, 191, 0.22);
+  box-shadow: 0 8px 22px rgba(0, 102, 255, 0.22);
   transition: transform 0.2s, background 0.2s, box-shadow 0.2s, border-color 0.2s;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -123,7 +123,7 @@
   transform: translateY(-2px);
   background: var(--about-blue-dark);
   border-color: var(--about-blue-dark);
-  box-shadow: 0 14px 28px rgba(0, 86, 191, 0.32);
+  box-shadow: 0 14px 28px rgba(0, 102, 255, 0.32);
 }
 
 .repuestop-about-page .button:active {
@@ -164,7 +164,7 @@
 .repuestop-about-page .button-outline-glow {
   color: var(--about-navy);
   background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(0, 86, 191, 0.2);
+  border-color: rgba(0, 102, 255, 0.2);
   backdrop-filter: blur(8px);
 }
 
@@ -492,7 +492,7 @@
   min-height: 50px;
   border-radius: 13px;
   background: linear-gradient(90deg, var(--about-blue), var(--about-blue-dark));
-  box-shadow: 0 14px 30px rgba(0, 86, 191, 0.3);
+  box-shadow: 0 14px 30px rgba(0, 102, 255, 0.3);
   margin: 0 auto;
 }
 

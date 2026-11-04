@@ -14,13 +14,13 @@ import { ROUTES } from '../routes/paths';
  * `tab` abre esa sección de la cuenta; `to` sale a la página pública equivalente; `action` es feedback o los textos legales.
  */
 const COLORS = {
-  catalog: '#2563EB', faults: '#EA580C', search: '#4F46E5', stores: '#0D9488', workshops: '#D97706', calendar: '#7C3AED',
-  quotes: '#0284C7', orders: '#16A34A', questions: '#0891B2', heart: '#E11D48', flag: '#DC2626', support: '#2563EB',
+  catalog: '#0066ff', faults: '#EA580C', search: '#4F46E5', stores: '#0D9488', workshops: '#D97706', calendar: '#7C3AED',
+  quotes: '#0284C7', orders: '#16A34A', questions: '#0891B2', heart: '#E11D48', flag: '#DC2626', support: '#0066ff',
   help: '#0EA5E9', docs: '#475569', privacy: '#059669', person: '#9333EA', location: '#DB2777', lock: '#64748B', feedback: '#F59E0B',
 };
 
 const SECTIONS_META = {
-  Explorar: { icon: Compass, color: '#2563EB', subtitle: 'Repuestos, talleres, fallas y búsquedas' },
+  Explorar: { icon: Compass, color: '#0066ff', subtitle: 'Repuestos, talleres, fallas y búsquedas' },
   'Mi actividad': { icon: Activity, color: '#7C3AED', subtitle: 'Lo que tienes en curso' },
   'Gestión del taller': { icon: Hammer, color: '#EA580C', subtitle: 'Tu taller, tus compras y tus citas' },
   Configuración: { icon: Settings, color: '#0D9488', subtitle: 'Tu tienda y tu cuenta' },

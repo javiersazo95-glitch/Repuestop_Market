@@ -329,7 +329,7 @@ export default function BuyerAddressBook({ usuarioId, onChange }) {
             type="button"
             className="btn-add-address"
             onClick={() => openAddForm('PERSONAL')}
-            style={{ background: '#2563eb', borderColor: '#2563eb', color: '#fff' }}
+            style={{ background: '#0066ff', borderColor: '#0066ff', color: '#fff' }}
             title={isSeller ? 'Agregar dirección alternativa de entrega' : 'Agregar nueva dirección de entrega'}
           >
             <Plus size={15} /> {isSeller ? 'Agregar dirección alternativa' : 'Agregar dirección'}
@@ -363,9 +363,9 @@ export default function BuyerAddressBook({ usuarioId, onChange }) {
             style={{
               padding: '5px 12px',
               borderRadius: '20px',
-              border: filterType === 'DESPACHO' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+              border: filterType === 'DESPACHO' ? '1.5px solid #0066ff' : '1px solid #cbd5e1',
               background: filterType === 'DESPACHO' ? '#eff6ff' : '#fff',
-              color: filterType === 'DESPACHO' ? '#1d4ed8' : '#475569',
+              color: filterType === 'DESPACHO' ? '#0052cc' : '#475569',
               fontSize: '12px',
               fontWeight: 600,
               cursor: 'pointer',
@@ -451,8 +451,8 @@ export default function BuyerAddressBook({ usuarioId, onChange }) {
               const isDespacho = (address.tipoDireccion || address.tipo) === 'DESPACHO';
               const isLastDespacho = isSeller && isDespacho && despachoCount <= 1;
               return (
-                <li key={address.id} className={isPrincipal ? 'is-principal' : ''} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', borderRadius: '12px', border: isPrincipal ? '1.5px solid #3b82f6' : '1px solid #e2e8f0', background: '#fff', marginBottom: '8px' }}>
-                  <span className="buyer-address-icon" style={{ background: isDespacho ? '#eff6ff' : '#ecfdf5', color: isDespacho ? '#2563eb' : '#059669', padding: '8px', borderRadius: '10px', display: 'grid', placeItems: 'center' }}>
+                <li key={address.id} className={isPrincipal ? 'is-principal' : ''} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', borderRadius: '12px', border: isPrincipal ? '1.5px solid #0066ff' : '1px solid #e2e8f0', background: '#fff', marginBottom: '8px' }}>
+                  <span className="buyer-address-icon" style={{ background: isDespacho ? '#eff6ff' : '#ecfdf5', color: isDespacho ? '#0066ff' : '#059669', padding: '8px', borderRadius: '10px', display: 'grid', placeItems: 'center' }}>
                     {isSeller
                       ? (isDespacho ? <Store size={18} /> : <MapPin size={18} />)
                       : (isDespacho ? <Building2 size={18} /> : <Home size={18} />)}
@@ -464,7 +464,7 @@ export default function BuyerAddressBook({ usuarioId, onChange }) {
                         isDespacho ? (
                           <span
                             style={{
-                              background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px'
+                              background: '#dbeafe', color: '#0052cc', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '4px'
                             }}
                           >
                             <Store size={11} /> Tienda oficial (Retiro, Despacho y Devoluciones)
@@ -482,7 +482,7 @@ export default function BuyerAddressBook({ usuarioId, onChange }) {
                             type="button"
                             onClick={() => handleToggleType(address)}
                             title="Haz clic para cambiar a Casa / Particular"
-                            style={{ background: '#dbeafe', color: '#1e40af', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer' }}
+                            style={{ background: '#dbeafe', color: '#0052cc', border: '1px solid #bfdbfe', padding: '2px 8px', borderRadius: '12px', fontSize: '10.5px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '3px', cursor: 'pointer' }}
                           >
                             <Building2 size={10} /> Trabajo / Taller
                           </button>
@@ -572,7 +572,7 @@ export default function BuyerAddressBook({ usuarioId, onChange }) {
                   borderRadius: '8px',
                   border: '1px dashed #93c5fd',
                   background: '#eff6ff',
-                  color: '#1d4ed8',
+                  color: '#0052cc',
                   fontWeight: 600,
                   fontSize: '12.5px',
                   cursor: 'pointer',
@@ -617,9 +617,9 @@ export default function BuyerAddressBook({ usuarioId, onChange }) {
                     style={{
                       padding: '10px',
                       borderRadius: '8px',
-                      border: form.tipoDireccion === 'DESPACHO' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      border: form.tipoDireccion === 'DESPACHO' ? '2px solid #0066ff' : '1px solid #cbd5e1',
                       background: form.tipoDireccion === 'DESPACHO' ? '#eff6ff' : '#fff',
-                      color: form.tipoDireccion === 'DESPACHO' ? '#1d4ed8' : '#475569',
+                      color: form.tipoDireccion === 'DESPACHO' ? '#0052cc' : '#475569',
                       fontWeight: 600,
                       fontSize: '12.5px',
                       cursor: 'pointer',
