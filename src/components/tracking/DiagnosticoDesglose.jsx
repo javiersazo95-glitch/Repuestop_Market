@@ -112,7 +112,7 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
         <div className="ft-modal-head"><h2><Lock size={16} /> Diagnóstico privado</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={onClose}><X size={20} /></button></div>
 
         <div className="dsg-who">
-          <span className="dsg-avatar">{diagnosis.autorFotoUrl ? <img src={resolveMediaUrl(diagnosis.autorFotoUrl)} alt="" /> : (diagnosis.autor || 'T').slice(0, 1).toUpperCase()}</span>
+          <span className="dsg-avatar">{(diagnosis.autorFotoUrl || taller?.logoUrl) ? <img src={resolveMediaUrl(diagnosis.autorFotoUrl || taller?.logoUrl)} alt="" /> : (diagnosis.autor || 'T').slice(0, 1).toUpperCase()}</span>
           <div>
             <strong>{diagnosis.autor}</strong>
             <small>{['Taller', taller?.comuna].filter(Boolean).join(' · ')}</small>

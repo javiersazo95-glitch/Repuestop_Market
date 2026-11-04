@@ -5,6 +5,7 @@ import { ChevronRight, CircleHelp, ClipboardList, Loader2, Tag } from 'lucide-re
 import { commentFault, getFaultComments, priceRange, timeSince } from '../../services/faultApi';
 import { faultDetailPath, workshopPath } from '../../routes/paths';
 import { workshopThreads } from '../../utils/trackingNews';
+import TallerAvatar from '../TallerAvatar';
 import DiagnosticoDesglose from './DiagnosticoDesglose';
 import { TrackingCells, TrackingItem, TrackingSection, TrackingTag } from './TrackingDetail';
 
@@ -78,6 +79,7 @@ export default function FallaTrackingDetail({ faultId, vigente, newDiagnoses, on
           return (
             <TrackingItem key={diagnosis.id} highlight={index < newDiagnoses}>
               <div className="trk-diag-top">
+                <TallerAvatar className="trk-diag-avatar" src={diagnosis.autorFotoUrl || diagnosis.taller?.logoUrl} name={diagnosis.autor} />
                 <div>
                   <strong>{diagnosis.autor}</strong>
                   <small>{[diagnosis.taller?.comuna, timeSince(diagnosis.createdAt)].filter(Boolean).join(' · ')}</small>

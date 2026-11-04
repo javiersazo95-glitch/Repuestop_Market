@@ -38,6 +38,18 @@ export default function MyFaultActions({ fault, diagnosisCount = 0, onChanged })
 
   return (
     <div className="mfa">
+      {/* Editar va como icono en la esquina superior derecha de la card, para no agrandarla. */}
+      <button
+        type="button"
+        className={`mfa-edit ${open ? '' : 'is-locked'}`}
+        aria-label={open ? 'Editar la falla' : 'La falla está cerrada y no se puede editar'}
+        title={open ? 'Editar falla' : 'Falla cerrada: ya no se puede editar'}
+        aria-disabled={!open}
+        onClick={() => void startEdit()}
+        disabled={busy}
+      >
+        {busy ? <Loader2 size={16} className="spin-icon" /> : open ? <Pencil size={16} /> : <Lock size={16} />}
+      </button>
       <div className="pa-card-actions mfa-actions">
         <Link className="pa-btn-link" to={faultDetailPath(fault)} aria-label={`Ver el detalle de la falla de ${vehicle}`}>
           Ver detalle <ArrowRight size={14} />
@@ -54,9 +66,6 @@ export default function MyFaultActions({ fault, diagnosisCount = 0, onChanged })
         >
           <MessageCircle size={15} />
           {pending > 0 && <span className="pa-q-badge">{pending > 99 ? '99+' : pending}</span>}
-        </button>
-        <button type="button" className={`pa-btn-secondary pa-btn-edit ${open ? '' : 'is-locked'}`} aria-disabled={!open} onClick={() => void startEdit()} disabled={busy}>
-          {busy ? <Loader2 size={15} className="spin-icon" /> : open ? <Pencil size={15} /> : <Lock size={15} />} Editar
         </button>
       </div>
       {notice && <p className="pa-edit-notice" role="alert"><Lock size={14} /> {notice}</p>}

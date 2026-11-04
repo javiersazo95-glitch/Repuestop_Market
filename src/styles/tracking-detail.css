@@ -120,3 +120,4 @@
 .dsg-report { display: flex; align-items: center; justify-content: center; gap: 4px; color: var(--ak-text-muted, #5a6b7a); }
 .dsg-report svg { display: none; }
 .dsg-report .trk-link svg { display: inline; }
+.trk-diag-avatar { width: 38px; height: 38px; flex-shrink: 0; font-size: 14px; }

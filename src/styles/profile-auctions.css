@@ -71,3 +71,7 @@
 .mfa { display: grid; gap: 8px; }
 .mfa-actions { flex-wrap: wrap; }
 .mfa .pa-btn-icon { position: relative; }
+.mfa-edit { position: absolute; top: 8px; right: 8px; z-index: 3; width: 34px; height: 34px; display: grid; place-items: center; padding: 0; border: 1px solid #bfd6f7; border-radius: 50%; background: #fff; color: #0066ff; cursor: pointer; box-shadow: 0 1px 3px rgba(15, 23, 42, .12); }
+.mfa-edit:hover { background: #eaf2ff; }
+.mfa-edit.is-locked { border-color: #cfd8e3; color: #8a97a5; background: #f3f5f7; cursor: not-allowed; }
+.mfa-edit:focus-visible { outline: 2px solid #0066ff; outline-offset: 2px; }

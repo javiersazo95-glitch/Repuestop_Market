@@ -120,3 +120,7 @@
 .ftd-viewer-close { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.16); color: #fff; }
 .ftd-viewer-nav { display: flex; align-items: center; gap: 16px; color: #fff; font-size: 13px; }
 .ftd-viewer-nav button { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.16); color: #fff; }
+
+.ftd-group-toggle { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; cursor: pointer; text-align: left; }
+.ftd-name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; }
+.ftd-name-row .ftd-profile { text-decoration: none; padding: 1px 8px; border-radius: 999px; background: #eaf2ff; font-weight: 700; }

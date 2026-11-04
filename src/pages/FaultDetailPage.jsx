@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import TallerRating from '../components/talleres/TallerRating';
 import AuctionAvatar from '../components/AuctionAvatar';
+import TallerAvatar from '../components/TallerAvatar';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle, AlertTriangle, ArrowLeft, Bookmark, CalendarPlus, Car, CheckCircle2, Clock,
@@ -400,7 +401,7 @@ export default function FaultDetailPage() {
                 </div>
                 {diagnostics.length > 0 && (
                   <span className="fdt-stack" aria-hidden="true">
-                    {diagnostics.slice(0, 4).map((item) => <AuctionAvatar key={item.id} className="fdt-stack-avatar" src={item.autorFotoUrl || item.taller?.logoUrl} name={item.autor} isStore />)}
+                    {diagnostics.slice(0, 4).map((item) => <TallerAvatar key={item.id} className="fdt-stack-avatar" src={item.autorFotoUrl || item.taller?.logoUrl} name={item.autor} />)}
                   </span>
                 )}
                 <span className="fdt-private"><Lock size={13} /> Privado</span>
@@ -420,7 +421,7 @@ export default function FaultDetailPage() {
                       <li key={diagnosis.id} className={`fdt-card ${diagnosis.aceptado ? 'is-accepted' : ''}`}>
                         {diagnosis.aceptado && <span className="fdt-ribbon"><CheckCircle2 size={13} /> Diagnóstico aceptado</span>}
                         <div className="fdt-top">
-                          <AuctionAvatar className="fdt-avatar" src={diagnosis.autorFotoUrl || taller?.logoUrl} name={diagnosis.autor} isStore />
+                          <TallerAvatar className="fdt-avatar" src={diagnosis.autorFotoUrl || taller?.logoUrl} name={diagnosis.autor} />
                           <div className="fdt-info">
                             <strong>{diagnosis.autor}</strong>
                             <span className="fdt-meta">
@@ -451,7 +452,7 @@ export default function FaultDetailPage() {
                     {publicDiagnoses.map((item) => (
                       <li key={`${item.tallerId}-${item.createdAt}`}>
                         <Link className="fdt-record" to={workshopPath(item.tallerId)} aria-label={`Ver el perfil del taller ${item.nombre}`}>
-                          <span className="ft-thread-avatar"><Wrench size={15} /></span>
+                          <TallerAvatar className="fdt-record-avatar" src={item.logoUrl} name={item.nombre} />
                           <span className="fdt-record-body"><strong>{item.nombre}</strong><small>{[item.comuna, timeSince(item.createdAt)].filter(Boolean).join(' · ')}</small><TallerRating rating={item.calificacion} count={item.opiniones} /></span>
                           {item.aceptado && <em>Aceptado</em>}
                           <span className="fdt-record-lock"><Lock size={12} /> Detalle privado</span>
@@ -486,14 +487,16 @@ export default function FaultDetailPage() {
                   <div className="fdt-top">
                     <AuctionAvatar className="fdt-avatar" src={comment.autorFotoUrl || comment.taller?.logoUrl} name={comment.autor} isStore={Boolean(comment.taller)} />
                     <div className="fdt-info">
-                      <strong>{comment.autor}</strong>
+                      <span className="fdt-name-row">
+                        <strong>{comment.autor}</strong>
+                        {comment.taller && <Link className="fdt-profile" to={workshopPath(comment.taller.tallerId)} aria-label={`Ver perfil del taller ${comment.autor}`}>Ver perfil <ChevronRight size={12} aria-hidden="true" /></Link>}
+                      </span>
                       <span className="fdt-meta">
                         {comment.taller && <TallerRating rating={comment.taller.calificacion} count={comment.taller.opiniones} />}
                         {comment.taller?.comuna && <span><MapPin size={12} /> {comment.taller.comuna}</span>}
                         <span><Clock size={12} /> {timeSince(comment.createdAt)}</span>
                       </span>
                     </div>
-                    {comment.taller && <Link className="fdt-link" to={workshopPath(comment.taller.tallerId)}>Ver perfil</Link>}
                   </div>
                   <p className="fdt-text">{comment.texto}</p>
                   {repliesOf(comment.id).length > 0 && (
@@ -523,7 +526,7 @@ export default function FaultDetailPage() {
         <div className="ft-modal-head"><h2><Wrench size={16} /> Diagnósticos recibidos ({publicDiagnoses.length})</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => setPublicDiagnosesOpen(false)}><X size={20} /></button></div>
         <div className="ft-public-diagnoses">
           <p>Esta falla ya está recibiendo diagnósticos de talleres. El detalle es privado: solo lo ve quien la publicó.</p>
-          {publicDiagnoses.map((item) => <Link key={`${item.tallerId}-${item.createdAt}`} className="ft-public-diagnosis" to={workshopPath(item.tallerId)}><span className="ft-thread-avatar"><Wrench size={15} /></span><strong>{item.nombre}</strong><small>{[item.comuna, timeSince(item.createdAt)].filter(Boolean).join(' · ')}</small><TallerRating rating={item.calificacion} count={item.opiniones} />{item.aceptado && <em>Aceptado</em>}<ChevronRight size={15} /></Link>)}
+          {publicDiagnoses.map((item) => <Link key={`${item.tallerId}-${item.createdAt}`} className="ft-public-diagnosis" to={workshopPath(item.tallerId)}><TallerAvatar className="fdt-record-avatar" src={item.logoUrl} name={item.nombre} /><strong>{item.nombre}</strong><small>{[item.comuna, timeSince(item.createdAt)].filter(Boolean).join(' · ')}</small><TallerRating rating={item.calificacion} count={item.opiniones} />{item.aceptado && <em>Aceptado</em>}<ChevronRight size={15} /></Link>)}
         </div>
       </div></div>}
       {isMobile && openDiagnosis && (

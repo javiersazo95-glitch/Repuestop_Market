@@ -629,3 +629,9 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-modal.ft-form .ft-section,
 .ft-modal.ft-form > .ft-section:first-of-type { background: #fff; border: 1px solid var(--ft-border); border-radius: 14px; padding: 16px; }
 .ft-modal.ft-form .ft-vehicle-step { background: #f7f9fb; }
+
+/* El icono de editar de Mis fallas se ancla a la esquina de la card. */
+.ft-fault-card { position: relative; }
+
+/* Los diagnósticos se ven con la imagen de perfil del taller (o su inicial), nunca con un icono genérico. */
+.fdt-record-avatar { width: 40px; height: 40px; flex-shrink: 0; font-size: 15px; background: #dcfce7; color: #166534; }
