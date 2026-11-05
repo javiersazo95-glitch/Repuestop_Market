@@ -5,7 +5,8 @@ import {
   FileText, Gavel, LayoutGrid, List, Lock, MapPin, MessageCircle, Package, Plus, RotateCcw, Search,
   SlidersHorizontal, Tag, X,
 } from 'lucide-react';
-import { getAuctionMetrics, getAuctions, getMyAuctionRequests, getPendingQuestionCounts } from '../services/auctionApi';
+import { getAuctionMetrics, getAuctions, getMyAuctionOffers, getMyAuctionRequests, getPendingQuestionCounts } from '../services/auctionApi';
+import ProfileAuctionManagementPanel from '../components/ProfileAuctionManagementPanel';
 import { resolveMediaUrl } from '../services/api';
 import { paymentDeadlineInfo } from '../utils/paymentDeadline';
 import { auctionDetailPath, ROUTES } from '../routes/paths';
@@ -233,6 +234,21 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
   // "Mural publico" / "Mis búsquedas", como la app (26-oct). Lo propio solo existe para quien publica.
   const canSeeMine = isLoggedIn && (role === 'BUYER' || role === 'WORKSHOP');
   const [tab, setTab] = useState(initialTab);
+  // Casa de repuestos: como la app, el mural y «Mis ofertas en curso» (el seguimiento de sus propuestas).
+  const isSellerViewer = isLoggedIn && role === 'SELLER';
+  const [activeOffersCount, setActiveOffersCount] = useState(0);
+  useEffect(() => {
+    if (!isSellerViewer) return undefined;
+    let active = true;
+    getMyAuctionOffers()
+      .then((data) => {
+        if (!active) return;
+        const enCurso = (data?.ofertas || []).filter((item) => ['ENVIADA', 'REVISADA', 'PARCIALMENTE_SUPERADA'].includes(item?.oferta?.estado));
+        setActiveOffersCount(enCurso.length);
+      })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [isSellerViewer, tab]);
   const [myAuctions, setMyAuctions] = useState([]);
   const [mineLoaded, setMineLoaded] = useState(false);
   const initialTabApplied = useRef(false);
@@ -374,7 +390,10 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
   // Sin búsquedas propias el mural va primero (muestra que hay actividad); con búsquedas, lo propio abre la lista.
   const tabMural = { value: 'MURAL', label: 'Mural público', count: muralMatches.length };
   const tabMine = { value: 'MIS', label: 'Mis búsquedas', count: mineMatches.length };
-  const tabs = canSeeMine ? (myAuctions.length > 0 ? [tabMine, tabMural] : [tabMural, tabMine]) : null;
+  const tabOffers = { value: 'OFERTAS', label: 'Mis ofertas en curso', count: activeOffersCount };
+  const tabs = canSeeMine
+    ? (myAuctions.length > 0 ? [tabMine, tabMural] : [tabMural, tabMine])
+    : isSellerViewer ? [tabMural, tabOffers] : null;
 
   // Métricas generales de búsquedas de repuestos: no cambian con los filtros del listado.
   const activeCount = metrics?.solicitudesActivas ?? rows.filter(({ status }) => status.key !== 'finalizada').length;
@@ -525,6 +544,22 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
         </aside>
     </>
   );
+
+  // «Mis ofertas en curso»: las mismas pestañas arriba y, debajo, el seguimiento de propuestas (`PropuestasSeguimiento` de la app).
+  if (isSellerViewer && tab === 'OFERTAS') {
+    const tabStrip = (
+      <div className={isMobile ? 'am-tabs' : 'aw-tabs'} role="tablist" aria-label="Búsqueda de repuestos">
+        {tabs.map((item) => (
+          <button key={item.value} type="button" role="tab" aria-selected={tab === item.value} className={tab === item.value ? 'is-active' : ''} onClick={() => setTab(item.value)}>
+            {item.label} ({nf.format(item.count)})
+          </button>
+        ))}
+      </div>
+    );
+    const panel = <ProfileAuctionManagementPanel embedded />;
+    if (embedded || isMobile) return <div className="aw-offers-tab">{tabStrip}{panel}</div>;
+    return <main className="aw-page"><div className="container aw-shell">{tabStrip}{panel}</div></main>;
+  }
 
   if (isMobile) {
     return (

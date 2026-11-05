@@ -62,7 +62,19 @@ const FILTERS = [
   ['questions', 'Preguntas'],
 ];
 
+// Filtros del celular: los mismos de `app/subastas/seguimiento.tsx` (Ganadas incluye las pagadas; Cerradas, todo lo demás).
+const APP_WON_STATES = ['ACEPTADA', 'PAGO_PENDIENTE', 'PAGADA'];
+const MOBILE_FILTERS = [
+  ['all', 'Todas'],
+  ['active', 'En curso'],
+  ['wonApp', 'Ganadas'],
+  ['closed', 'Cerradas'],
+  ['saved', 'Guardadas'],
+];
+
 function matchesFilter(offer, filter) {
+  if (filter === 'wonApp') return APP_WON_STATES.includes(offer.estado);
+  if (filter === 'closed') return !ACTIVE_STATES.includes(offer.estado) && !APP_WON_STATES.includes(offer.estado);
   if (filter === 'active') return ACTIVE_STATES.includes(offer.estado);
   if (filter === 'won') return WON_STATES.includes(offer.estado);
   if (filter === 'paid') return offer.estado === 'PAGADA';
@@ -447,7 +459,7 @@ function SavedRow({ auction, myOffer, onOpen, onRemove, busy }) {
   );
 }
 
-export default function ProfileAuctionManagementPanel() {
+export default function ProfileAuctionManagementPanel({ embedded = false } = {}) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const sellerId = user?.sellerId || user?.proveedorId;
@@ -490,6 +502,8 @@ export default function ProfileAuctionManagementPanel() {
     won: offers.filter((item) => matchesFilter(item.oferta, 'won')).length,
     paid: offers.filter((item) => matchesFilter(item.oferta, 'paid')).length,
     lost: offers.filter((item) => matchesFilter(item.oferta, 'lost')).length,
+    wonApp: offers.filter((item) => matchesFilter(item.oferta, 'wonApp')).length,
+    closed: offers.filter((item) => matchesFilter(item.oferta, 'closed')).length,
     saved: saved.length,
     questions: myQuestions.length,
   }), [offers, saved, myQuestions]);
@@ -541,9 +555,11 @@ export default function ProfileAuctionManagementPanel() {
           <h2>{isMobile ? 'Mis ofertas' : 'Seguimiento de propuestas'}</h2>
           <p>Haz seguimiento a tus ofertas, compara tu propuesta con lo que pide el comprador y revisa las preguntas públicas.</p>
         </div>
-        <button type="button" className="pt-btn is-primary" onClick={() => navigate(ROUTES.auctions)}>
-          <PackageSearch size={15} /> Ver búsquedas públicas
-        </button>
+        {!embedded && (
+          <button type="button" className="pt-btn is-primary" onClick={() => navigate(ROUTES.auctions)}>
+            <PackageSearch size={15} /> Ver búsquedas públicas
+          </button>
+        )}
       </header>
 
       {loading ? (
@@ -561,14 +577,14 @@ export default function ProfileAuctionManagementPanel() {
 
           <div className="pt-toolbar">
             <div className="pt-tabs" role="tablist" aria-label="Filtrar propuestas">
-              {FILTERS.map(([key, label]) => (
+              {(isMobile ? MOBILE_FILTERS : FILTERS).map(([key, label]) => (
                 <button key={key} type="button" role="tab" aria-selected={filter === key} className={filter === key ? 'is-active' : ''} onClick={() => setFilter(key)}>
                   {label} ({counts[key]})
                 </button>
               ))}
             </div>
             <label className="pt-search"><Search size={15} />
-              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar por repuesto, vehículo o comprador…" />
+              <input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder={isMobile ? "Buscar por repuesto, vehículo o N.º" : "Buscar por repuesto, vehículo o comprador…"} />
             </label>
           </div>
 
