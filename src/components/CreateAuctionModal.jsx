@@ -19,6 +19,7 @@ import '../styles/auctions.css';
 import '../styles/faults.css';
 import { MAX_PRICE, MAX_QUANTITY, onlyDigits } from '../utils/inputLimits';
 import '../styles/auction-vehicle.css';
+import ConfirmDialog from './ConfirmDialog';
 
 const MAX_ITEMS = 20;
 let itemSeq = 0;
@@ -283,6 +284,10 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
 
   const changeItem = (key, patch) => setItems((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
   const removeItem = (key) => setItems((current) => current.filter((item) => item.key !== key));
+  const [removeKey, setRemoveKey] = useState(null);
+  const removeIndex = items.findIndex((item) => item.key === removeKey);
+  const removeItemName = removeIndex >= 0 ? String(items[removeIndex].nombre || '').trim() : '';
+  const confirmRemove = () => { if (removeKey !== null) removeItem(removeKey); setRemoveKey(null); };
   const registerVehicle = (key, found) => setItemVehicles((current) => (current[key] === found ? current : { ...current, [key]: found }));
   const [askingNext, setAskingNext] = useState(false);
   const addItem = (otroVehiculo) => {
@@ -494,7 +499,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
                 canRemove={items.length > 1}
                 forLabel={forLabelFor(item)}
                 onChange={changeItem}
-                onRemove={removeItem}
+                onRemove={setRemoveKey}
                 onVehicle={registerVehicle}
               />
             ))}
@@ -620,6 +625,15 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
           <button type="button" onClick={onClose} disabled={loading} className="ft-btn ft-btn-outline">Cancelar</button>
         </div>
       </form>
+      <ConfirmDialog
+        isOpen={removeKey !== null}
+        title={`¿Quitar el repuesto ${removeIndex + 1}?`}
+        message={removeItemName ? `Se quitará "${removeItemName}" de tu encargo. Esta acción no se puede deshacer.` : 'Se quitará este repuesto de tu encargo. Esta acción no se puede deshacer.'}
+        confirmLabel="Sí, quitar"
+        cancelLabel="No, conservar"
+        onConfirm={confirmRemove}
+        onCancel={() => setRemoveKey(null)}
+      />
     </div>
   );
 }

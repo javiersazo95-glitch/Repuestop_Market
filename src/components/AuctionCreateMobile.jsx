@@ -9,6 +9,7 @@ import { createAuction, updateAuction, uploadAuctionPhoto } from '../services/au
 import { resolveMediaUrl } from '../services/api';
 import { MAX_PRICE, MAX_QUANTITY, onlyDigits } from '../utils/inputLimits';
 import '../styles/auction-app-mobile.css';
+import ConfirmDialog from './ConfirmDialog';
 
 // Mismas opciones que la app y el formulario de escritorio.
 const PLAZO_OPTIONS = ['Mismo día / Inmediato', '24 horas', '48 horas', '3 a 5 días hábiles', 'A convenir'];
@@ -116,6 +117,10 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
 
   const changeItem = (key, patch) => setItems((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
   const removeItem = (key) => setItems((current) => current.filter((item) => item.key !== key));
+  const [removeKey, setRemoveKey] = useState(null);
+  const removeIndex = items.findIndex((item) => item.key === removeKey);
+  const removeItemName = removeIndex >= 0 ? String(items[removeIndex].nombre || '').trim() : '';
+  const confirmRemove = () => { if (removeKey !== null) removeItem(removeKey); setRemoveKey(null); };
   const registerVehicle = useCallback((key, found) => setItemVehicles((current) => (current[key] === found ? current : { ...current, [key]: found })), []);
   const addItem = (otroVehiculo) => {
     setItems((current) => (current.length >= MAX_ITEMS ? current : [...current, newItem(otroVehiculo)]));
@@ -275,7 +280,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
               <div className="am-item-card-head">
                 <strong>Repuesto {index + 1}</strong>
                 {items.length > 1 && (
-                  <button type="button" onClick={() => removeItem(item.key)} aria-label={`Quitar repuesto ${index + 1}`}><Trash2 size={16} /></button>
+                  <button type="button" onClick={() => setRemoveKey(item.key)} aria-label={`Quitar repuesto ${index + 1}`}><Trash2 size={16} /></button>
                 )}
               </div>
               {/* Para qué vehículo es este repuesto: siempre visible, en una sola fila */}
@@ -362,6 +367,15 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
           {loading ? <Loader2 size={18} className="am-spin" /> : null} {isEditing ? 'Guardar cambios' : 'Publicar encargo de repuestos'}
         </button>
       </form>
+      <ConfirmDialog
+        isOpen={removeKey !== null}
+        title={`¿Quitar el repuesto ${removeIndex + 1}?`}
+        message={removeItemName ? `Se quitará "${removeItemName}" de tu encargo. Esta acción no se puede deshacer.` : 'Se quitará este repuesto de tu encargo. Esta acción no se puede deshacer.'}
+        confirmLabel="Sí, quitar"
+        cancelLabel="No, conservar"
+        onConfirm={confirmRemove}
+        onCancel={() => setRemoveKey(null)}
+      />
     </div>
   );
 }

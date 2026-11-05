@@ -646,3 +646,6 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 
 /* Pantallas anchas: mismo tope y centrado que .container en Encargos (1560 px con 60 px de aire a cada lado). */
 @media (min-width: 1920px) { .ft-wide-shell { max-width: 1560px; margin-inline: auto; box-sizing: border-box; } }
+
+/* Confirmar quitar un repuesto desde el formulario de encargo: por encima del modal (1200). */
+.commission-modal-backdrop.confirm-dialog-backdrop { z-index: 1400; }
