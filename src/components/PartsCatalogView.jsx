@@ -1313,6 +1313,11 @@ export default function PartsCatalogView({
               visuals={CATEGORY_VISUALS}
               counts={browserCounts}
               normalizeKey={normalizeNameKey}
+              onShowAll={() => {
+                setShowAllProducts(true);
+                setCurrentPage(1);
+                requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
+              }}
               onPick={({ category, subcategory }) => {
                 setSelectedCategory(category.id);
                 setSelectedSubcategory(subcategory || 'TODAS');
@@ -1320,6 +1325,14 @@ export default function PartsCatalogView({
               }}
             />
           )}
+
+        {/* Celular con «Ver todos los repuestos»: la tarjeta de la app con «Ver categorías» para volver al explorador. */}
+        {isMobileLayout && showAllProducts && selectedCategory === 'TODAS' && !deferredSearchQuery?.trim() && (
+          <div className="cbm-all-card" aria-label="Todos los repuestos">
+            <span><LayoutGrid size={16} aria-hidden="true" /> <strong>Todos los repuestos</strong></span>
+            <button type="button" onClick={() => { setShowAllProducts(false); setCurrentPage(1); }} aria-label="Volver a las categorías">Ver categorías</button>
+          </div>
+        )}
 
         {showWebBrowser && (
           <CategoryBrowserWeb

@@ -93,7 +93,7 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
           <div className="ofd-store">
             <span className="ofd-logo">{quote.tiendaLogoUrl ? <img src={resolveMediaUrl(quote.tiendaLogoUrl)} alt="" /> : (quote.nombreTienda || 'T').slice(0, 1)}</span>
             <div>
-              <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda} showLabel><strong>{quote.nombreTienda}</strong></StoreProfileLink>
+              <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda}><strong>{quote.nombreTienda}</strong></StoreProfileLink>
               <small><Star size={12} /> {quote.tiendaRating ? `Evaluación ${Number(quote.tiendaRating).toFixed(1)} de 5` : 'Sin evaluaciones aún'}</small>
             </div>
             <TrackingTag label={status.label} tone={status.tone} />

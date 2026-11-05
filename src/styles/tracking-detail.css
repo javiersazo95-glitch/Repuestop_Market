@@ -121,3 +121,13 @@
 .dsg-report svg { display: none; }
 .dsg-report .trk-link svg { display: inline; }
 .trk-diag-avatar { width: 38px; height: 38px; flex-shrink: 0; font-size: 14px; }
+
+/* Igual que `NeedTrackingDetail.tsx`: el nombre de la tienda ocupa lo que queda y se corta con «…»; las etiquetas no se salen. */
+.trk-head .trk-head-name { flex: 1; min-width: 0; display: block; overflow: hidden; color: inherit; text-decoration: none; }
+.trk-head .trk-head-name strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trk-head .trk-tag, .trk-head time { flex: none; }
+/* Responder una pregunta: el campo y el botón en la misma fila (`replyRow` de la app). */
+.trk-reply { flex-direction: row; align-items: flex-end; }
+.trk-reply textarea { flex: 1; min-width: 0; min-height: 46px; }
+.trk-reply button { flex: none; align-self: flex-end; min-height: 40px; }
+.ofd .trk-note, .trk-note { margin: 0; font-size: 12.5px; line-height: 17px; color: var(--ak-text-muted, #5a6b7a); }

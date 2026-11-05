@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { SIN_SUBCATEGORIA } from '../utils/catalogSinSubcategoria';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, LayoutGrid } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import '../styles/catalog-app-mobile.css';
 
@@ -9,7 +9,7 @@ import '../styles/catalog-app-mobile.css';
  * las categorías con su icono y color, una línea divisoria y a la derecha las subcategorías de la elegida como círculos
  * con su foto, 3 por fila. Elegir una subcategoría (o "Ver todo") filtra el catálogo.
  */
-export default function CategoryBrowserMobile({ categories, visuals, onPick, counts = {}, normalizeKey = (value) => String(value) }) {
+export default function CategoryBrowserMobile({ categories, visuals, onPick, onShowAll, counts = {}, normalizeKey = (value) => String(value) }) {
   const [activeId, setActiveId] = useState(categories[0]?.id);
   const active = categories.find((category) => category.id === activeId) || categories[0];
   if (!active) return null;
@@ -46,6 +46,14 @@ export default function CategoryBrowserMobile({ categories, visuals, onPick, cou
             {total !== undefined ? `Ver todo (${total})` : 'Ver todo'} <ChevronRight size={14} aria-hidden="true" />
           </button>
         </div>
+        {/* «Ver todos los repuestos» (como `onShowAll` de la app): la lista completa, sin elegir categoría. */}
+        {onShowAll && (
+          <button type="button" className="cbm-show-all" onClick={onShowAll} aria-label="Ver todos los repuestos">
+            <LayoutGrid size={18} aria-hidden="true" />
+            <span>Ver todos los repuestos</span>
+            <ChevronRight size={15} aria-hidden="true" />
+          </button>
+        )}
         <div className="cbm-grid">
           {active.subcategories.map((subcategory) => (
             <button key={subcategory} type="button" className="cbm-sub" onClick={() => onPick({ category: active, subcategory })}>

@@ -141,3 +141,11 @@
   .cbm-left, .cbm-right { max-height: none; }
 }
 .cbm-circle-empty { display: flex; align-items: center; justify-content: center; border-style: dashed; }
+
+/* «Ver todos los repuestos» del explorador y la tarjeta «Todos los repuestos» (como `CategoryBrowser.tsx` de la app). */
+.cbm-show-all { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; margin: 0 0 10px; padding: 0 12px; border: 1px solid var(--ak-primary-border, #bfd6f7); border-radius: 12px; background: var(--ak-primary-wash, #f5f9ff); color: var(--ak-primary, #0066ff); font: inherit; font-size: 14px; font-weight: 700; text-align: left; cursor: pointer; }
+.cbm-show-all span { flex: 1; min-width: 0; }
+.cbm-all-card { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 0 0 12px; padding: 12px 14px; border: 1px solid var(--ak-primary-border, #bfd6f7); border-radius: 14px; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary, #0066ff); }
+.cbm-all-card > span { display: inline-flex; align-items: center; gap: 6px; }
+.cbm-all-card strong { font-size: 15px; }
+.cbm-all-card button { border: 0; background: none; padding: 0; color: var(--ak-primary, #0066ff); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
