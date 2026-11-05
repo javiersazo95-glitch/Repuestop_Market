@@ -359,26 +359,33 @@ function formatDate(value) {
   });
 }
 
-const TIMELINE_STEPS = [
-  { key: 'PENDIENTE', label: 'Pendiente', icon: Clock, description: 'Recibimos tu pago y el pedido está a la espera de que la tienda lo confirme.' },
-  { key: 'EN_PREPARACION', label: 'En preparación', icon: Wrench, description: 'La tienda está reuniendo y preparando los repuestos de este pedido.' },
-  { key: 'ENVIADO', label: 'Enviado', icon: Truck, description: 'El pedido ya fue despachado o está en ruta hacia su destino.' },
-  { key: 'FINALIZADO', label: 'Entregado/Finalizado', icon: PackageCheck, description: 'El pedido fue recibido y el proceso de compra quedó finalizado.' },
-];
-
-// O60 (pruebas de lanzamiento, 25-sep): en un retiro en tienda nadie despacha nada. El paso
-// ENVIADO es "Listo para retirar" -- el mismo nombre que ya usan la pildora de la tarjeta y la del
-// bloque de la tienda -- y su explicacion depende de quien mira: el comprador dicta el codigo, el
-// vendedor lo pide.
-const PICKUP_READY_STEP = {
-  buyer: { label: 'Listo para retirar', icon: Store, description: 'Tu pedido te espera en la tienda. Dicta tu código de retiro al retirarlo.' },
-  seller: { label: 'Listo para retirar', icon: Store, description: 'El pedido espera al comprador en tu tienda. Pídele su código de retiro al entregarlo.' },
-};
+// Los 5 hitos y los textos por rol de la app (`mobile/components/orders/OrderTimeline.tsx`). `PENDIENTE` cubre PAGADO y
+// PENDIENTE; `ENTREGADO` es la recepción confirmada y `FINALIZADO` el cierre con fondos liberados.
+function buildTimelineSteps(isStorePickup, isSeller) {
+  const pick = (buyer, seller) => (isSeller ? seller : buyer);
+  return [
+    { key: 'PENDIENTE', icon: CreditCard,
+      label: pick('Pago confirmado', 'Venta cobrada'),
+      description: pick('Tu pago ha sido procesado de forma segura.', 'El pago del comprador está asegurado.') },
+    { key: 'EN_PREPARACION', icon: Wrench,
+      label: pick('Preparando repuestos', 'Por preparar'),
+      description: pick('El vendedor está empaquetando tus repuestos.', 'Empaqueta los repuestos y registra el envío.') },
+    { key: 'ENVIADO', icon: isStorePickup ? Store : Truck,
+      label: isStorePickup ? pick('Listo para retirar', 'Listo para entrega') : pick('En camino', 'Enviado'),
+      description: isStorePickup
+        ? pick('Puedes pasar a buscar tu repuesto a la tienda. Dicta tu código de retiro al retirarlo.', 'El cliente ya puede retirar en tu local. Pídele su código de retiro al entregarlo.')
+        : 'El paquete está en tránsito al destino.' },
+    { key: 'ENTREGADO', icon: CheckCircle2,
+      label: pick('Entregado', 'Recibido por comprador'),
+      description: pick('Confirmaste la recepción del repuesto.', 'El cliente confirmó la recepción del pedido.') },
+    { key: 'FINALIZADO', icon: PackageCheck,
+      label: pick('Compra finalizada', 'Venta finalizada'),
+      description: pick('¡Gracias por comprar en RepuesTop!', 'Fondos liberados para su liquidación.') },
+  ];
+}
 
 function timelineStepsFor(isStorePickup, isSeller) {
-  if (!isStorePickup) return TIMELINE_STEPS;
-  const pickupStep = PICKUP_READY_STEP[isSeller ? 'seller' : 'buyer'];
-  return TIMELINE_STEPS.map((step) => (step.key === 'ENVIADO' ? { ...step, ...pickupStep } : step));
+  return buildTimelineSteps(isStorePickup, isSeller);
 }
 
 // Mientras hay un caso postventa VIVO (reclamo abierto o mediacion en curso) la barra cuenta ese
@@ -404,7 +411,8 @@ function getTimelineIndex(status) {
   const norm = String(status || '').toUpperCase();
   if (norm === 'EN_PREPARACION' || norm === 'PREPARING') return 1;
   if (norm === 'ENVIADO' || norm === 'SENT') return 2;
-  if (norm === 'ENTREGADO' || norm === 'RECEIVED' || norm === 'FINALIZADO' || norm === 'FINISHED') return 3;
+  if (norm === 'ENTREGADO' || norm === 'RECEIVED') return 3;
+  if (norm === 'FINALIZADO' || norm === 'FINISHED') return 4;
   return 0; // PENDIENTE / PAGADO
 }
 
@@ -448,6 +456,7 @@ export default function OrderDetailView({
   const normStatus = String(rawStatus).toUpperCase();
   const [isUpdating, setIsUpdating] = useState(false);
   const [selectedTimelineStep, setSelectedTimelineStep] = useState(null);
+  const [timelineExpanded, setTimelineExpanded] = useState(false);
   // Clave del paquete cuya dirección se acaba de copiar (sección Entrega).
   const [copiedPackage, setCopiedPackage] = useState('');
   const [pickupPin, setPickupPin] = useState('');
@@ -1676,6 +1685,25 @@ export default function OrderDetailView({
                   : visibleTimelineStep.description}</span>
               )}
             </div>
+            <button type="button" className="order-timeline-expand" aria-expanded={timelineExpanded} onClick={() => setTimelineExpanded((value) => !value)}>
+              {timelineExpanded ? 'Ocultar historial' : 'Ver historial de estados'}
+              <ChevronDown size={14} className={timelineExpanded ? 'is-open' : ''} />
+            </button>
+            {timelineExpanded && (
+              <ol className="order-timeline-history">
+                {timelineSteps.map((step, idx) => {
+                  const StepIcon = step.icon;
+                  const reached = idx <= timelineIndex;
+                  const current = idx === timelineIndex && !enMediacion;
+                  return (
+                    <li key={step.key} className={`${reached ? 'is-reached' : ''} ${current ? 'is-current' : ''}`}>
+                      <span className="order-timeline-history-dot"><StepIcon size={13} /></span>
+                      <span className="order-timeline-history-copy"><strong>{step.label}</strong><small>{step.description}</small></span>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
           </div>
 
 
