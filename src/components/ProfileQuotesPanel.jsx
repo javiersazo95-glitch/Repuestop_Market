@@ -13,6 +13,14 @@ import { isConversationPaused } from '../utils/quoteFlow';
  * el useMemo que arma la lista filtrada. `quotesAsBuyer` y `quoteSummary` siguen
  * viniendo del padre porque Resumen tambien los usa para sus KPIs.
  */
+// Vista del comprador (igual que `mobile/app/(buyer)/messages.tsx`): cada conversación es una solicitud, una cotización
+// recibida (también si pidió una modificación) o un acuerdo (conversación cerrada).
+const BUYER_FILTERS = [['all', 'Todos'], ['requests', 'Solicitudes'], ['quotes', 'Cotizaciones recibidas'], ['agreements', 'Acuerdos']];
+const buyerThreadState = (conversation) => {
+  if (conversation.estado === 'CERRADA') return 'agreements';
+  return conversation.cotizacion ? 'quotes' : 'requests';
+};
+
 export default function ProfileQuotesPanel({
   quotesAsBuyer,
   quoteSummary,
@@ -31,6 +39,7 @@ export default function ProfileQuotesPanel({
       .filter((conversation) => !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion')
       .filter((conversation) => {
         // Una modificación pendiente vuelve a dejar la conversación "sin responder".
+        if (quotesAsBuyer && ['requests', 'quotes', 'agreements'].includes(quoteFilter)) return buyerThreadState(conversation) === quoteFilter;
         if (quoteFilter === 'pending') return !conversation.cotizacion || isConversationPaused(conversation);
         if (quoteFilter === 'sent') return Boolean(conversation.cotizacion) && !isConversationPaused(conversation);
         if (quoteFilter === 'unread') return Number(conversation.mensajesNoLeidos || 0) > 0;
@@ -38,7 +47,7 @@ export default function ProfileQuotesPanel({
       })
       .filter((conversation) => {
         if (!query) return true;
-        return [conversation.id, conversation.otroParticipanteNombre, conversation.productoNombre, conversation.ultimoMensaje]
+        return [conversation.id, conversation.otroParticipanteNombre, conversation.productoNombre, conversation.productoSku, conversation.sku, conversation.ultimoMensaje]
           .some((value) => String(value || '').toLowerCase().includes(query));
       })
       .sort((left, right) => {
@@ -46,7 +55,11 @@ export default function ProfileQuotesPanel({
         const rightTime = new Date(right.ultimoMensajeFecha || right.updatedAt || 0).getTime() || 0;
         return quoteSort === 'newest' ? rightTime - leftTime : leftTime - rightTime;
       });
-  }, [activeQuoteSource, quoteFilter, quoteSearch, quoteSort]);
+  }, [activeQuoteSource, quoteFilter, quoteSearch, quoteSort, quotesAsBuyer]);
+  const buyerCounts = useMemo(() => {
+    const quoteOnly = (activeQuoteSource || []).filter((conversation) => !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion');
+    return BUYER_FILTERS.reduce((counts, [value]) => ({ ...counts, [value]: value === 'all' ? quoteOnly.length : quoteOnly.filter((conversation) => buyerThreadState(conversation) === value).length }), {});
+  }, [activeQuoteSource]);
   const { pageItems, pagerProps } = usePagedList(quoteConversations, JSON.stringify([quoteFilter, quoteSearch, quoteSort, quotesAsBuyer]));
 
   return (
@@ -54,8 +67,8 @@ export default function ProfileQuotesPanel({
       <div className="seller-quotes-heading">
         <div>
           <span className="seller-quotes-eyebrow"><ReceiptText size={14} /> {quotesAsBuyer ? 'Conversaciones de cotización' : 'Centro de cotizaciones'}</span>
-          <h2 className="profile-panel-title">{quotesAsBuyer ? 'Mis cotizaciones' : 'Cotizaciones de compradores'}</h2>
-          <p>{quotesAsBuyer ? 'Revisa las respuestas de las tiendas, conversa y consulta cada propuesta con su vigencia y condiciones.' : 'Revisa solicitudes, responde con tus condiciones comerciales y mantén cada oferta vinculada a su conversación.'}</p>
+          <h2 className="profile-panel-title">{quotesAsBuyer ? 'Cotizaciones' : 'Cotizaciones de compradores'}</h2>
+          <p>{quotesAsBuyer ? 'Gestiona solicitudes, revisa ofertas y confirma acuerdos con vendedores.' : 'Revisa solicitudes, responde con tus condiciones comerciales y mantén cada oferta vinculada a su conversación.'}</p>
         </div>
         <div className="seller-quotes-heading-actions">
           {!quotesAsBuyer && <span className="seller-quotes-total-badge">{quoteSummary.total} {quoteSummary.total === 1 ? 'solicitud' : 'solicitudes'}</span>}
@@ -65,18 +78,18 @@ export default function ProfileQuotesPanel({
         </div>
       </div>
 
-      <div className="seller-quotes-summary">
+      {!quotesAsBuyer && <div className="seller-quotes-summary">
         <article><MessageSquare size={18} /><span><strong>{quoteSummary.total}</strong>Total</span></article>
         <article className="is-pending"><Clock size={18} /><span><strong>{quoteSummary.pending}</strong>Por responder</span></article>
         <article className="is-sent"><Send size={18} /><span><strong>{quoteSummary.sent}</strong>Ofertas enviadas</span></article>
         <article className="is-unread"><Inbox size={18} /><span><strong>{quoteSummary.unread}</strong>Mensajes sin leer</span></article>
-      </div>
+      </div>}
 
       <div className="seller-quotes-toolbar">
-        <label className="seller-quotes-search"><Search size={15} /><input value={quoteSearch} onChange={(event) => setQuoteSearch(event.target.value)} placeholder={quotesAsBuyer ? 'Buscar tienda, producto o cotización...' : 'Buscar comprador, producto o cotización...'} />{quoteSearch && <button type="button" onClick={() => setQuoteSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
+        <label className="seller-quotes-search"><Search size={15} /><input value={quoteSearch} onChange={(event) => setQuoteSearch(event.target.value)} placeholder={quotesAsBuyer ? 'Buscar vendedor, repuesto o SKU' : 'Buscar comprador, producto o cotización...'} />{quoteSearch && <button type="button" onClick={() => setQuoteSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
         <div className="seller-quotes-filters" role="group" aria-label="Filtrar cotizaciones">
-          {[['all', 'Todas'], ['pending', 'Sin responder'], ['sent', 'Enviadas'], ['unread', 'Sin leer']].map(([value, label]) => (
-            <button key={value} type="button" className={quoteFilter === value ? 'active' : ''} onClick={() => setQuoteFilter(value)}>{label}</button>
+          {(quotesAsBuyer ? BUYER_FILTERS : [['all', 'Todas'], ['pending', 'Sin responder'], ['sent', 'Enviadas'], ['unread', 'Sin leer']]).map(([value, label]) => (
+            <button key={value} type="button" className={quoteFilter === value ? 'active' : ''} onClick={() => setQuoteFilter(value)}>{label}{quotesAsBuyer ? ` (${buyerCounts[value] ?? 0})` : ''}</button>
           ))}
         </div>
       </div>
@@ -84,7 +97,7 @@ export default function ProfileQuotesPanel({
       {quoteSummary.total === 0 ? (
         <EmptyState label={quotesAsBuyer ? 'Aún no has pedido cotizaciones a otras tiendas.' : 'Aún no tienes solicitudes de cotización.'} />
       ) : quoteConversations.length === 0 ? (
-        <EmptyState label="No encontramos cotizaciones con esos filtros." />
+        <EmptyState label={quotesAsBuyer ? 'No encontramos conversaciones. Prueba otro filtro o busca un vendedor o repuesto.' : 'No encontramos cotizaciones con esos filtros.'} />
       ) : (
         <>
         <div className="profile-orders-cards-grid seller-quotes-grid">
