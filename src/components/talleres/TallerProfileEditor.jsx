@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  AlertTriangle, Calendar, Camera, Car, ChevronRight, Clock, FileText, Home, ImagePlus, Loader2, MessageCircle,
+  AlertTriangle, Calendar, Camera, Car, ChevronRight, Clock, Eye, FileText, Home, ImagePlus, Loader2, MessageCircle,
   Pencil, Plus, Store, Wrench, X
 } from 'lucide-react';
 import { fetchMiTaller, updateMiTallerPerfil, uploadTallerPhotos } from '../../services/talleresStorage';
@@ -82,7 +83,8 @@ function Group({ title, children }) {
  * - `hasAgenda`: el taller ya registro su horario principal (requisito para recibir citas en linea).
  * - `only24Hours`: un taller solo 24/7 se contacta directo, sin agenda.
  */
-export default function TallerProfileEditor({ record, businessName, hasAgenda, only24Hours = false, onOpenAgenda, onOpenServices, onSaved }) {
+export default function TallerProfileEditor({ record, businessName, hasAgenda, only24Hours = false, onOpenAgenda, onOpenServices, onSaved, publicProfilePath = null }) {
+  const navigate = useNavigate();
   const [taller, setTaller] = useState(null);
   const [infoData, setInfoData] = useState(null);
   const [bookingStatus, setBookingStatus] = useState(null);
@@ -274,6 +276,10 @@ export default function TallerProfileEditor({ record, businessName, hasAgenda, o
   const logo = taller?.logo || null;
   const serviceNames = services.slice(0, 3).map((service) => service.name).join(' · ') + (services.length > 3 ? ` · +${services.length - 3}` : '');
   const hoursSummary = only24Hours ? 'Atención 24 horas' : taller?.hours;
+  const onOpenPublicProfile = () => {
+    if (publicProfilePath) { navigate(publicProfilePath); return; }
+    setActionError('Aún no se ve: agrega al menos un servicio con su precio «desde» para que tu taller aparezca en el buscador.');
+  };
 
   return (
     <div className="taller-editor">
@@ -283,6 +289,8 @@ export default function TallerProfileEditor({ record, businessName, hasAgenda, o
       <section className="agenda-configs-section taller-editor__identity" aria-label="Portada y logo del taller">
         <div className="taller-editor__cover">
           {cover ? <img src={cover} alt="Portada del taller" /> : <span className="taller-editor__cover-empty"><ImagePlus size={22} /> Agrega una portada</span>}
+          {/* «Ver cómo se ve mi perfil»: el ojo de la app sobre la portada; sin servicio publicado avisa por qué aún no se ve. */}
+          <button type="button" className="agenda-cfg-icon taller-editor__eye-btn" aria-label="Ver cómo se ve mi perfil" onClick={onOpenPublicProfile}><Eye size={15} /></button>
           <button type="button" className="agenda-cfg-icon taller-editor__cover-btn" aria-label="Cambiar portada" disabled={Boolean(busy)} onClick={() => coverInputRef.current?.click()}>
             {busy === 'cover' ? <Loader2 size={15} className="spin-icon" /> : <Camera size={15} />}
           </button>

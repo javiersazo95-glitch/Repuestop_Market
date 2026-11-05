@@ -20,6 +20,7 @@ import TallerProfileEditor from './TallerProfileEditor';
 import { getAgendaConfigs } from '../../services/agendaConfigsStorage';
 import { createDefaultAgendaConfig, PRINCIPAL_AGENDA_ID, PRINCIPAL_AGENDA_NAME } from '../../data/agendaConfig';
 import './ads-wall.css';
+import '../../styles/taller-mobile-app.css';
 
 // Mensaje del gate segun el estado del expediente de servicio automotriz: el perfil publico
 // exige el expediente APROBADO (lo valida `TallerPerfilService` en el backend).
@@ -174,10 +175,11 @@ function WorkshopSection() {
                 <span className="ads-mgmt-h2-ic"><Wrench size={20} /></span>
                 Mi taller
               </h2>
-              <p>
+              <p className="ads-mgmt-desc-desktop">
                 Muestra tus servicios con precio, recibe reservas de hora y responde a tus
                 clientes, todo desde un solo lugar.
               </p>
+              <p className="ads-mgmt-desc-mobile">Cuida el perfil que ven tus clientes y reconoce a quienes ya te agendaron.</p>
             </div>
 
             <div className="ads-mgmt-titles-actions">
@@ -291,6 +293,7 @@ function WorkshopSection() {
             only24Hours={Boolean(accreditation.onboarding?.solo24Horas)}
             onOpenAgenda={openPrincipalAgenda}
             onSaved={() => accreditation.refresh()}
+            publicProfilePath={publicProfile}
           />
         </>
       )}

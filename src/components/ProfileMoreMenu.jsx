@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
+import CapturerContactCard from './CapturerContactCard';
 import {
   Calendar, ChevronRight, Clipboard, Cog, Compass, FileText, Flag, Hammer, Headphones, Heart, HelpCircle, LifeBuoy, LogOut,
   MessageCircle, MessageSquare, MessagesSquare, PackageCheck, Activity, Search, Settings, ShieldCheck, Store, Tags, Telescope,
-  Trash2, Lock, Wallet, X, Inbox, Wrench, QrCode, Building2, Share2, FolderOpen, Truck, CreditCard, CarFront,
+  Trash2, Lock, Wallet, X, Users, Inbox, Wrench, QrCode, Building2, Share2, FolderOpen, Truck, CreditCard, CarFront,
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import { ROUTES } from '../routes/paths';
@@ -85,7 +86,6 @@ const MENUS = {
     ['Explorar', [
       t('Marketplace de repuestos', Cog, COLORS.catalog, { tab: 'repuestos' }),
       t('Fallas automotrices', EngineIcon, COLORS.faults, { to: ROUTES.faults }),
-      t('Mis diagnósticos', EngineIcon, COLORS.faults, { tab: 'fallas_taller' }),
       t('Encargar repuesto', Search, COLORS.search, { tab: 'subastas' }),
       t('Casas de repuestos', Store, COLORS.stores, { to: ROUTES.stores }),
     ]],
@@ -111,8 +111,10 @@ const MENUS = {
 
 export default function ProfileMoreMenu({
   profile, displayName, email, avatarUrl, initials, stats = [], availableTabs, activeTab, storeLink = null, hints = {},
-  onTab, onTo, onFeedback, onProfile, onDeleteAccount, onLogout, onClose,
+  onTab, onTo, onFeedback, onProfile, onDeleteAccount, onLogout, onClose, capturer = null,
 }) {
+  // Botón «Mi reclutador» del encabezado del taller (como la app): abre los datos de quien lo captó.
+  const [recruiterOpen, setRecruiterOpen] = useState(false);
   const sections = MENUS[profile]
     .map(([title, items]) => [title, items.filter((item) => !item.tab || availableTabs.has(item.tab))])
     .filter(([, items]) => items.length > 0);
@@ -137,6 +139,9 @@ export default function ProfileMoreMenu({
               {email && <small>{email}</small>}
               <span className="pmm-hero-link">Ver mi perfil <ChevronRight size={14} /></span>
             </button>
+            {profile === 'workshop' && (
+              <button type="button" className="pmm-recruiter" aria-label="Ver mi reclutador de talleres" onClick={() => setRecruiterOpen(true)}><Users size={20} /></button>
+            )}
           </div>
           {stats.length > 0 && (
             <div className="pmm-stats">
@@ -186,6 +191,17 @@ export default function ProfileMoreMenu({
             </section>
           );
         })}
+
+        {recruiterOpen && (
+          <div className="pmm-recruiter-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget) setRecruiterOpen(false); }}>
+            <div className="pmm-recruiter-sheet" role="dialog" aria-modal="true" aria-label="Mi reclutador de talleres">
+              <div className="pmm-recruiter-head"><strong>Mi reclutador</strong><button type="button" aria-label="Cerrar" onClick={() => setRecruiterOpen(false)}><X size={18} /></button></div>
+              {capturer
+                ? <CapturerContactCard capturer={capturer} context="ads" />
+                : <p className="pmm-recruiter-empty">Aún no tienes un reclutador asignado. Si necesitas ayuda, escríbenos desde el Centro de ayuda.</p>}
+            </div>
+          </div>
+        )}
 
         <div className="pmm-actions">
           <button type="button" className="pmm-logout" onClick={() => { onClose(); onLogout(); }}><LogOut size={18} /> Cerrar sesión</button>

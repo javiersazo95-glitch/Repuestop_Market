@@ -1428,3 +1428,12 @@
   .profile-dashboard[data-role="seller"][data-active-tab="resumen"] .facebook-cover-hero-container,
   .profile-dashboard[data-role="workshop"][data-active-tab="resumen"] .facebook-cover-hero-container { display: none; }
 }
+
+/* Botón «Mi reclutador» del encabezado del Más del taller (como en `app/(workshop)/mas.tsx`). */
+.pmm-recruiter { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary, #0066ff); cursor: pointer; }
+.pmm-recruiter-backdrop { position: fixed; inset: 0; z-index: 1400; display: flex; align-items: flex-end; background: rgba(18, 28, 45, .45); }
+.pmm-recruiter-sheet { width: 100%; display: grid; gap: 12px; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); border-radius: 18px 18px 0 0; background: #fff; }
+.pmm-recruiter-head { display: flex; align-items: center; justify-content: space-between; }
+.pmm-recruiter-head strong { font-size: 18px; }
+.pmm-recruiter-head button { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--ak-surface-muted, #f3f5f7); cursor: pointer; }
+.pmm-recruiter-empty { margin: 0; color: var(--ak-text-muted, #5a6b7a); font-size: 14px; }

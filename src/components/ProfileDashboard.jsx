@@ -2142,6 +2142,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 { label: 'Cotizaciones', value: quoteSummary.sent, icon: ReceiptText, tab: 'cotizaciones' },
                 { label: favorites.length === 1 ? 'Favorito' : 'Favoritos', value: favorites.length, icon: Heart, tab: 'favoritos' },
               ]}
+              capturer={isWorkshop ? (user?.captadorPublicidad || user?.captadorCasaRepuestos || null) : null}
               storeLink={isSeller && user?.sellerId ? storePath({ id: user.sellerId, nombre: storeInfo?.storeName || user?.storeName }) : null}
               onTab={setActiveTab}
               onTo={(path) => navigate(path)}
