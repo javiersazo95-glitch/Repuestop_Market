@@ -31,6 +31,7 @@ import {
 } from '../data/shippingMethods';
 import { formatRut, isValidRut, isValidClPhone } from '../services/adapters';
 import { helpContactPath } from '../routes/paths';
+import ConfirmDialog from './ConfirmDialog';
 
 /** Deja pasar solo dígitos y, si estaba al inicio, un único "+" (prefijo de país). */
 function sanitizePhoneInput(rawValue) {
@@ -64,6 +65,7 @@ export default function ProfileAccountDataPanel({
   const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [saveStatus, setSaveStatus] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -301,6 +303,30 @@ export default function ProfileAccountDataPanel({
     } else {
       setSaveStatus({ type: 'error', message: result.error || 'No se pudo actualizar la información.' });
     }
+  };
+
+  const baseTaxId = isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || '');
+  const hasUnsavedChanges = isEditing && (
+    nameDraft !== (user?.userName || user?.nombre || '')
+    || phoneDraft !== (user?.phone || user?.telefono || '')
+    || taxIdDraft !== baseTaxId
+    || facturaRazonSocialDraft !== (user?.facturaRazonSocial || '')
+    || facturaGiroDraft !== (user?.facturaGiro || '')
+    || (isSeller && (storeAddressDraft !== (storeInfo?.address || user?.address || '')
+      || storeComunaDraft !== (storeInfo?.comuna || user?.comuna || '')
+      || storeRegionDraft !== (storeInfo?.region || user?.region || '')))
+  );
+  const discardChanges = () => {
+    setIsEditing(false);
+    setFormErrors({});
+    setNameDraft(user?.userName || user?.nombre || '');
+    setPhoneDraft(user?.phone || user?.telefono || '');
+    setTaxIdDraft(baseTaxId);
+    setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
+    setFacturaGiroDraft(user?.facturaGiro || '');
+    setStoreAddressDraft(storeInfo?.address || user?.address || '');
+    setStoreComunaDraft(storeInfo?.comuna || user?.comuna || '');
+    setStoreRegionDraft(storeInfo?.region || user?.region || '');
   };
 
   return (
@@ -668,20 +694,22 @@ export default function ProfileAccountDataPanel({
                 type="button"
                 className="btn-auth-secondary"
                 onClick={() => {
-                  setIsEditing(false);
-                  setFormErrors({});
-                  setNameDraft(user?.userName || user?.nombre || '');
-                  setPhoneDraft(user?.phone || user?.telefono || '');
-                  setTaxIdDraft(isSeller ? (storeInfo?.taxId || user?.taxId || '') : (user?.facturaRut || user?.taxId || ''));
-                  setFacturaRazonSocialDraft(user?.facturaRazonSocial || '');
-                  setFacturaGiroDraft(user?.facturaGiro || '');
-                  setStoreAddressDraft(storeInfo?.address || user?.address || '');
-                  setStoreComunaDraft(storeInfo?.comuna || user?.comuna || '');
-                  setStoreRegionDraft(storeInfo?.region || user?.region || '');
+                  // Igual que la app: si hay cambios sin guardar pregunta antes de descartarlos.
+                  if (hasUnsavedChanges) { setConfirmDiscard(true); return; }
+                  discardChanges();
                 }}
               >
                 Cancelar
               </button>
+              <ConfirmDialog
+                isOpen={confirmDiscard}
+                title="Descartar cambios"
+                message="Tienes cambios sin guardar. ¿Quieres salir igualmente?"
+                confirmLabel="Descartar"
+                cancelLabel="Seguir editando"
+                onConfirm={() => { setConfirmDiscard(false); discardChanges(); }}
+                onCancel={() => setConfirmDiscard(false)}
+              />
               <button
                 type="submit"
                 className="btn-auth-primary"
