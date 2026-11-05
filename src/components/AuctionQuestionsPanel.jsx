@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AlertCircle, ArrowLeft, CheckCircle2, CornerDownRight, Loader2, MessageCircle, Send } from 'lucide-react';
 import AuctionAvatar from './AuctionAvatar';
+import StoreProfileLink, { commentStoreId } from './StoreProfileLink';
 import { getAuctionComments, postAuctionComment } from '../services/auctionApi';
 import '../styles/auction-questions.css';
 
@@ -142,9 +143,11 @@ export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPe
           <>
             <button type="button" className="qq-back" onClick={() => setMobileDetail(false)}><ArrowLeft size={15} /> Volver a la lista</button>
             <article className="qq-question">
-              <AuctionAvatar className="qq-avatar is-lg" src={selected.autorFotoUrl} name={selected.autor || ''} isStore={selected.autorEsTienda} />
+              <StoreProfileLink storeId={commentStoreId(selected, [])} name={selected.autor}>
+                <AuctionAvatar className="qq-avatar is-lg" src={selected.autorFotoUrl} name={selected.autor || ''} isStore={selected.autorEsTienda} />
+              </StoreProfileLink>
               <div>
-                <p className="qq-who"><strong>{selected.autor || 'Tienda'}</strong> pregunta <small>{formatDate(selected.createdAt)}</small></p>
+                <p className="qq-who"><StoreProfileLink storeId={commentStoreId(selected, [])} name={selected.autor} showLabel><strong>{selected.autor || 'Tienda'}</strong></StoreProfileLink> pregunta <small>{formatDate(selected.createdAt)}</small></p>
                 <p className="qq-question-text">{selected.texto}</p>
               </div>
             </article>

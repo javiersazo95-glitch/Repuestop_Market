@@ -9,6 +9,7 @@ import {
 import { auctionTrackingCode, getAuctionBuyerProfile, getAuctionComments, postAuctionComment } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
 import ContextualReportButton from './ContextualReportButton';
+import StoreProfileLink, { commentStoreId } from './StoreProfileLink';
 import AuctionAvatar from './AuctionAvatar';
 import AuctionImageViewer from './AuctionImageViewer';
 import ShareLinkButton from './ShareLinkButton';
@@ -394,19 +395,25 @@ export default function AuctionDetailMobile({
       {/* Comentarios */}
       <section className="am-card" id="am-comments">
         <h3 className="am-section-title"><MessageCircle size={20} /> Comentarios de usuarios <span className="am-muted">({comments.length})</span></h3>
-        {comments.map((comment) => (
-          <div key={comment.id} className="am-comment">
-            <AuctionAvatar className="am-comment-avatar" src={comment.autorFotoUrl} name={comment.autor || ''} isStore={Boolean(comment.autorEsTienda)} />
-            <div>
-              <strong>
-                {comment.autor}
-                {comment.autorEsComprador && <em> · Comprador</em>}
-                {comment.autorEsTienda && <em> · Tienda</em>}
-              </strong>
-              <p>{comment.texto}</p>
+        {comments.map((comment) => {
+          // La tienda que comenta se visita desde su avatar y su nombre («· Ver perfil»), como en la app.
+          const storeId = commentStoreId(comment, cotizaciones);
+          return (
+            <div key={comment.id} className="am-comment">
+              <StoreProfileLink storeId={storeId} name={comment.autor}>
+                <AuctionAvatar className="am-comment-avatar" src={comment.autorFotoUrl} name={comment.autor || ''} isStore={Boolean(comment.autorEsTienda)} />
+              </StoreProfileLink>
+              <div>
+                <strong>
+                  <StoreProfileLink storeId={storeId} name={comment.autor} className="am-profile-link" showLabel>{comment.autor}</StoreProfileLink>
+                  {comment.autorEsComprador && <em> · Comprador</em>}
+                  {comment.autorEsTienda && <em> · Tienda</em>}
+                </strong>
+                <p>{comment.texto}</p>
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
         {(isSeller || esCreador) && isOpen ? (
           <form className="am-comment-form" onSubmit={submitComment}>
             <Pencil size={18} />
@@ -473,7 +480,12 @@ export default function AuctionDetailMobile({
             return (
               <div key={quote.id} className={`am-offer ${winner ? 'is-winner' : ''}`}>
                 <span className="am-offer-n">{index + 1}</span>
-                {quote.tiendaLogoUrl ? (
+                {/* Avatar y nombre abren el perfil de la tienda (como la app); sin identificador, el avatar amplía su foto. */}
+                {quote.proveedorId ? (
+                  <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda}>
+                    <AuctionAvatar className="am-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+                  </StoreProfileLink>
+                ) : quote.tiendaLogoUrl ? (
                   <button
                     type="button"
                     className="am-offer-avatar-btn"
@@ -486,7 +498,7 @@ export default function AuctionDetailMobile({
                   <AuctionAvatar className="am-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
                 )}
                 <div className="am-offer-text">
-                  <strong>{quote.nombreTienda || 'Tienda verificada'}</strong>
+                  <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda} className="am-profile-link" showLabel><strong>{quote.nombreTienda || 'Tienda verificada'}</strong></StoreProfileLink>
                   <span className="am-offer-meta">
                     <Star size={12} className={quote.tiendaRating ? 'is-rated' : ''} />
                     {quote.tiendaRating ? `Evaluación ${Number(quote.tiendaRating).toFixed(1)} de 5` : 'Sin evaluaciones aún'}

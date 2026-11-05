@@ -306,7 +306,8 @@ export default function FaultDetailMobile({
                 const price = priceRange(diagnosis.precioDesde, diagnosis.precioHasta);
                 const replies = repliesOf(diagnosis.id).length;
                 return (
-                  <button type="button" key={diagnosis.id} className={`ftd-diag-row ${diagnosis.aceptado ? 'is-accepted' : ''}`} onClick={() => { setListOpen(false); onOpenDiagnosis(diagnosis.id); }}>
+                  <div key={diagnosis.id} className="ftd-diag-wrap">
+                  <button type="button" className={`ftd-diag-row ${diagnosis.aceptado ? 'is-accepted' : ''}`} onClick={() => { setListOpen(false); onOpenDiagnosis(diagnosis.id); }}>
                     <Avatar name={diagnosis.autor} src={diagnosis.autorFotoUrl || diagnosis.taller?.logoUrl} />
                     <span className="ftd-group-copy">
                       <strong>{diagnosis.autor}{diagnosis.aceptado && <em>Aceptado</em>}</strong>
@@ -317,6 +318,8 @@ export default function FaultDetailMobile({
                     </span>
                     <ChevronRight size={16} aria-hidden="true" />
                   </button>
+                  {diagnosis.taller && <Link className="ftd-profile ftd-diag-profile" to={workshopPath(diagnosis.taller.tallerId)} onClick={() => setListOpen(false)}>Ver perfil del taller ›</Link>}
+                  </div>
                 );
               })}
             </div>

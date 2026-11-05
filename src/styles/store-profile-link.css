@@ -4,3 +4,9 @@ a.spl:hover strong, a.spl:hover { text-decoration: underline; text-decoration-co
 a.spl:focus-visible { outline: 2px solid #0066ff; outline-offset: 2px; border-radius: 6px; }
 .spl-label { display: inline-flex; align-items: center; gap: 1px; flex-shrink: 0; padding: 1px 6px 1px 8px; border-radius: 999px; background: #eaf2ff; color: #0056bf; font-size: 11px; font-weight: 700; line-height: 16px; }
 a.spl:hover .spl-label { background: #d8e8ff; }
+
+/* «Ver perfil» en el detalle móvil de la búsqueda (comentarios y ofertas) y en la lista de diagnósticos de la falla. */
+.am-profile-link { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; color: inherit; text-decoration: none; }
+.am-profile-link strong, strong > .am-profile-link { overflow: hidden; text-overflow: ellipsis; }
+.ftd-diag-wrap { display: grid; gap: 4px; }
+.ftd-diag-profile { justify-self: end; padding: 2px 8px 0; font-weight: 700; text-decoration: none !important; }
