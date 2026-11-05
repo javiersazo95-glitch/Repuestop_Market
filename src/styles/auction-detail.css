@@ -298,3 +298,9 @@
 .av-items .as-title > span:first-child { flex: 1 1 auto; min-width: 0; }
 .av-items .av-items-all { order: 1; flex: none; margin-left: 8px; }
 .av-items .as-title small { order: 2; flex: 1 0 100%; font-weight: 600; }
+
+/* Repuestos solicitados: el nombre usa todo el ancho de la fila; el estado se dice una sola vez arriba cuando es el mismo en todos. */
+.av-items .av-items-state { display: inline-flex; align-items: center; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: #eaf2ff; color: #0052cc; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.av-items-list.is-compact li { padding: 10px 0; }
+.av-items-list.is-compact li:first-child { padding-top: 2px; }
+.av-items-list.is-compact .av-item-main strong { font-size: 14px; line-height: 1.3; }
