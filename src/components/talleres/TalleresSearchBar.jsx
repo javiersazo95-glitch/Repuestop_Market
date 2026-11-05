@@ -158,7 +158,7 @@ export default function TalleresSearchBar({
                   key={`${s.type}-${s.label}`}
                   type="button"
                   className="ads-suggestion-row"
-                  onClick={() => { setIsFocused(false); onSelectSuggestion(s.label); }}
+                  onClick={() => { setIsFocused(false); onSelectSuggestion(s.label, s.type); }}
                 >
                   <MetaIcon size={15} />
                   <span className="ads-suggestion-text">{s.label}</span>

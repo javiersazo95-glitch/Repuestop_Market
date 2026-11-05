@@ -344,3 +344,12 @@
   .ads-wall-page .workshop-directory-banner,
   .ads-wall-page .ads-main-head { display: none; }
 }
+
+/* Servicios buscados: etiquetas bajo el buscador de talleres (igual que la app). */
+.ads-sb-terms { display: grid; gap: 6px; margin-top: 10px; padding: 10px 12px; border: 1px solid var(--ak-primary-border, #bfd6f7); border-radius: 12px; background: var(--ak-primary-wash, #f5f9ff); }
+.ads-sb-terms-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ads-sb-terms-head span { color: var(--ak-text-muted, #5a6b7a); font-size: 11px; font-weight: 800; letter-spacing: .06em; }
+.ads-sb-terms-head button { border: 0; background: none; color: var(--ak-primary, #0066ff); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.ads-sb-terms-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.ads-sb-term { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 6px 10px; border: 1px solid var(--ak-primary-border, #bfd6f7); border-radius: 999px; background: #fff; color: var(--ak-primary, #0066ff); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.ads-sb-term span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

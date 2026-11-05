@@ -118,12 +118,22 @@ export function matchingServices(taller, terms = []) {
  * comuna o marcas, para que seguir buscando un taller por su nombre funcione. Misma regla que la app.
  */
 export function searchTalleres(talleres, query) {
-  if (!normalizeSearchText(query)) return talleres;
-  const words = normalizeSearchText(query).split(/\s+/).filter((word) => word.length >= 3).map(singular);
-  const offers = (taller) => matchingServices(taller, [query]).length > 0
-    || (words.length > 0 && (taller.services || []).some((service) => (service.includes || [])
-      .some((item) => words.every((word) => normalizeSearchText(item).includes(word)))));
+  // Acepta un texto o varios servicios buscados (como la app): sale el taller que ofrece alguno de ellos.
+  const terms = (Array.isArray(query) ? query : [query]).map((term) => String(term || '').trim()).filter((term) => normalizeSearchText(term));
+  if (terms.length === 0) return talleres;
+  const wordsOf = (term) => normalizeSearchText(term).split(/\s+/).filter((word) => word.length >= 3).map(singular);
+  const offers = (taller) => matchingServices(taller, terms).length > 0
+    || terms.some((term) => {
+      const words = wordsOf(term);
+      return words.length > 0 && (taller.services || []).some((service) => (service.includes || [])
+        .some((item) => words.every((word) => normalizeSearchText(item).includes(word))));
+    });
   const offering = talleres.filter(offers);
   if (offering.length > 0) return offering;
-  return talleres.filter((taller) => tallerMatchesSearch(taller, query));
+  return talleres.filter((taller) => terms.some((term) => tallerMatchesSearch(taller, term)));
+}
+
+/** Cuántos de los servicios buscados ofrece el taller: sirve para mostrar primero al que cubre más. */
+export function searchedServicesCovered(taller, terms = []) {
+  return terms.filter((term) => matchingServices(taller, [term]).length > 0).length;
 }

@@ -12,7 +12,7 @@ import {
   isValidPlate, normalizePlate, lookupVehicleByPlate, formatVehicleLabel, getRecentPlates, addRecentPlate
 } from '../../utils/vehicleLookup';
 import {
-  buildTallerSuggestionIndex, matchTallerSuggestions, searchTalleres, normalizeSearchText, tallerServiceNames,
+  buildTallerSuggestionIndex, matchTallerSuggestions, searchTalleres, searchedServicesCovered, normalizeSearchText, tallerServiceNames,
   matchingServices
 } from '../../utils/tallerSearch';
 import { useAuth } from '../../context/AuthContext';
@@ -37,6 +37,7 @@ import { canBookTaller } from '../../utils/tallerBooking';
 
 const PAGE_SIZE = 12;
 // Filtros y "cargar mas" del buscador, recuperados al volver de un perfil.
+const MAX_SERVICE_TERMS = 5;
 const VIEW_ID = 'talleres';
 
 // Sugerencias del campo movil (en escritorio las pinta AdsSearchBar).
@@ -117,6 +118,8 @@ export default function TalleresDirectoryView() {
   // --- Filtros ---
   const [searchInput, setSearchInput] = useRestoredState(VIEW_ID, 'searchInput', '');
   const [searchQuery, setSearchQuery] = useRestoredState(VIEW_ID, 'searchQuery', '');
+  // Servicios buscados: cada uno queda como etiqueta bajo el buscador (hasta 5), igual que la app.
+  const [serviceTerms, setServiceTerms] = useRestoredState(VIEW_ID, 'serviceTerms', []);
   const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [selectedCategory, setSelectedCategory] = useRestoredState(VIEW_ID, 'selectedCategory', 'TODAS');
   const [selectedCommune, setSelectedCommune] = useRestoredState(VIEW_ID, 'selectedCommune', ALL_COMMUNES);
@@ -264,16 +267,35 @@ export default function TalleresDirectoryView() {
     document.getElementById('talleres-results-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
-  const handleSelectSuggestion = (label) => {
-    setSearchInput(label);
-    setSearchQuery(label);
+  const addServiceTerm = (label) => {
+    const clean = String(label || '').trim();
+    if (clean.length < 2) return;
+    setServiceTerms((current) => (
+      current.some((term) => normalizeSearchText(term) === normalizeSearchText(clean)) || current.length >= MAX_SERVICE_TERMS
+        ? current
+        : [...current, clean]
+    ));
+    setSearchInput('');
+    setSearchQuery('');
+  };
+  const removeServiceTerm = (label) => setServiceTerms((current) => current.filter((term) => term !== label));
+
+  const handleSelectSuggestion = (label, type) => {
+    // Un servicio se suma como etiqueta; un taller o una comuna se busca directo, como antes.
+    if (type === 'servicio') {
+      addServiceTerm(label);
+      scrollToResults();
+    } else {
+      setSearchInput(label);
+      setSearchQuery(label);
+    }
     setIsSearchFocused(false);
   };
 
-  // La lupa aplica el texto sin esperar el retardo de escritura.
+  // La lupa o Enter suma el texto como servicio buscado (la búsqueda de un taller por nombre sigue funcionando).
   const handleSubmitSearch = () => {
+    if (searchInput.trim().length >= 2) { addServiceTerm(searchInput); scrollToResults(); return; }
     setSearchQuery(searchInput);
-    if (searchInput.trim()) scrollToResults();
   };
 
   const handleClearSearch = () => {
@@ -333,15 +355,16 @@ export default function TalleresDirectoryView() {
   // --- Filtrado y ordenación ---
   // Lo que el cliente busca (texto o servicio elegido): las cards suben y resaltan esos servicios.
   const highlightTerms = useMemo(
-    () => [searchQuery.trim(), selectedServiceTag !== ALL_TAGS ? selectedServiceTag : ''].filter(Boolean),
-    [searchQuery, selectedServiceTag]
+    () => [...serviceTerms, searchQuery.trim(), selectedServiceTag !== ALL_TAGS ? selectedServiceTag : ''].filter(Boolean),
+    [serviceTerms, searchQuery, selectedServiceTag]
   );
 
   const filteredTalleres = useMemo(() => {
     let result = [...talleres];
 
-    if (searchQuery.trim()) {
-      result = searchTalleres(result, searchQuery);
+    const searchTerms = [...serviceTerms, searchQuery.trim()].filter(Boolean);
+    if (searchTerms.length > 0) {
+      result = searchTalleres(result, searchTerms);
     }
     if (selectedCategory !== 'TODAS') {
       result = result.filter((taller) => taller.categories.includes(selectedCategory));
@@ -393,7 +416,7 @@ export default function TalleresDirectoryView() {
     } else {
       // Relevancia: primero los que ofrecen justo lo buscado, luego los que se pueden agendar
       // en línea y los que tienen su catálogo más completo. Nada de esto se paga.
-      const score = (taller) => (matchingServices(taller, highlightTerms).length * 10)
+      const score = (taller) => (searchedServicesCovered(taller, highlightTerms) * 30) + (matchingServices(taller, highlightTerms).length * 10)
         + (canBookTaller(taller) ? 3 : 0)
         + Math.min(taller.services.length, 5) * 0.2;
       result.sort((a, b) => score(b) - score(a)
@@ -408,7 +431,7 @@ export default function TalleresDirectoryView() {
 
     return result;
   }, [
-    talleres, searchQuery, selectedCategory, selectedCommune, selectedServiceTag, highlightTerms,
+    talleres, searchQuery, serviceTerms, selectedCategory, selectedCommune, selectedServiceTag, highlightTerms,
     onlyBooking, only24Hours, onlyHomeService, sortBy, plateVehicle, isNearbySortActive, userLocation.coords,
     selectedSpecialistBrand, includeMultibrand,
   ]);
@@ -533,6 +556,7 @@ export default function TalleresDirectoryView() {
   const activeFilterPills = [
     plateVehicle && { key: 'vehicle', label: formatVehicleLabel(plateVehicle), onRemove: handleRemoveVehicle },
     searchQuery.trim() && { key: 'search', label: `"${searchQuery.trim()}"`, onRemove: handleClearSearch },
+    ...serviceTerms.map((term) => ({ key: `term-${term}`, label: term, onRemove: () => removeServiceTerm(term) })),
     selectedCategory !== 'TODAS' && {
       key: 'category',
       label: SERVICE_CATEGORIES.find((cat) => cat.id === selectedCategory)?.label || selectedCategory,
@@ -635,7 +659,7 @@ export default function TalleresDirectoryView() {
                           key={`${s.type}-${s.label}`}
                           type="button"
                           className="ads-suggestion-row"
-                          onClick={() => handleSelectSuggestion(s.label)}
+                          onClick={() => handleSelectSuggestion(s.label, s.type)}
                         >
                           <MetaIcon size={15} />
                           <span className="ads-suggestion-text">{s.label}</span>
@@ -743,6 +767,21 @@ export default function TalleresDirectoryView() {
             isLocating={isLocating}
             onToggleNearby={toggleNearby}
           />
+          {searchMode === 'service' && serviceTerms.length > 0 && (
+            <div className="ads-sb-terms" aria-label="Servicios buscados">
+              <div className="ads-sb-terms-head">
+                <span>{serviceTerms.length === 1 ? 'SERVICIO BUSCADO' : 'SERVICIOS BUSCADOS'}</span>
+                {serviceTerms.length > 1 && <button type="button" onClick={() => setServiceTerms([])} aria-label="Quitar todos los servicios buscados">Quitar todos</button>}
+              </div>
+              <div className="ads-sb-terms-row">
+                {serviceTerms.map((term) => (
+                  <button key={term} type="button" className="ads-sb-term" onClick={() => removeServiceTerm(term)} aria-label={`Quitar ${term} de la búsqueda`}>
+                    <Wrench size={13} /> <span>{term}</span> <X size={14} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {searchMode === 'plate' && (
             <p className={`ads-sb-hint ${plateError ? 'is-error' : ''}`} role={plateError ? 'alert' : undefined}>
               {plateError || 'Identificamos la marca de tu vehículo y te mostramos sus talleres especialistas. Después puedes buscar el servicio que necesitas.'}
