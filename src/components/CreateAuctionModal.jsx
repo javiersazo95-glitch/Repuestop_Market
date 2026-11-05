@@ -57,9 +57,9 @@ function VehicleSummary({ vehicle, note }) {
   );
 }
 
-/** Un repuesto del pedido: nombre, cantidad, detalle y, si va para otro auto, su propia patente. */
+/** Un repuesto del encargo: nombre, cantidad, detalle y, si va para otro auto, su propia patente. */
 function ItemEditor({ item, index, canRemove, forLabel, onChange, onRemove, onVehicle }) {
-  const { vehicle, error, looking } = usePlateLookup(item.otroVehiculo ? item.patente : '', { subject: 'el pedido' });
+  const { vehicle, error, looking } = usePlateLookup(item.otroVehiculo ? item.patente : '', { subject: 'el encargo' });
 
   useEffect(() => { onVehicle(item.key, vehicle); }, [vehicle]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -193,7 +193,7 @@ function QuickAddressForm({ userId, onCreated }) {
   );
 }
 
-/** Un pedido ya publicado vuelve a ser el formulario: cada repuesto conserva su nombre, categoría, mensaje y patente. */
+/** Un encargo ya publicado vuelve a ser el formulario: cada repuesto conserva su nombre, categoría, mensaje y patente. */
 function itemsFromAuction(auction) {
   const list = (auction?.items || []).map((item) => ({
     ...newItem(),
@@ -288,6 +288,16 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
   };
   const itemsMissingVehicle = items.filter((item) => item.otroVehiculo && !itemVehicles[item.key]);
 
+  // Al editar, "Guardar cambios" solo se activa si algo cambió respecto a lo que se abrió (se toma la foto una vez cargada la dirección).
+  const formSignature = JSON.stringify([
+    manualVehicle ? null : normalizePlate(patente), manualVehicle,
+    items.map((item) => [item.nombre, String(item.cantidad), item.descripcion, item.otroVehiculo, item.otroVehiculo ? item.patente : '']),
+    tiempoVigenciaHoras, tiempoMaximoEnvio, tipoEnvio, presupuestoMaximo, fotos, addressChoice,
+  ]);
+  const baselineSignature = useRef(null);
+  if (isEditing && addressesLoaded && baselineSignature.current === null) baselineSignature.current = formSignature;
+  const hasChanges = !isEditing || (baselineSignature.current !== null && baselineSignature.current !== formSignature);
+
   const handleFileChange = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
@@ -354,7 +364,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
       version: vehicle.version || undefined,
       motor: manualVehicle ? manualVehicle.motor || undefined : undefined,
       chasis: vehicle.chasis || undefined,
-      // El servidor arma el título del pedido a partir de los repuestos; estos campos son el respaldo.
+      // El servidor arma el título del encargo a partir de los repuestos; estos campos son el respaldo.
       repuestoSolicitado: items[0].nombre.trim(),
       cantidad: totalUnits || 1,
       items: items.map((item) => ({
@@ -377,13 +387,13 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
       if (onSuccess) onSuccess(creada);
       onClose();
     } catch (err) {
-      setError(err?.message || (isEditing ? 'No pudimos guardar los cambios de tu pedido.' : 'Hubo un error al publicar la búsqueda de repuestos.'));
+      setError(err?.message || (isEditing ? 'No pudimos guardar los cambios de tu encargo.' : 'Hubo un error al publicar la búsqueda de repuestos.'));
     } finally {
       setLoading(false);
     }
   };
 
-  const title = isEditing ? 'Editar pedido de repuestos' : template ? 'Publicar de nuevo tu pedido' : 'Publicar pedido de repuestos';
+  const title = isEditing ? 'Editar encargo de repuestos' : template ? 'Publicar de nuevo tu encargo' : 'Publicar encargo de repuestos';
 
   return (
     <div className="ft-modal-backdrop ft-page" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}>
@@ -394,7 +404,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
         </div>
         <p className="ft-sub">Cuéntanos qué repuestos necesitas. Las tiendas te enviarán sus ofertas y tú eliges con cuál comprar.</p>
 
-        <FormSection number={1} title="Vehículo del pedido" hint={vehicle ? 'Verifica que los datos de tu vehículo estén correctos.' : 'Indícalo con la patente o ingrésalo a mano.'}>
+        <FormSection number={1} title="Vehículo del encargo" hint={vehicle ? 'Verifica que los datos de tu vehículo estén correctos.' : 'Indícalo con la patente o ingrésalo a mano.'}>
           {manualVehicle ? (
             <div className="ft-vehicle-card">
               <div className="ft-vehicle-head">
@@ -457,7 +467,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
         <FormSection
           number={2}
           title="¿Qué repuestos necesitas?"
-          hint="Agrega todo lo que necesitas en un solo pedido. Cada tienda ofrece los que tenga y tú eliges qué aceptar."
+          hint="Agrega todo lo que necesitas en un solo encargo. Cada tienda ofrece los que tenga y tú eliges qué aceptar."
         >
           <div className="acv-count-row"><em className="acv-count">{items.length} {items.length === 1 ? 'repuesto' : 'repuestos'} · {totalUnits} {totalUnits === 1 ? 'unidad' : 'unidades'}</em></div>
           <div className="acv-items">
@@ -586,8 +596,8 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
 
         {error && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}
         <div className="ft-actions">
-          <button type="submit" disabled={loading || !vehicle || !mainAddress} className="ft-btn ft-btn-primary" title={!mainAddress ? 'Registra una dirección para publicar' : undefined}>
-            {loading ? (isEditing ? 'Guardando…' : 'Publicando…') : `${isEditing ? 'Guardar cambios' : 'Publicar pedido'} (${items.length} ${items.length === 1 ? 'repuesto' : 'repuestos'})`}
+          <button type="submit" disabled={loading || !vehicle || !mainAddress || !hasChanges} className="ft-btn ft-btn-primary" title={!mainAddress ? 'Registra una dirección para publicar' : (!hasChanges ? 'Modifica algo para guardar los cambios' : undefined)}>
+            {loading ? (isEditing ? 'Guardando…' : 'Publicando…') : `${isEditing ? 'Guardar cambios' : 'Publicar encargo'} (${items.length} ${items.length === 1 ? 'repuesto' : 'repuestos'})`}
           </button>
           <button type="button" onClick={onClose} disabled={loading} className="ft-btn ft-btn-outline">Cancelar</button>
         </div>
