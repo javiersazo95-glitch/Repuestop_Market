@@ -1418,3 +1418,7 @@
 .buyer-orders-extra strong { font-size: 13px; }
 .buyer-orders-extra small { color: var(--ak-text-muted, #5a6b7a); }
 .buyer-orders-extra-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* Aviso «Falta» sobre el icono de un acceso del menú Más (como el hint de la app en Métodos de envío y Datos bancarios). */
+.pmm-tile-icon { position: relative; }
+.pmm-tile-hint { position: absolute; top: -6px; right: -12px; padding: 1px 6px; border-radius: 999px; background: #fdecea; color: #b42318; font-style: normal; font-size: 10px; font-weight: 800; line-height: 15px; border: 1px solid #fff; }

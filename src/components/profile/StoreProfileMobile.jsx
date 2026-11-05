@@ -294,7 +294,7 @@ export default function StoreProfileMobile({
           <span className="spm-row-icon"><Settings2 size={17} aria-hidden="true" /></span>
           <span className="spm-row-copy">
             <strong>Más ajustes de la tienda</strong>
-            <small>Marcas, redes sociales, envíos, direcciones, clave y notificaciones</small>
+            <small>Direcciones de entrega, notificaciones y datos de facturación</small>
           </span>
           <ChevronRight size={18} className={`spm-chevron ${settingsOpen ? 'is-open' : ''}`} aria-hidden="true" />
         </button>
@@ -302,7 +302,7 @@ export default function StoreProfileMobile({
           <span className="spm-row-icon"><CreditCard size={17} aria-hidden="true" /></span>
           <span className="spm-row-copy">
             <strong>Datos bancarios</strong>
-            <small>Se validan y guardan desde Retirar dinero</small>
+            <small>La cuenta donde recibes el dinero de tus ventas</small>
           </span>
           <ChevronRight size={18} className="spm-chevron" aria-hidden="true" />
         </button>

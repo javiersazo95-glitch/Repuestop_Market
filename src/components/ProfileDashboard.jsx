@@ -8,7 +8,7 @@ import {
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
   Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, PackageSearch, Wrench, CalendarClock,
-  Cog, Gauge, Telescope, Box, QrCode
+  Cog, Gauge, Telescope, Box, QrCode, Share2, FolderOpen, CreditCard, CarFront, Lock
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import ProfileMoreMenu from './ProfileMoreMenu';
@@ -24,6 +24,8 @@ import StoreProfileMobile from './profile/StoreProfileMobile';
 import ProfileSummaryPanel from './ProfileSummaryPanel';
 import WorkshopHomeSummary from './workshop/WorkshopHomeSummary';
 import SellerHomeSummary from './seller/SellerHomeSummary';
+import SellerSettingsScreen from './seller/SellerSettingsScreen';
+import { SELLER_SETTINGS } from '../data/sellerSettings';
 import ProfileFeedbackPanel from './ProfileFeedbackPanel';
 import ProfileOrdersPanel from './ProfileOrdersPanel';
 import ProfileQuotesPanel from './ProfileQuotesPanel';
@@ -161,6 +163,20 @@ const SELLER_SIDEBAR_GROUPS = [
     ]
   },
   {
+    // Los mismos accesos de «Configuración» del menú Más de la app (`app/(seller)/mas.tsx`).
+    title: 'CONFIGURACIÓN',
+    flag: 'market.perfil.vendedor.mi-tienda',
+    items: [
+      { id: 'tienda_redes', label: 'Redes sociales', icon: Share2 },
+      { id: 'tienda_documentos', label: 'Documentos', icon: FolderOpen },
+      { id: 'tienda_envios', label: 'Métodos de envío', icon: Truck },
+      { id: 'tienda_bancarios', label: 'Datos bancarios', icon: CreditCard },
+      { id: 'tienda_marcas', label: 'Marcas especialistas', icon: CarFront },
+      { id: 'cambiar_clave', label: 'Cambiar contraseña', icon: Lock },
+      { id: 'favoritos', label: 'Favoritos', icon: Heart }
+    ]
+  },
+  {
     title: 'SOPORTE',
     flag: 'market.perfil.vendedor.soporte',
     items: [
@@ -173,7 +189,8 @@ const SELLER_SIDEBAR_GROUPS = [
 ];
 
 // Secciones que ya no existen para la cuenta vendedora (compras y talleres): un enlace guardado vuelve al resumen.
-const SELLER_REMOVED_TABS = ['compras', 'mis_cotizaciones', 'mis_preguntas', 'chats_vendedor', 'favoritos', 'mi_taller', 'citas_taller'];
+// Favoritos sí está para la tienda: la app lo ofrece en «Explorar» del menú Más del vendedor.
+const SELLER_REMOVED_TABS = ['compras', 'mis_cotizaciones', 'mis_preguntas', 'chats_vendedor', 'mi_taller', 'citas_taller'];
 
 // Cuenta suspendida (pruebas en dev, 2026-10-09): la tienda solo atiende lo ya vendido (sus
 // pedidos, sus chats con compradores y sus retiros) y el comprador solo sigue lo que ya pago (sus
@@ -186,6 +203,9 @@ const SELLER_BLOCKED_HIDDEN_TABS = [
   'gestion_subastas',
   'preguntas_productos',
   'tienda_datos',
+  'tienda_redes',
+  'tienda_envios',
+  'tienda_marcas',
   'mi_taller',
   'citas_taller',
   // Una cuenta suspendida no deja feedback (pruebas en dev, 2026-10-09).
@@ -742,6 +762,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     if (activeTab === 'feedback') return 'Dejar feedback';
     if (activeTab === 'repuestos') return 'Repuestos';
     if (activeTab === 'buscan') return 'Atender encargos';
+    if (SELLER_SETTINGS[activeTab]) return SELLER_SETTINGS[activeTab].title;
     return sidebarItems.find((item) => item.id === activeTab)?.label || 'Mi cuenta';
   }, [sidebarItems, activeTab]);
 
@@ -856,7 +877,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const productQuestionsQuery = useQuery({
     queryKey: qk.sellerProductQuestions(user?.sellerId),
     queryFn: ({ signal }) => getSellerProductQuestionsApi(user.sellerId, { signal }),
-    enabled: Boolean(isSeller && user?.sellerId && ['productos', 'preguntas_productos'].includes(activeTab)),
+    // También al abrir el menú Más: su tarjeta de perfil muestra cuántas preguntas tiene la tienda (como la app).
+    enabled: Boolean(isSeller && user?.sellerId && (['productos', 'preguntas_productos'].includes(activeTab) || profileNavOpen)),
     staleTime: 60 * 1000,
   });
 
@@ -977,6 +999,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const isCatalogLoading = localCatalog ? fullInventoryQuery.isLoading : catalogQuery.isLoading;
   const catalogError = (localCatalog ? fullInventoryQuery.error?.message : catalogQuery.error?.message) || catalogActionError || null;
   const productQuestions = productQuestionsQuery.data || [];
+  const sellerQuestionsCount = Array.isArray(productQuestions) ? productQuestions.length : 0;
   const productQuestionsLoading = productQuestionsQuery.isLoading;
   const productQuestionsError = productQuestionsQuery.error?.message || '';
 
@@ -2009,6 +2032,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               {activeTab === 'feedback' && !isSellerBlocked && !isBuyerBlocked && <ProfileFeedbackPanel />}
 
+              {isSeller && SELLER_SETTINGS[activeTab] && (
+                <SellerSettingsScreen section={activeTab} user={user} storeInfo={storeInfo} sellerId={effectiveSellerId} />
+              )}
+
               {/* Celular + tienda: la pantalla "Mi tienda y datos" de la app. Los ajustes largos (marcas, redes,
                   envios, direcciones, clave, notificaciones) quedan en el panel de siempre, bajo "Más ajustes". */}
               {isMobileView && isSeller && (activeTab === 'tienda_datos' || activeTab === 'datos') && (
@@ -2020,7 +2047,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   onOpenCoverTemplates={handleOpenCoverTemplates}
                   settingsOpen={mobileSettingsOpen}
                   onOpenSettings={() => setMobileSettingsOpen((open) => !open)}
-                  onOpenWithdrawals={() => setActiveTab('retiros')}
+                  onOpenWithdrawals={() => setActiveTab('tienda_bancarios')}
                 />
               )}
               {(activeTab === 'tienda_datos' || activeTab === 'datos') && (!isMobileView || !isSeller || mobileSettingsOpen) && (
@@ -2087,9 +2114,15 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               initials={initialsFromName(displayName)}
               availableTabs={new Set([...sidebarItems.map((item) => item.id), 'repuestos', 'buscan'])}
               activeTab={activeTab}
+              hints={isSeller ? {
+                tienda_envios: storeInfo && !String(storeInfo.shippingMethods || '').trim() ? 'Falta' : null,
+                tienda_bancarios: bankAccountQuery.isSuccess && !isCompleteBankAccount(bankAccountQuery.data) ? 'Falta' : null,
+              } : {}}
               stats={isSeller ? [
-                { label: 'Por despachar', value: ordersToDispatchCount, icon: Truck, tab: 'pedidos' },
-                { label: 'Por responder', value: quoteSummary.pending, icon: ReceiptText, tab: 'cotizaciones' },
+                // Los tres contadores del perfil de la tienda en la app: pedidos, cotizaciones y preguntas.
+                { label: 'Pedidos', value: (orders || []).filter((order) => !['FALLIDO', 'FAILED'].includes(String(order.estadoPago || '').toUpperCase())).length, icon: ShoppingBag, tab: 'pedidos' },
+                { label: 'Cotizaciones', value: quoteSummary.total, icon: ReceiptText, tab: 'cotizaciones' },
+                { label: 'Preguntas', value: sellerQuestionsCount, icon: MessageCircleQuestion, tab: 'preguntas_productos' },
               ] : isWorkshop ? [] : [
                 { label: 'Pedidos en curso', value: openOrdersCount, icon: Package, tab: 'pedidos' },
                 { label: 'Cotizaciones', value: quoteSummary.sent, icon: ReceiptText, tab: 'cotizaciones' },

@@ -1,8 +1,8 @@
 import React from 'react';
 import {
   Calendar, ChevronRight, Clipboard, Cog, Compass, FileText, Flag, Hammer, Headphones, Heart, HelpCircle, LifeBuoy, LogOut,
-  MapPin, MessageCircle, MessageSquare, MessagesSquare, PackageCheck, Activity, Search, Settings, ShieldCheck, Store, Tags, Telescope,
-  Trash2, User, Lock, Wallet, X, Inbox, Wrench, QrCode,
+  MessageCircle, MessageSquare, MessagesSquare, PackageCheck, Activity, Search, Settings, ShieldCheck, Store, Tags, Telescope,
+  Trash2, Lock, Wallet, X, Inbox, Wrench, QrCode, Building2, Share2, FolderOpen, Truck, CreditCard, CarFront,
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import { ROUTES } from '../routes/paths';
@@ -59,6 +59,7 @@ const MENUS = {
   seller: [
     ['Explorar', [
       t('Atender encargos', Telescope, COLORS.search, { tab: 'buscan' }),
+      t('Favoritos', Heart, COLORS.heart, { tab: 'favoritos' }),
     ]],
     ['Mi actividad', [
       t('Cotizaciones', Clipboard, COLORS.quotes, { tab: 'cotizaciones' }),
@@ -69,10 +70,14 @@ const MENUS = {
       t('Reportes', Flag, COLORS.flag, { tab: 'consultas' }),
     ]],
     ['Configuración', [
-      t('Mi tienda y datos', Store, COLORS.stores, { tab: 'tienda_datos' }),
-      t('Datos personales', User, COLORS.person, { tab: 'tienda_datos' }),
-      t('Direcciones de entrega', MapPin, COLORS.location, { tab: 'tienda_datos' }),
-      t('Cambiar contraseña', Lock, COLORS.lock, { tab: 'tienda_datos' }),
+      // Los 7 accesos de `app/(seller)/mas.tsx`, cada uno a su propia pantalla, con el mismo icono.
+      t('Mi tienda y datos', Building2, COLORS.stores, { tab: 'tienda_datos' }),
+      t('Redes sociales', Share2, COLORS.person, { tab: 'tienda_redes' }),
+      t('Documentos', FolderOpen, COLORS.docs, { tab: 'tienda_documentos' }),
+      t('Métodos de envío', Truck, COLORS.orders, { tab: 'tienda_envios' }),
+      t('Datos bancarios', CreditCard, COLORS.quotes, { tab: 'tienda_bancarios' }),
+      t('Marcas especialistas', CarFront, COLORS.workshops, { tab: 'tienda_marcas' }),
+      t('Cambiar contraseña', Lock, COLORS.lock, { tab: 'cambiar_clave' }),
     ]],
     ['Información y ayuda', HELP_SECTION],
   ],
@@ -105,7 +110,7 @@ const MENUS = {
 };
 
 export default function ProfileMoreMenu({
-  profile, displayName, email, avatarUrl, initials, stats = [], availableTabs, activeTab, storeLink = null,
+  profile, displayName, email, avatarUrl, initials, stats = [], availableTabs, activeTab, storeLink = null, hints = {},
   onTab, onTo, onFeedback, onProfile, onDeleteAccount, onLogout, onClose,
 }) {
   const sections = MENUS[profile]
@@ -169,8 +174,10 @@ export default function ProfileMoreMenu({
                   const Icon = item.icon;
                   const active = item.tab && activeTab === item.tab;
                   return (
-                    <button key={`${title}-${item.label}`} type="button" className={active ? 'is-active' : ''} onClick={() => open(item)} aria-label={item.label}>
-                      <span className="pmm-tile-icon" style={{ background: `${item.color}1F`, color: item.color }}><Icon size={20} /></span>
+                    <button key={`${title}-${item.label}`} type="button" className={active ? 'is-active' : ''} onClick={() => open(item)} aria-label={item.tab && hints[item.tab] ? `${item.label} (${hints[item.tab]})` : item.label}>
+                      <span className="pmm-tile-icon" style={{ background: `${item.color}1F`, color: item.color }}><Icon size={20} />
+                        {item.tab && hints[item.tab] && <em className="pmm-tile-hint">{hints[item.tab]}</em>}
+                      </span>
                       <span className="pmm-tile-label">{item.label}</span>
                     </button>
                   );

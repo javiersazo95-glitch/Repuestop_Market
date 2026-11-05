@@ -1,0 +1,19 @@
+/* Pantallas de Configuración del vendedor (contraparte de `app/(seller)/tienda-*.tsx`). */
+.sst { display: grid; gap: 14px; }
+.sst-head { display: grid; gap: 4px; }
+.sst-head p { margin: 0; color: var(--ak-text-muted, #5a6b7a); font-size: 13.5px; }
+.sst-card { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--ak-border, #d9e0e7); border-radius: 16px; background: #fff; }
+.sst-muted { display: flex; align-items: center; gap: 8px; color: var(--ak-text-muted, #5a6b7a); }
+.sst-help { color: var(--ak-text-muted, #5a6b7a); font-size: 12.5px; }
+.sst-save { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 46px; border: 0; border-radius: 12px; background: var(--ak-primary, #0066ff); color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.sst-save:disabled { opacity: .6; cursor: default; }
+.sst-notice { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border-radius: 12px; font-size: 13px; }
+.sst-notice.is-success { background: var(--ak-success-bg, #eafbf1); color: var(--ak-success-text, #0e7038); }
+.sst-notice.is-error { background: #fef2f2; color: var(--ak-error-text, #b42318); }
+.sst-notice.is-warning { background: var(--ak-warning-bg, #fff7e6); color: var(--ak-warning-text, #9a5a00); }
+.sst-status { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; }
+.sst-status span { display: grid; gap: 2px; }
+.sst-status small { color: var(--ak-text-muted, #5a6b7a); }
+.sst-status.is-ok { background: var(--ak-success-bg, #eafbf1); color: var(--ak-success-text, #0e7038); }
+.sst-status.is-warn { background: var(--ak-warning-bg, #fff7e6); color: var(--ak-warning-text, #9a5a00); }
+.sst-doc-group { display: grid; gap: 8px; }

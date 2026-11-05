@@ -96,6 +96,8 @@ export const PROFILE_TABS = [
   'resumen', 'pedidos', 'compras', 'favoritos', 'datos', 'consultas',
   'cotizaciones', 'mis_cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',
   'mi_taller', 'feedback',
+  // Configuración del vendedor: una pantalla por acceso del menú Más (como `app/(seller)/tienda-*.tsx`).
+  'tienda_redes', 'tienda_documentos', 'tienda_envios', 'tienda_bancarios', 'tienda_marcas', 'cambiar_clave',
   // "Chats con vendedor" (sección Mis compras) y "Chats con compradores" (sección Ventas):
   // cada uno su vista propia (SellerChatsView), antes eran una pestaña dentro de consultas.
   'chats_vendedor', 'chats_compradores',

@@ -535,7 +535,7 @@ function OrdersListModal({ modalData, onClose }) {
   );
 }
 
-function BankAccountModal({ sellerId, initialAccount, fallbackEmail, onClose, onSaved }) {
+export function BankAccountModal({ sellerId, initialAccount, fallbackEmail, onClose, onSaved }) {
   // Bancos de la lista `BANCO` del mantenedor; sin bootstrap, los de siempre.
   const banks = useBanks();
   const [form, setForm] = useState(() => ({
