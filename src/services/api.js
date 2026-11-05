@@ -956,8 +956,10 @@ export async function getSellerInventoryCategoriesApi(proveedorId, { signal } = 
   return fetchApi(`/proveedores/${proveedorId}/inventario/categorias`, { method: 'GET', signal });
 }
 
-export async function getSellerInventorySummaryApi(proveedorId, { signal } = {}) {
-  return fetchApi(`/proveedores/${proveedorId}/inventario/resumen`, { method: 'GET', signal });
+export async function getSellerInventorySummaryApi(proveedorId, { signal, umbralBajoStock } = {}) {
+  // `umbralBajoStock` (igual que la app): hasta cuantas unidades se cuenta un producto como "bajo stock".
+  const query = umbralBajoStock != null ? `?umbralBajoStock=${encodeURIComponent(umbralBajoStock)}` : '';
+  return fetchApi(`/proveedores/${proveedorId}/inventario/resumen${query}`, { method: 'GET', signal });
 }
 
 export async function updateSellerProductTopApi(proveedorId, productId, destacado, renovar = false) {

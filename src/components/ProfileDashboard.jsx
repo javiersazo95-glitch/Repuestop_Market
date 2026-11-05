@@ -23,6 +23,7 @@ import ProfileAccountDataPanel from './ProfileAccountDataPanel';
 import StoreProfileMobile from './profile/StoreProfileMobile';
 import ProfileSummaryPanel from './ProfileSummaryPanel';
 import WorkshopHomeSummary from './workshop/WorkshopHomeSummary';
+import SellerHomeSummary from './seller/SellerHomeSummary';
 import ProfileFeedbackPanel from './ProfileFeedbackPanel';
 import ProfileOrdersPanel from './ProfileOrdersPanel';
 import ProfileQuotesPanel from './ProfileQuotesPanel';
@@ -74,7 +75,7 @@ import WorkshopBookingStatus from './workshop/WorkshopBookingStatus';
 import WorkshopActiveAppointments from './workshop/WorkshopActiveAppointments';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ROUTES, storePath } from '../routes/paths';
+import { ROUTES, productPath, storePath } from '../routes/paths';
 import { orderDisplayCode } from '../data/orderIdentity';
 import { deliveryTermsLabel, isConversationPaused, quoteChargeBase, quoteShippingCost } from '../utils/quoteFlow';
 import { founderBenefitLabel, founderDaysLeft } from '../utils/founderBenefit';
@@ -1818,7 +1819,28 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   onNewNeed={() => setActiveTab('subastas')}
                 />
               )}
-              {activeTab === 'resumen' && !(isWorkshop && isMobileView) && !isSellerBlocked && !isBuyerBlocked && (
+              {activeTab === 'resumen' && isSeller && isMobileView && !isSellerBlocked && !isBuyerBlocked && (
+                <SellerHomeSummary
+                  sellerId={effectiveSellerId}
+                  storeName={storeInfo?.storeName || user?.storeName}
+                  city={storeInfo?.ciudad || storeInfo?.comuna || user?.city}
+                  isOpen={storeInfo?.isOpen ?? storeInfo?.abierto ?? null}
+                  orders={orders || []}
+                  loading={ordersQuery.isLoading}
+                  openChats={(conversations || []).filter((conversation) => (
+                    (!conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion')
+                    && (!conversation.cotizacion || isConversationPaused(conversation))
+                  ))}
+                  quoteSentCount={quoteSummary.sent}
+                  onOpenOrders={() => setActiveTab('pedidos')}
+                  onOpenChats={() => openFilteredTab('cotizaciones', 'pending')}
+                  onOpenProducts={() => setActiveTab('productos')}
+                  onOpenWithdrawals={() => setActiveTab('retiros')}
+                  onPublish={() => openNewProductModalRef.current()}
+                  onOpenProduct={(productId) => navigate(productPath({ id: productId }))}
+                />
+              )}
+              {activeTab === 'resumen' && !(isWorkshop && isMobileView) && !(isSeller && isMobileView) && !isSellerBlocked && !isBuyerBlocked && (
                 <ProfileSummaryPanel
                   isSeller={isSeller}
                   user={user}
