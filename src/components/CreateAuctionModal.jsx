@@ -23,6 +23,8 @@ import '../styles/auction-vehicle.css';
 const MAX_ITEMS = 20;
 let itemSeq = 0;
 const NEW_ADDRESS = '__new__';
+const SAVED_LOCATION = '__saved__';   // al editar: la ubicación (comuna y región) que ya tiene el encargo
+const sameLabel = (a, b) => String(a || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase() === String(b || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 const newItem = (otroVehiculo = false) => ({ key: `item-${++itemSeq}`, nombre: '', cantidad: 1, descripcion: '', otroVehiculo, patente: '' });
 
 /** Sección numerada, igual a la del formulario de registrar falla. */
@@ -221,6 +223,10 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
   const [addressesLoaded, setAddressesLoaded] = useState(false);
   const [addressChoice, setAddressChoice] = useState('');   // id elegido, o NEW_ADDRESS para crear una
   const knownAddressIds = useRef(new Set());
+  // Al editar se vuelve a elegir la dirección que el encargo guardó (direccionId, solo lo recibe quien lo publicó). Los encargos
+  // antiguos solo tienen comuna y región: se elige una dirección de esa comuna o se conserva la ubicación tal cual.
+  const savedLocation = isEditing && auction?.comuna ? { comunaNombre: auction.comuna, regionNombre: auction.region || '' } : null;
+  const savedLocationRef = useRef(savedLocation);
   const loadAddresses = useCallback(async () => {
     if (!userId) { setAddressesLoaded(true); return; }
     try {
@@ -233,6 +239,11 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
       setAddressChoice((current) => {
         if (!firstLoad && created) return String(created.id);              // recién creada en este formulario
         if (current && current !== NEW_ADDRESS && list.some((address) => String(address.id) === current)) return current;
+        const savedId = auction?.direccionId != null ? list.find((address) => String(address.id) === String(auction.direccionId)) : null;
+        if (savedId) return String(savedId.id);
+        const inSavedComuna = savedLocationRef.current ? list.find((address) => sameLabel(address.comunaNombre, savedLocationRef.current.comunaNombre)) : null;
+        if (inSavedComuna) return String(inSavedComuna.id);
+        if (savedLocationRef.current) return SAVED_LOCATION;
         const main = list.find((address) => address.esPrincipal) || list[0];
         return main ? String(main.id) : NEW_ADDRESS;
       });
@@ -244,7 +255,10 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
     }
   }, [userId]);
   useEffect(() => { loadAddresses(); }, [loadAddresses]);
-  const mainAddress = useMemo(() => addresses.find((address) => String(address.id) === addressChoice) || null, [addresses, addressChoice]);
+  const mainAddress = useMemo(
+    () => addresses.find((address) => String(address.id) === addressChoice) || (addressChoice === SAVED_LOCATION ? savedLocation : null),
+    [addresses, addressChoice, savedLocation?.comunaNombre, savedLocation?.regionNombre],
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -379,6 +393,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
       presupuestoMaximo: presupuestoMaximo ? parseFloat(presupuestoMaximo) : undefined,
       region: mainAddress?.regionNombre || undefined,
       comuna: mainAddress?.comunaNombre || undefined,
+      direccionId: mainAddress?.id != null ? Number(mainAddress.id) : undefined,
       fotos,
     };
 
@@ -583,6 +598,9 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
                   {address.calleYNumero} · {[address.comunaNombre, address.regionNombre].filter(Boolean).join(', ')}{address.esPrincipal ? ' (principal)' : ''}
                 </option>
               ))}
+              {savedLocation && !addresses.some((address) => sameLabel(address.comunaNombre, savedLocation.comunaNombre)) && (
+                <option value={SAVED_LOCATION}>Ubicación actual del encargo · {[savedLocation.comunaNombre, savedLocation.regionNombre].filter(Boolean).join(', ')}</option>
+              )}
               <option value={NEW_ADDRESS}>+ Agregar una dirección nueva</option>
             </select>
             {addressesLoaded && addresses.length === 0 && addressChoice === NEW_ADDRESS && (
