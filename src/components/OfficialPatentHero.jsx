@@ -758,7 +758,7 @@ export default function OfficialPatentHero({
                           <div className="light-query-field">
                             <input
                               type="text"
-                              placeholder={mode.placeholder}
+                              placeholder={isMobile && mode.id === 'patente' ? 'Ej: ABCD11' : mode.placeholder}
                               value={inputValue}
                               onChange={(event) => {
                                 const val = searchMode === 'patente' ? sanitizePlateInput(event.target.value) : event.target.value;
