@@ -5,6 +5,7 @@ import {
   ShieldCheck, SlidersHorizontal, Sparkles, X, XCircle,
 } from 'lucide-react';
 import { MAX_PRICE, MAX_SEARCH_LENGTH, onlyDigits } from '../utils/inputLimits';
+import { PRODUCT_WARRANTY_OTHER, useWarrantyOptions } from '../utils/productWarranty';
 import { getAuctionSuggestedParts, submitAuctionQuote } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
 import { compatibilidadLinea, mapCompatibilidad } from '../services/adapters';
@@ -571,6 +572,12 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
   const noDeliveryAllowed = !deliveryChoices.some((option) => option.disponible);
   const [deliveryType, setDeliveryType] = useState(() => defaultDeliveryType(deliveryOptions(auction), myQuote));
   const [warranty, setWarranty] = useState(myQuote?.garantia || '6 meses (garantía legal)');
+  // Garantía a elegir de la lista común del Mantenedor (la misma de los productos); sin texto libre.
+  const warrantyOptions = useWarrantyOptions();
+  const warrantyChoices = useMemo(() => {
+    const list = warrantyOptions.filter((option) => option.value !== PRODUCT_WARRANTY_OTHER).map((option) => option.value);
+    return warranty && !list.includes(warranty) ? [warranty, ...list] : list;
+  }, [warrantyOptions, warranty]);
   const [validity, setValidity] = useState(myQuote?.vigencia || '48 horas');
   const [notes, setNotes] = useState(myQuote?.notas || '');
 
@@ -804,7 +811,7 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
                 </label>
                 <label className="aq-field">
                   <span>Garantía</span>
-                  <input value={warranty} maxLength={100} onChange={(e) => setWarranty(e.target.value)} />
+                  <select value={warranty} onChange={(e) => setWarranty(e.target.value)}>{warrantyChoices.map((v) => <option key={v}>{v}</option>)}</select>
                 </label>
                 <label className="aq-field">
                   <span>Vigencia de la oferta</span>
