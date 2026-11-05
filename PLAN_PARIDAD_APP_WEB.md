@@ -704,6 +704,8 @@ ofertas, seguimiento, favoritos, reserva de cita, ficha del taller, menú Más).
 | Editar datos del perfil | confirmación «Descartar cambios» | `app/profile-edit.tsx` |
 | Detalle del pedido | línea de tiempo de 5 hitos con textos por rol e historial desplegable | `orders/OrderTimeline.tsx` |
 | Mis pedidos (comprador) | filtros de categoría y vendedor | `app/(buyer)/orders.tsx` |
+| Soporte | área «Reclamos» (mediaciones) junto a Reportes y Consultas a soporte | `app/support-tickets.tsx` |
+| Directorio de talleres | varios servicios buscados como etiquetas («Servicios buscados») y orden por los que cubren más | `app/talleres.tsx` |
 
 Pendiente de revisar con sesión real (no hay backend en el entorno de desarrollo del agente): el resumen móvil del taller y del
 vendedor con datos reales, y la diferencia de redacción menor en textos de ayuda de pedidos.
