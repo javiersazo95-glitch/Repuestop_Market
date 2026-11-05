@@ -117,11 +117,11 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
         {byPrice.length > 1 && (
           <div className="ofd-card">
             <Section icon={GitCompare} title={`Comparación con las otras ofertas (${byPrice.length})`}>
-              <div className="ofd-compare is-head"><span>TIENDA</span><span>PLAZO</span><span>TOTAL</span></div>
+              <div className="ofd-compare is-head"><span>TIENDA</span><span>DISPONIBILIDAD</span><span>TOTAL</span></div>
               {byPrice.map((item) => (
                 <div key={item.id} className={`ofd-compare ${item.id === quote.id ? 'is-current' : ''}`}>
                   <span>{item.id === quote.id ? `${item.nombreTienda} (esta)` : item.nombreTienda}</span>
-                  <span>{item.tiempoEntrega || '—'}</span>
+                  <span>{availabilityLabel(item.disponibilidadDias) || '—'}</span>
                   <strong>{formatCLP(totalOf(item))}</strong>
                 </div>
               ))}
