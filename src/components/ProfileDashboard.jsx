@@ -22,6 +22,7 @@ import AccountClosureModal from './AccountClosureModal';
 import ProfileAccountDataPanel from './ProfileAccountDataPanel';
 import StoreProfileMobile from './profile/StoreProfileMobile';
 import ProfileSummaryPanel from './ProfileSummaryPanel';
+import WorkshopHomeSummary from './workshop/WorkshopHomeSummary';
 import ProfileFeedbackPanel from './ProfileFeedbackPanel';
 import ProfileOrdersPanel from './ProfileOrdersPanel';
 import ProfileQuotesPanel from './ProfileQuotesPanel';
@@ -1808,7 +1809,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               {activeTab === 'resumen' && isWorkshop && !isBuyerBlocked && (
                 <WorkshopBookingStatus onOpenWorkshop={() => setActiveTab('mi_taller')} onOpenService={() => setActiveTab('diagnostico')} />
               )}
-              {activeTab === 'resumen' && !isSellerBlocked && !isBuyerBlocked && (
+              {activeTab === 'resumen' && isWorkshop && isMobileView && !isBuyerBlocked && (
+                <WorkshopHomeSummary
+                  onOpenAppointments={() => setActiveTab('citas_taller')}
+                  onOpenFaults={() => setActiveTab('fallas_taller')}
+                  onOpenOrders={() => setActiveTab('pedidos')}
+                  onOpenNeeds={() => setActiveTab('subastas')}
+                  onNewNeed={() => setActiveTab('subastas')}
+                />
+              )}
+              {activeTab === 'resumen' && !(isWorkshop && isMobileView) && !isSellerBlocked && !isBuyerBlocked && (
                 <ProfileSummaryPanel
                   isSeller={isSeller}
                   user={user}

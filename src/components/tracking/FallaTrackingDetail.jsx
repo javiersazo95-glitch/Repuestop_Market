@@ -116,6 +116,7 @@ export default function FallaTrackingDetail({ faultId, vigente, newDiagnoses, on
         </TrackingSection>
       )}
       {actionError && <p className="trk-error" role="alert">{actionError}</p>}
+      <Link className="trk-link" to={faultDetailPath(faultId)}>Abrir la falla completa</Link>
       {openId != null && diagnoses.some((item) => item.id === openId) && (
         <DiagnosticoDesglose
           key={openId}
