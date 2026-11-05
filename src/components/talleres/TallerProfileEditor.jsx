@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertTriangle, Calendar, Camera, Car, ChevronRight, Clock, Eye, FileText, Home, ImagePlus, Loader2, MessageCircle,
+  AlertTriangle, Calendar, Camera, Car, ChevronRight, Clock, Eye, FileText, Home, ImagePlus, Loader2, MapPin, MessageCircle,
   Pencil, Plus, Store, Wrench, X
 } from 'lucide-react';
 import { fetchMiTaller, updateMiTallerPerfil, uploadTallerPhotos } from '../../services/talleresStorage';
@@ -372,6 +372,13 @@ export default function TallerProfileEditor({ record, businessName, hasAgenda, o
       </Group>
 
       <Group title="Atención y citas">
+        {/* Solo lectura: la dirección es la del expediente acreditado, no se edita desde aquí (igual que la app). */}
+        <Row
+          icon={MapPin}
+          title="Dirección del taller"
+          summary={[taller?.address || record?.direccion, taller?.commune || record?.comuna].filter(Boolean).join(', ') || null}
+          placeholder="Aún sin dirección registrada"
+        />
         <Row
           icon={Clock}
           title="Horario de atención"
