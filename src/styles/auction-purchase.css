@@ -65,7 +65,7 @@
 .apc-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .apc-card { padding: 16px 18px; background: #fff; border: 1px solid #dbe6f3; border-radius: 12px; box-shadow: 0 1px 2px rgba(15, 40, 90, 0.04); }
 .apc-card h2 { margin: 0 0 12px; font-size: 15.5px; font-weight: 800; color: #243442; }
-.apc-card h2 span { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-right: 8px; border-radius: 50%; background: #0066ff; color: #fff; font-size: 12px; }
+.apc-card h2 > span:first-child { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; margin-right: 8px; border-radius: 50%; background: #0066ff; color: #fff; font-size: 12px; }
 .apc-options { display: flex; flex-direction: column; gap: 8px; }
 .apc-option { display: flex; align-items: flex-start; gap: 10px; padding: 11px 13px; border: 1.5px solid #e6eaef; border-radius: 10px; cursor: pointer; font-size: 12.5px; }
 .apc-option.is-selected { border-color: #0066ff; background: #f5f9ff; }
@@ -105,3 +105,23 @@
 .apc-delivery-option input { margin-top: 2px; accent-color: #0066ff; }
 .apc-delivery-option strong { display: block; font-size: 13px; color: #0f172a; }
 .apc-delivery-option small { display: block; color: #9a5a00; }
+
+/* Icono de la tienda: el mismo en los tres caminos de compra (encargar, cotizar y compra directa). */
+.ap-store-icon { flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; border-radius: 10px; background: #eaf2ff; color: #0066ff; border: 1px solid #cfe0ff; }
+.ap-store-head small.ap-store-sub { color: #5a6b7a; }
+.ap-store-total { flex-shrink: 0; font-size: 15px; }
+
+/* Checkout de compra directa y cotización: mismo orden que el pago de un encargo. */
+.apc-store-shipping { padding: 12px 16px; border-top: 1px solid #e6eaef; background: #fbfcfe; }
+.apc-store-shipping .checkout-store-shipment { margin: 0; }
+.apc-line-extra td { padding-top: 0; background: #fff; }
+.apc-line-extra .checkout-item-delivery { margin: 0; }
+.ap-lines .is-lineno-top td { border-bottom: none; }
+.apc-card .shopify-section-subtitle { margin: 0 0 12px; font-size: 12.5px; color: #5a6b7a; }
+.apc-card .checkout-block-note { margin: 0 0 10px; }
+.apc-card + .apc-card { margin-top: 0; }
+.apc-note-block { margin-top: 12px; }
+@media (max-width: 760px) {
+  .ap-store-head { flex-wrap: wrap; }
+  .apc-line-extra td:nth-child(1) { grid-column: 1 / -1; }
+}

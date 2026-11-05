@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, ShieldCheck, ShoppingCart, Truck } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, ShieldCheck, ShoppingCart, Store, Truck } from 'lucide-react';
 import { getAuctionPurchase, payAuctionPurchase } from '../services/auctionApi';
 import { confirmOrderPaymentApi } from '../services/api';
 import { formatRut, isValidRut } from '../services/adapters';
@@ -151,12 +151,13 @@ export default function AuctionCheckoutPage() {
               {toPay.map((store) => (
                 <article key={store.cotizacionId} className="ap-store" style={{ marginBottom: 12 }}>
                   <header className="ap-store-head">
+                    <span className="ap-store-icon" aria-hidden="true"><Store size={18} /></span>
                     <div>
                       <strong>{store.tienda}</strong>
                       <small><Truck size={12} /> {chosenMethod(store)}{store.plazoEntrega ? ` · ${store.plazoEntrega}` : ''}</small>
                       {(store.tiendaComuna || store.tiendaRegion) && <small>Tienda en {[store.tiendaComuna, store.tiendaRegion].filter(Boolean).join(', ')}</small>}
                     </div>
-                    <strong>{money(totalOf(store))}</strong>
+                    <strong className="ap-store-total">{money(totalOf(store))}</strong>
                   </header>
                   <table className="ap-lines">
                     <tbody>

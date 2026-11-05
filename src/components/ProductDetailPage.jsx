@@ -11,7 +11,7 @@ import ProductBrandModal from './ProductBrandModal';
 import { localDeliveryCost, productShippingOptions } from '../utils/cartDelivery';
 import {
   createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi, answerProductQuestionApi,
-  getInventoryVehicleCatalogsApi, getVehicleVersionsApi
+  getInventoryVehicleCatalogsApi, getVehicleVersionsApi, getAddressesApi,
 } from '../services/api';
 import { adaptVehicle, vehicleCatalogIds } from '../services/adapters';
 import { declaredYears, plateMatchRows, plateVehicleLabel, yearInRange } from '../utils/compatibilityMatch';
@@ -206,10 +206,26 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const hasSellerRating = sellerRating > 0;
   // Como en la app: con la comuna del comprador se ofrece solo lo que le sirve (dentro de la
   // comuna si es la de la tienda, fuera si no) y lo que elija acá es lo que el carro confirma.
+  // 5-nov: la comuna del comprador sale de su dirección registrada (la principal), no del perfil:
+  // así la ficha ofrece el retiro y UN solo despacho, el que esa dirección alcanza.
+  const buyerUserId = user?.userId ?? user?.id;
+  const addressesQuery = useQuery({
+    queryKey: ['buyer-addresses', buyerUserId],
+    queryFn: () => getAddressesApi(buyerUserId),
+    enabled: Boolean(buyerUserId),
+    staleTime: 60_000,
+  });
+  const buyerAddresses = Array.isArray(addressesQuery.data) ? addressesQuery.data : null;
+  const buyerPrincipal = buyerAddresses?.find((address) => address.esPrincipal) || buyerAddresses?.[0];
+  const buyerComuna = buyerPrincipal?.comunaNombre || (buyerAddresses ? '' : user?.comuna);
+  const needsAddressForShipping = Boolean(buyerUserId) && buyerAddresses !== null && buyerAddresses.length === 0;
   const shippingMethods = useMemo(
-    () => productShippingOptions(product.metodosEnvio, user?.comuna, product.ciudadVendedor),
-    [product.metodosEnvio, user?.comuna, product.ciudadVendedor],
+    () => productShippingOptions(product.metodosEnvio, buyerComuna, product.ciudadVendedor, { noAddress: needsAddressForShipping }),
+    [product.metodosEnvio, buyerComuna, product.ciudadVendedor, needsAddressForShipping],
   );
+  const shippingAddressNotice = needsAddressForShipping && !isOwnProduct
+    ? 'Para ver los envíos a domicilio, primero registra una dirección en tu perfil.'
+    : '';
   // Lo que se elige antes de comprar. Si la tienda no publicó métodos queda "a coordinar", como en la app.
   const shippingChoices = useMemo(
     () => (shippingMethods.length ? shippingMethods : ['A coordinar con el vendedor']),
@@ -712,6 +728,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             onOpenBrandModal={() => setBrandModalOpen(true)}
             onOpenStore={onOpenStore}
             shippingMethods={shippingChoices}
+            shippingAddressNotice={shippingAddressNotice}
             selectedShippingMethod={selectedShippingMethod}
             onSelectShippingMethod={canChooseShipping ? selectShippingMethod : null}
             shippingSectionRef={shippingCardRef}
@@ -796,6 +813,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             onAddToCart={addToCartNow}
             canChooseShipping={canChooseShipping}
             shippingChoices={shippingChoices}
+            shippingAddressNotice={shippingAddressNotice}
             shippingMethods={shippingMethods}
             selectedShippingMethod={selectedShippingMethod}
             onSelectShippingMethod={selectShippingMethod}

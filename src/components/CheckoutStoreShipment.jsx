@@ -27,7 +27,7 @@ function methodPrice(method) {
  */
 export default function CheckoutStoreShipment({
   item, productCount, delivery, addresses, onChange, onManageAddresses,
-  onUseStoreAddress, usingStoreAddress = false, storeAddressError = '',
+  onUseStoreAddress, usingStoreAddress = false, storeAddressError = '', addressesLoading = false,
 }) {
   // El retiro y el despacho que se eligió en la ficha: no los tres.
   const methods = offeredMethodsForItem(item, addresses);
@@ -37,6 +37,31 @@ export default function CheckoutStoreShipment({
   const options = addressesForMethod(item, delivery.method, addresses);
   const zone = kind === 'local' ? `en ${storeComuna}` : `fuera de ${storeComuna}`;
   const radioName = `envio-tienda-${item.proveedorId || item.id}`;
+
+  // Sin direcciones registradas no se ofrece ningún método: cuáles sirven depende de la comuna del
+  // comprador (dentro o fuera de la comuna de la tienda), así que primero va la dirección.
+  if (!addressesLoading && (addresses || []).length === 0) {
+    return (
+      <div className="checkout-store-shipment">
+        <div className="checkout-store-shipment-head">
+          <Package size={15} />
+          <strong>Envío de la tienda</strong>
+        </div>
+        <p className="checkout-item-delivery-error" role="alert">
+          <MapPin size={14} /> Para ver los métodos de envío, primero debes registrar una dirección.
+        </p>
+        <button type="button" className="checkout-store-address-btn" onClick={onManageAddresses}>
+          <MapPin size={14} /> Registrar una dirección
+        </button>
+        {onUseStoreAddress && (
+          <button type="button" className="checkout-store-address-btn" onClick={onUseStoreAddress} disabled={usingStoreAddress}>
+            <Store size={14} /> {usingStoreAddress ? 'Guardando la dirección de tu tienda…' : 'Usar la dirección de mi tienda'}
+          </button>
+        )}
+        {storeAddressError && <p className="checkout-item-delivery-error">{storeAddressError}</p>}
+      </div>
+    );
+  }
 
   return (
     <div className="checkout-store-shipment">

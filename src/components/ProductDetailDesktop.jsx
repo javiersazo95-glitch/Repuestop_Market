@@ -74,6 +74,7 @@ export default function ProductDetailDesktop({
   onAddToCart,
   canChooseShipping,
   shippingChoices,
+  shippingAddressNotice = '',
   shippingMethods,
   selectedShippingMethod,
   onSelectShippingMethod,
@@ -332,6 +333,7 @@ export default function ProductDetailDesktop({
             <ProductShippingCard
               ref={shippingCardRef}
               methods={shippingChoices}
+              addressNotice={shippingAddressNotice}
               selected={selectedShippingMethod}
               onSelect={onSelectShippingMethod}
               hours={product.horarioVendedor}

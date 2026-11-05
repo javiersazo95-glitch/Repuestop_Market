@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, Building2, Car, CheckCircle2, ChevronRight, CreditCard, FileText, Loader2, Lock, MapPin, ReceiptText, Sparkles, Store, Truck, User,
+  AlertTriangle, ArrowLeft, CheckCircle2, FileText, Loader2, Lock, Sparkles, Store, Truck, User,
 } from 'lucide-react';
-import ProductPhoto from '../components/ProductPhoto';
+import '../styles/auction-purchase.css';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -16,14 +16,12 @@ import { adaptProduct, formatRut, isValidRut } from '../services/adapters';
 import { deliveryTermsLabel, isQuoteExpired, quantityFromLabel, quoteShippingCost } from '../utils/quoteFlow';
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
 import { checkoutFallbackShippingMethod, resolveShippingService } from '../data/shippingMethods';
-import ShippingIcon from '../components/ShippingIcon';
 import { buyerProfilePath, profilePath, ROUTES } from '../routes/paths';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import BuyerAddressBook from '../components/BuyerAddressBook';
 import CheckoutSummaryPanel from '../components/CheckoutSummaryPanel';
 import CheckoutItemDelivery from '../components/CheckoutItemDelivery';
-import CheckoutShipmentsSummary from '../components/CheckoutShipmentsSummary';
 import CheckoutStoreShipment from '../components/CheckoutStoreShipment';
 import CheckoutVehicleDialog from '../components/CheckoutVehicleDialog';
 import { manualVehicleMissing } from '../utils/cartVehicleForm';
@@ -31,14 +29,9 @@ import { useCompatibilityCheck } from '../hooks/useCompatibilityCheck';
 import { useFlag } from '../remoteConfig/hooks';
 import { COMPAT, compatCacheKey, mismatchCountText } from '../utils/compatibilityCheck';
 import {
-  cartPackages, cartStoreKey, defaultAddressForMethod, deliveryKind, isDispatch,
-  offeredMethodsForItem, pendingDeliveryReason, shippingFees, vehicleLabel, withStoreShipment,
+  cartStoreKey, defaultAddressForMethod, deliveryKind, isDispatch,
+  offeredMethodsForItem, pendingDeliveryReason, shippingFees, withStoreShipment,
 } from '../utils/cartDelivery';
-
-const STEPS = [
-  { id: 'entrega', label: 'Entrega' },
-  { id: 'pago', label: 'Pago' },
-];
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
 
@@ -90,7 +83,7 @@ export default function CheckoutPage() {
   const { isBlocked: isSellerBlockedAccount } = useSellerBlocked();
   const { isBlocked: isBuyerBlockedAccount } = useBuyerBlocked();
   const isBlockedAccount = isSellerBlockedAccount || isBuyerBlockedAccount;
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const isSeller = user?.role === 'SELLER';
   const buyerQuotesPath = buyerProfilePath(user, 'quotes');
@@ -110,12 +103,6 @@ export default function CheckoutPage() {
   const [quote, setQuote] = useState(null);
   const [quoteLoading, setQuoteLoading] = useState(isQuoteMode);
   const [quoteError, setQuoteError] = useState('');
-
-  const requestedStep = searchParams.get('paso');
-  // Compatibilidad hacia atrás: si la URL o el historial apuntan a 'documento', se normaliza a 'pago'
-  const normalizedStep = requestedStep === 'documento' ? 'pago' : requestedStep;
-  const step = STEPS.some((entry) => entry.id === normalizedStep) ? normalizedStep : 'entrega';
-  const stepIndex = STEPS.findIndex((entry) => entry.id === step);
 
   const [addresses, setAddresses] = useState([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
@@ -447,11 +434,6 @@ export default function CheckoutPage() {
   };
 
   const cartShipping = useMemo(() => shippingFees(cartItems, deliveries), [cartItems, deliveries]);
-  // Los paquetes de la compra para "Tus envíos" (misma regla que el detalle del pedido).
-  const shipmentPackages = useMemo(
-    () => (isQuoteMode ? [] : cartPackages(cartItems, deliveries, addresses, cartVehicles)),
-    [isQuoteMode, cartItems, deliveries, addresses, cartVehicles],
-  );
   const entregaPendiente = isQuoteMode ? '' : pendingDeliveryReason(cartItems, deliveries, cartVehicles, identifiedPlates, addresses);
 
   // Compatibilidad de cada producto con SU vehículo (el backend la evalúa). No bloquea la
@@ -494,20 +476,6 @@ export default function CheckoutPage() {
   // Las direcciones se agregan y editan en "Mis datos y perfil", no en el carrito (igual que la
   // app, que lleva a Mis direcciones). Al volver, el carrito las vuelve a cargar.
   const openAddressBook = () => navigate('/perfil/datos');
-
-  // Se parte de los params actuales en vez de escribir un objeto nuevo: pasarle
-  // `{ paso: id }` a setSearchParams reemplaza TODA la query, y eso borraba el
-  // `?cotizacion=` al avanzar de paso — el checkout perdía el modo cotización a mitad
-  // de camino y la guarda de carrito vacío mandaba al usuario a /carrito.
-  const goStep = (id) => {
-    setSearchParams((current) => {
-      const next = new URLSearchParams(current);
-      if (id === 'entrega') next.delete('paso');
-      else next.set('paso', id);
-      return next;
-    }, { replace: false });
-    setError('');
-  };
 
   // Vehiculo del comprador. Si llego al checkout desde una busqueda por patente, el
   // vehiculo ya esta en el contexto y solo se confirma; si no, lo declara a mano. Es lo
@@ -652,13 +620,12 @@ export default function CheckoutPage() {
       input.focus({ preventScroll: true });
     }
   }, []);
-  const vehicleSectionRef = useCallback((node) => {
-    vehicleSectionNode.current = node;
-    if (node) window.setTimeout(focusVehicleSection, 350);
-  }, [focusVehicleSection]);
+  // Todo el checkout es una sola página: el bloque del vehículo ya no se abre con scroll automático,
+  // solo se enfoca cuando se intenta pagar sin vehículo.
+  const vehicleSectionRef = useCallback((node) => { vehicleSectionNode.current = node; }, []);
   // Pagar sin vehiculo (cuando es opcional) pide un segundo clic: el primero lleva al bloque.
   const [vehicleSkipWarned, setVehicleSkipWarned] = useState(false);
-  const vehicleSkipPending = isQuoteMode && step === 'pago' && !vehicleRequired && !checkoutVehicle && !vehiculoDeLaSolicitud;
+  const vehicleSkipPending = isQuoteMode && !vehicleRequired && !checkoutVehicle && !vehiculoDeLaSolicitud;
 
   const rutValid = isValidRut(invoice.rut);
   // Un vendedor sin ninguna direccion propia guardada no queda trabado aca: el backend
@@ -666,36 +633,34 @@ export default function CheckoutPage() {
   // (PedidoCheckoutCarritoSupport/CotizacionSupport), asi que no hace falta forzarlo a
   // agregar una direccion solo para destrabar el boton.
   const sellerWithoutSavedAddress = isSeller && !addressesLoading && addresses.length === 0;
-  const stepComplete = {
-    entrega: isQuoteMode
-      ? allShippingChosen && (!needsAddress || Boolean(selectedAddressId) || sellerWithoutSavedAddress)
-      : !entregaPendiente && !compatBlockReason,
-    // En el carrito el vehículo ya va en cada producto (paso Entrega).
-    pago: Boolean(paymentMethod) && (documentType !== 'FACTURA' || rutValid)
-      && (!isQuoteMode || !vehicleRequired || vehicleComplete)
-      && !compatBlockReason,
-  };
+  const deliveryComplete = isQuoteMode
+    ? allShippingChosen && (!needsAddress || Boolean(selectedAddressId) || sellerWithoutSavedAddress)
+    : !entregaPendiente && !compatBlockReason && (addressesLoading || addresses.length > 0);
+  // En el carrito el vehículo ya va en cada producto; en la cotización va en su propio bloque.
+  const paymentComplete = Boolean(paymentMethod) && (documentType !== 'FACTURA' || rutValid)
+    && (!isQuoteMode || !vehicleRequired || vehicleComplete)
+    && !compatBlockReason;
+  const canPay = deliveryComplete && paymentComplete;
 
-  // Lo que falta para avanzar, dicho antes de que la persona haga clic: el botón se
+  // Lo que falta para pagar, dicho antes de que la persona haga clic: el botón se
   // deshabilita, pero un botón apagado sin explicación es igual de frustrante.
-  const missingForStep = {
-    entrega: !isQuoteMode
-      ? (entregaPendiente || compatBlockReason)
-      : !allShippingChosen
-        ? 'Elige cómo recibir los productos de cada tienda para continuar.'
-        : 'Selecciona una dirección de entrega para continuar.',
-    pago: documentType === 'FACTURA' && !rutValid
-      ? 'Ingresa un RUT válido para emitir la factura.'
-      : isQuoteMode && vehicleRequired && !vehicleComplete
-        ? (lookupForCurrentPlate?.status === 'loading'
-          ? 'Estamos identificando tu patente…'
-          : quoteManualMissing
-            ? `Completa los datos de tu vehículo: ${quoteManualMissing.charAt(0).toLowerCase()}${quoteManualMissing.slice(1)}`
-            : (lookupForCurrentPlate?.status === 'notfound' || lookupForCurrentPlate?.status === 'error')
-              ? 'No pudimos identificar la patente: ingresa los datos de tu vehículo a mano.'
-              : 'Indica la patente o ingresa a mano la marca, modelo, año, versión y motor de tu vehículo para continuar.')
-        : compatBlockReason,
-  }[step];
+  const missingDelivery = !isQuoteMode
+    ? ((!addressesLoading && addresses.length === 0 ? 'Para ver los métodos de envío, primero registra una dirección.' : '') || entregaPendiente || compatBlockReason)
+    : !allShippingChosen
+      ? 'Elige cómo recibir los productos de cada tienda para continuar.'
+      : 'Selecciona una dirección de entrega para continuar.';
+  const missingPayment = documentType === 'FACTURA' && !rutValid
+    ? 'Ingresa un RUT válido para emitir la factura.'
+    : isQuoteMode && vehicleRequired && !vehicleComplete
+      ? (lookupForCurrentPlate?.status === 'loading'
+        ? 'Estamos identificando tu patente…'
+        : quoteManualMissing
+          ? `Completa los datos de tu vehículo: ${quoteManualMissing.charAt(0).toLowerCase()}${quoteManualMissing.slice(1)}`
+          : (lookupForCurrentPlate?.status === 'notfound' || lookupForCurrentPlate?.status === 'error')
+            ? 'No pudimos identificar la patente: ingresa los datos de tu vehículo a mano.'
+            : 'Indica la patente o ingresa a mano la marca, modelo, año, versión y motor de tu vehículo para continuar.')
+      : compatBlockReason;
+  const missingToPay = !deliveryComplete ? missingDelivery : missingPayment;
 
   const pay = async () => {
     if (submittingRef.current) return;
@@ -830,35 +795,23 @@ export default function CheckoutPage() {
   const goToCompatIssue = () => {
     const target = compatMismatches[0];
     if (!target) return;
-    const reveal = () => {
-      const node = document.getElementById(`compat-${target.productoId}`);
-      if (!node) return;
-      const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-      node.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
-    };
-    if (step !== 'entrega') {
-      goStep('entrega');
-      window.setTimeout(reveal, 120);
-    } else {
-      reveal();
-    }
+    const node = document.getElementById(`compat-${target.productoId}`);
+    if (!node) return;
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    node.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
   };
 
   const advance = () => {
-    if (!stepComplete[step]) {
-      setError(missingForStep);
+    if (!canPay) {
+      setError(missingToPay);
       return;
     }
-    if (step === 'pago') {
-      if (vehicleSkipPending && !vehicleSkipWarned) {
-        setVehicleSkipWarned(true);
-        focusVehicleSection();
-        return;
-      }
-      pay();
+    if (vehicleSkipPending && !vehicleSkipWarned) {
+      setVehicleSkipWarned(true);
+      focusVehicleSection();
       return;
     }
-    goStep(STEPS[stepIndex + 1].id);
+    pay();
   };
 
   // Cuenta bloqueada: el backend responde 403 a todo el lado comprador. Se corta antes
@@ -901,273 +854,148 @@ export default function CheckoutPage() {
     );
   }
 
+  const money = formatCLP;
+  const methodShort = (method) => (method || '').replace(/\s*\(.*\)\s*$/, '').trim();
+  const vehicleNo = 2;
+  const addressNo = 3;
+  const documentNo = isQuoteMode ? 4 : 2;
+  const paymentNo = documentNo + 1;
+
+  // Una tarjeta por tienda, igual que el pago de un encargo: nombre con su icono, productos con
+  // cantidad y precio, el envío y cómo se recibe. Lo mismo para compra directa y cotización.
+  const renderStoreCard = (group, groupIndex) => {
+    const first = group.items[0];
+    const storeName = first?.storeName || group.vendedor || 'Tienda RepuesTop';
+    const subtotal = group.items.reduce((sum, item) => sum + item.precio * item.quantity, 0);
+    const delivery = isQuoteMode ? null : (deliveries[first.id] || { method: null, addressId: null });
+    const shippingCost = isQuoteMode
+      ? Number(first.shippingFee || 0)
+      : group.items.reduce((sum, item) => sum + (cartShipping.perItem[item.id] || 0), 0);
+    const method = isQuoteMode ? first.shippingMethod : delivery.method;
+    const kind = deliveryKind(method);
+    const shippingText = !method && !isQuoteMode
+      ? 'Por definir'
+      : shippingCost > 0
+        ? money(shippingCost)
+        : kind === 'courier' || (isQuoteMode && shippingLabel === 'Por pagar')
+          ? 'Por pagar al recibir'
+          : 'Sin costo';
+    const methodText = isQuoteMode
+      ? (deliveryTermsLabel(method) || 'A coordinar con la tienda')
+      : (methodShort(method) || 'Elige cómo recibirlo');
+    const commune = first?.storeComuna;
+    return (
+      <article key={group.key} className="ap-store" style={{ marginBottom: 12 }}>
+        <header className="ap-store-head">
+          <span className="ap-store-icon" aria-hidden="true"><Store size={18} /></span>
+          <div>
+            {groups.length > 1 && <small className="ap-store-sub">Tienda {groupIndex + 1} de {groups.length}</small>}
+            <strong>{storeName}</strong>
+            <small><Truck size={12} /> {methodText}</small>
+            {commune && <small>Tienda en {commune}</small>}
+          </div>
+          <strong className="ap-store-total">{money(subtotal + shippingCost)}</strong>
+        </header>
+        <table className="ap-lines">
+          <tbody>
+            {group.items.map((item) => (
+              <React.Fragment key={item.id}>
+                <tr>
+                  <td>
+                    <strong>{item.titulo}</strong>
+                    {!isQuoteMode && item.marca && <small>{item.marca}</small>}
+                  </td>
+                  <td className="is-num">{item.quantity} × {money(item.precio)}</td>
+                  <td className="is-num">{money(item.precio * item.quantity)}</td>
+                </tr>
+                {!isQuoteMode && (
+                  <tr className="apc-line-extra">
+                    <td colSpan={3}>
+                      <CheckoutItemDelivery
+                        item={item}
+                        delivery={deliveries[item.id] || { method: null, addressId: null, vehicleKey: null }}
+                        vehicles={cartVehicles}
+                        compatibility={compatStatusOf(
+                          item.id,
+                          cartVehicles.find((vehicle) => vehicle.key === deliveries[item.id]?.vehicleKey) || null,
+                          Boolean(item.esUniversal),
+                        )}
+                        onRemove={() => removeFromCart(item.id)}
+                        onChange={(patch) => updateDelivery(item, patch)}
+                        onAddVehicle={() => setVehicleDialog({ vehicle: null, itemId: item.id })}
+                        onEditVehicle={(vehicle) => setVehicleDialog({ vehicle, itemId: item.id })}
+                      />
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr><td colSpan={2}>Envío</td><td className="is-num">{shippingText}</td></tr>
+          </tfoot>
+        </table>
+        {/* Un envío por tienda: método y dirección se eligen una vez, bajo sus productos. */}
+        {!isQuoteMode && (
+          <div className="apc-store-shipping">
+            <CheckoutStoreShipment
+              item={first}
+              productCount={group.items.length}
+              delivery={delivery}
+              addresses={addresses}
+              onChange={(patch) => updateDelivery(first, patch)}
+              onManageAddresses={openAddressBook}
+              onUseStoreAddress={isSeller && addresses.length === 0 ? applyStoreAddress : undefined}
+              usingStoreAddress={usingStoreAddress}
+              storeAddressError={storeAddressError}
+              addressesLoading={addressesLoading}
+            />
+          </div>
+        )}
+        {kind === 'courier' && <p className="apc-note apc-note-warn"><AlertTriangle size={14} /> Despacho a domicilio por pagar: el costo del envío no está incluido, lo pagas aparte al recibirlo.</p>}
+      </article>
+    );
+  };
+
   return (
-    <main className="checkout-page">
+    <main className="checkout-page apc-page">
       <div className="cart-page-shell">
         <header className="cart-page-head checkout-shopify-header">
-          <div className="checkout-shopify-header-top">
-            {isQuoteMode
-              ? <Link className="cart-page-back" to={buyerQuotesPath}><ArrowLeft size={16} /> Volver a mis cotizaciones</Link>
-              : <Link className="cart-page-back" to={ROUTES.cart}><ArrowLeft size={16} /> Volver al carrito</Link>}
-            <h1>{isQuoteMode ? 'Pagar cotización' : 'Finalizar compra'}</h1>
-          </div>
-
-          <nav className="shopify-breadcrumb-nav" aria-label="Progreso de la compra">
-            <Link
-              to={isQuoteMode ? buyerQuotesPath : ROUTES.cart}
-              className="shopify-breadcrumb-link"
-            >
-              {isQuoteMode ? 'Cotización' : 'Carrito'}
-            </Link>
-            <ChevronRight size={13} className="shopify-breadcrumb-sep" />
-
-            <button
-              type="button"
-              className={`shopify-breadcrumb-step ${step === 'entrega' ? 'is-active' : 'is-completed'}`}
-              onClick={() => goStep('entrega')}
-            >
-              Entrega
-            </button>
-            <ChevronRight size={13} className="shopify-breadcrumb-sep" />
-
-            <button
-              type="button"
-              className={`shopify-breadcrumb-step ${step === 'pago' ? 'is-active' : ''}`}
-              onClick={() => stepComplete.entrega && goStep('pago')}
-              disabled={!stepComplete.entrega}
-            >
-              Pago y facturación
-            </button>
-          </nav>
+          {isQuoteMode
+            ? <Link className="apc-back" to={buyerQuotesPath}><ArrowLeft size={15} /> Volver a mis cotizaciones</Link>
+            : <Link className="apc-back" to={ROUTES.cart}><ArrowLeft size={15} /> Volver al carrito</Link>}
+          <h1 className="apc-title">Pagar pedido</h1>
+          <p className="apc-sub">
+            {isQuoteMode ? 'Cotización' : 'Compra'} de {groups.length} {groups.length === 1 ? 'tienda' : 'tiendas'}, un solo pago.
+          </p>
         </header>
 
         <div className="cart-page-layout">
           <div className="checkout-main">
-            {step === 'entrega' && (
-              <div className="checkout-main-flow">
-                <section className="checkout-block checkout-contact-card" aria-label="Información de contacto">
-                  <div className="checkout-contact-header">
-                    <span className="checkout-contact-title">
-                      <User size={15} /> Información de contacto
-                    </span>
-                    <span className="checkout-contact-user">
-                      {user?.email || user?.nombreCompleto || 'Usuario RepuesTop'}
-                    </span>
-                  </div>
-                  <p className="checkout-contact-note">
-                    Recibirás la confirmación del pedido y comprobante de compra en esta cuenta.
-                  </p>
-                </section>
+            <section className="apc-card">
+              <h2><span>1</span> Tu pedido por tienda</h2>
+              {groups.map(renderStoreCard)}
+              <p className="checkout-contact-note" style={{ margin: 0 }}>
+                <User size={13} /> Recibirás la confirmación y el comprobante en <strong>{user?.email || user?.nombreCompleto || 'tu cuenta RepuesTop'}</strong>.
+              </p>
+            </section>
 
-                {!isQuoteMode && (
-                  <section className="checkout-block" aria-labelledby="checkout-shipping-title">
-                    <h2 id="checkout-shipping-title"><Truck size={16} /> Envío y vehículo</h2>
-                    <p className="checkout-block-note">
-                      Cada tienda envía sus productos juntos: elige su envío y la dirección una vez, y para qué vehículo es cada repuesto.
-                    </p>
-                    {/* Con varias tiendas, cada una en su propio contenedor con encabezado de color y
-                        "Tienda N de M": al bajar tiene que quedar claro a qué tienda corresponde
-                        cada envío y cada producto. */}
-                    <div className={`checkout-delivery-groups ${groups.length > 1 ? 'is-multi' : ''}`}>
-                      {groups.map((group, groupIndex) => (
-                        <div key={group.key} className="cart-store-group">
-                          <div className="cart-store-head">
-                            <div className="cart-store-id">
-                              <span className="cart-store-avatar"><Store size={15} /></span>
-                              <span className="checkout-store-title">
-                                {groups.length > 1 && <em className="checkout-store-index">Tienda {groupIndex + 1} de {groups.length}</em>}
-                                <strong>{group.items[0]?.storeName || group.vendedor || 'Tienda RepuesTop'}</strong>
-                                <small className="checkout-store-commune">
-                                  {[group.items[0]?.storeComuna, `${group.items.length} ${group.items.length === 1 ? 'producto' : 'productos'}`].filter(Boolean).join(' · ')}
-                                </small>
-                              </span>
-                            </div>
-                          </div>
-                          {/* Un envío por tienda: método y dirección se eligen una vez, bajo su nombre. */}
-                          {group.items[0] && (
-                            <CheckoutStoreShipment
-                              item={group.items[0]}
-                              productCount={group.items.length}
-                              delivery={deliveries[group.items[0].id] || { method: null, addressId: null }}
-                              addresses={addresses}
-                              onChange={(patch) => updateDelivery(group.items[0], patch)}
-                              onManageAddresses={openAddressBook}
-                              onUseStoreAddress={isSeller && addresses.length === 0 ? applyStoreAddress : undefined}
-                              usingStoreAddress={usingStoreAddress}
-                              storeAddressError={storeAddressError}
-                            />
-                          )}
-                          <div className="cart-store-lines">
-                            {group.items.map((item) => {
-                              const delivery = deliveries[item.id] || { method: null, addressId: null, vehicleKey: null };
-                              return (
-                                <div key={item.id} className="checkout-delivery-line">
-                                  <div className="cart-line">
-                                    <div className="cart-line-media">
-                                      <ProductPhoto src={item.imagen} product={item} loading="lazy" iconSize={20} />
-                                    </div>
-                                    <div className="cart-line-info">
-                                      <h3>{item.titulo}</h3>
-                                      <p className="cart-line-meta">
-                                        <span>{item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}</span>
-                                        {item.marca && <span>{item.marca}</span>}
-                                        <span>{formatCLP(item.precio * item.quantity)}</span>
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <CheckoutItemDelivery
-                                    item={item}
-                                    delivery={delivery}
-                                    vehicles={cartVehicles}
-                                    compatibility={compatStatusOf(
-                                      item.id,
-                                      cartVehicles.find((vehicle) => vehicle.key === delivery.vehicleKey) || null,
-                                      Boolean(item.esUniversal),
-                                    )}
-                                    onRemove={() => removeFromCart(item.id)}
-                                    onChange={(patch) => updateDelivery(item, patch)}
-                                    onAddVehicle={() => setVehicleDialog({ vehicle: null, itemId: item.id })}
-                                    onEditVehicle={(vehicle) => setVehicleDialog({ vehicle, itemId: item.id })}
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                )}
-
-                {!isQuoteMode && <CheckoutShipmentsSummary packages={shipmentPackages} />}
-
-                {isQuoteMode && (
-                <section className="checkout-block" aria-labelledby="checkout-entrega-title">
-                  <h2 id="checkout-entrega-title"><MapPin size={16} /> ¿Dónde recibes tu pedido?</h2>
-
-                  {!allShippingChosen ? (
-                    <p className="checkout-block-note">
-                      Elige primero, arriba, cómo recibes los productos de cada tienda.
-                    </p>
-                  ) : needsAddress ? (
-                    <>
-                      {addressesLoading ? (
-                        <p className="checkout-block-loading"><Loader2 size={15} className="spin-icon" /> Cargando tus direcciones…</p>
-                      ) : addresses.length > 0 ? (
-                        <div className="checkout-address-list" role="radiogroup" aria-label="Direcciones guardadas">
-                          {addresses.map((address) => (
-                            <label key={address.id} className={String(address.id) === String(selectedAddressId) ? 'is-selected' : ''}>
-                              <input
-                                type="radio"
-                                name="checkout-address"
-                                value={address.id}
-                                checked={String(address.id) === String(selectedAddressId)}
-                                onChange={(event) => setSelectedAddressId(event.target.value)}
-                              />
-                              <span className="checkout-address-body">
-                                <strong>{address.calleYNumero}</strong>
-                                <small>{address.comunaNombre}{address.regionNombre ? `, ${address.regionNombre}` : ''}</small>
-                              </span>
-                              {address.esPrincipal && (
-                                <em
-                                  className="checkout-address-tag"
-                                  style={isSeller ? { background: '#dbeafe', color: '#0052cc', border: '1px solid #bfdbfe' } : undefined}
-                                >
-                                  {isSeller ? 'Dirección de tu tienda' : 'Principal'}
-                                </em>
-                              )}
-                            </label>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="checkout-block-empty"><AlertTriangle size={15} /> Todavía no tienes direcciones guardadas.</p>
-                      )}
-
-                      <button
-                        type="button"
-                        className="checkout-inline-link"
-                        onClick={() => setAddressBookOpen((open) => !open)}
-                      >
-                        {addressBookOpen
-                          ? 'Ocultar opciones de dirección'
-                          : (isSeller ? '+ Enviar a otra dirección' : 'Agregar o editar direcciones')}
-                      </button>
-
-                      {(addressBookOpen || (!addressesLoading && addresses.length === 0)) && (
-                        <div className="checkout-address-book"><BuyerAddressBook usuarioId={userId} onChange={() => loadAddresses({ silent: true })} /></div>
-                      )}
-                    </>
-                  ) : (
-                    <p className="checkout-block-note">
-                      Todos los productos son retiro en tienda, así que no necesitamos una dirección de despacho.
-                      Coordina el retiro con cada vendedor desde el detalle del pedido.
-                    </p>
-                  )}
-
-                  {isQuoteMode && (
-                    <p className="checkout-block-note checkout-quote-terms">
-                      <FileText size={14} /> La entrega ya está acordada en la cotización:
-                      {' '}<strong>{deliveryTermsLabel(quoteLine.shippingMethod) || 'a coordinar con la tienda'}</strong>.
-                    </p>
-                  )}
-                </section>
-                )}
-              </div>
-            )}
-
-            {step === 'pago' && (
-              <div className="checkout-main-flow">
-                {/* Resumen de solo lectura: la navegacion real ya la da el breadcrumb de
-                    arriba (Carrito > Entrega > Pago y facturacion). Botones "Cambiar" que
-                    repetian esa misma vuelta atras, uno por fila, no aportaban nada aparte
-                    de confundir. "Enviar a" y "Metodo" tambien se fusionaron en una sola
-                    fila: para retiro en tienda mostraban el mismo dato dos veces. */}
-                <div className="shopify-recap-box" aria-label="Resumen de datos de entrega">
-                  <div className="shopify-recap-row">
-                    <span className="shopify-recap-label">Contacto</span>
-                    <span className="shopify-recap-value">{user?.email || user?.nombreCompleto || 'Usuario RepuesTop'}</span>
-                  </div>
-
-                  <div className="shopify-recap-divider" />
-
-                  <div className="shopify-recap-row">
-                    <span className="shopify-recap-label">Entrega</span>
-                    <span className="shopify-recap-value">
-                      {!isQuoteMode
-                        ? 'Por producto (detalle abajo)'
-                        : needsAddress
-                        ? (() => {
-                          const address = addresses.find((item) => String(item.id) === String(selectedAddressId));
-                          const direccion = address ? `${address.calleYNumero}, ${address.comunaNombre}${address.regionNombre ? `, ${address.regionNombre}` : ''}` : 'Dirección seleccionada';
-                          return `${direccion} · ${shippingLabel}`;
-                        })()
-                        : 'Retiro en tienda'}
-                    </span>
-                  </div>
-                </div>
-
-                {isQuoteMode && (
-                <section
-                  ref={vehicleSectionRef}
-                  className="checkout-block checkout-vehicle-block"
-                  aria-labelledby="checkout-vehiculo-title"
-                >
+            {isQuoteMode && (
+                <section ref={vehicleSectionRef} className="apc-card checkout-vehicle-block">
                   {vehicleAttention > 0 && <span key={vehicleAttention} className="checkout-vehicle-pulse" aria-hidden="true" />}
-                  <div className="shopify-section-header">
-                    <h2 id="checkout-vehiculo-title">
-                      <span className="checkout-vehicle-icon"><Car size={16} /></span>
-                      ¿Para qué vehículo es?
-                      <span className={`checkout-vehicle-badge ${vehicleRequired ? 'is-required' : ''}`}>
-                        {vehicleRequired ? 'Obligatorio' : 'Importante'}
-                      </span>
-                    </h2>
-                    <p className="shopify-section-subtitle">
-                      {vehicleRequired
-                        ? 'El vendedor revisa que el repuesto calce con tu vehículo antes de enviarlo. Escribe tu patente y completamos el resto por ti.'
-                        : 'Escribe tu patente y completamos los datos por ti: el vendedor confirma que la pieza calza con tu auto antes de enviarla y evitas devoluciones.'}
-                    </p>
-                    <small className="checkout-vehicle-privacy" style={{ display: 'block', color: '#64748b', marginTop: 4 }}>Compartimos con la tienda solo el chasis y el modelo de tu vehículo (la patente, parcial) para validar la compatibilidad.</small>
-                  </div>
+                  <h2>
+                    <span>{vehicleNo}</span> ¿Para qué vehículo es?
+                    <span className={`checkout-vehicle-badge ${vehicleRequired ? 'is-required' : ''}`}>
+                      {vehicleRequired ? 'Obligatorio' : 'Importante'}
+                    </span>
+                  </h2>
+                  <p className="shopify-section-subtitle">
+                    {vehicleRequired
+                      ? 'El vendedor revisa que el repuesto calce con tu vehículo antes de enviarlo. Escribe tu patente y completamos el resto por ti.'
+                      : 'Escribe tu patente y completamos los datos por ti: el vendedor confirma que la pieza calza con tu auto antes de enviarla y evitas devoluciones.'}
+                  </p>
+                  <small className="checkout-vehicle-privacy" style={{ display: 'block', color: '#64748b', marginTop: 4 }}>Compartimos con la tienda solo el chasis y el modelo de tu vehículo (la patente, parcial) para validar la compatibilidad.</small>
+                  
 
                   {vehiculoDeLaSolicitud ? (
                     <p className="checkout-vehicle-from-request">
@@ -1259,16 +1087,130 @@ export default function CheckoutPage() {
                     </p>
                   )}
                 </section>
-                )}
+            )}
 
-                {/* Métodos de Pago con selector de Simulación */}
-                <section className="checkout-block" aria-labelledby="checkout-pago-title">
-                  <div className="shopify-section-header">
-                    <h2 id="checkout-pago-title"><CreditCard size={16} /> Método de pago</h2>
-                    <p className="shopify-section-subtitle">
-                      <Lock size={13} /> Todas las transacciones son seguras y están encriptadas.
+            {isQuoteMode && (
+                <section className="apc-card">
+                  <h2><span>{addressNo}</span> ¿Dónde recibes tu pedido?</h2>
+
+                  {!allShippingChosen ? (
+                    <p className="checkout-block-note">
+                      Elige primero, arriba, cómo recibes los productos de cada tienda.
                     </p>
-                  </div>
+                  ) : needsAddress ? (
+                    <>
+                      {addressesLoading ? (
+                        <p className="checkout-block-loading"><Loader2 size={15} className="spin-icon" /> Cargando tus direcciones…</p>
+                      ) : addresses.length > 0 ? (
+                        <div className="checkout-address-list" role="radiogroup" aria-label="Direcciones guardadas">
+                          {addresses.map((address) => (
+                            <label key={address.id} className={String(address.id) === String(selectedAddressId) ? 'is-selected' : ''}>
+                              <input
+                                type="radio"
+                                name="checkout-address"
+                                value={address.id}
+                                checked={String(address.id) === String(selectedAddressId)}
+                                onChange={(event) => setSelectedAddressId(event.target.value)}
+                              />
+                              <span className="checkout-address-body">
+                                <strong>{address.calleYNumero}</strong>
+                                <small>{address.comunaNombre}{address.regionNombre ? `, ${address.regionNombre}` : ''}</small>
+                              </span>
+                              {address.esPrincipal && (
+                                <em
+                                  className="checkout-address-tag"
+                                  style={isSeller ? { background: '#dbeafe', color: '#0052cc', border: '1px solid #bfdbfe' } : undefined}
+                                >
+                                  {isSeller ? 'Dirección de tu tienda' : 'Principal'}
+                                </em>
+                              )}
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="checkout-block-empty"><AlertTriangle size={15} /> Todavía no tienes direcciones guardadas.</p>
+                      )}
+
+                      <button
+                        type="button"
+                        className="checkout-inline-link"
+                        onClick={() => setAddressBookOpen((open) => !open)}
+                      >
+                        {addressBookOpen
+                          ? 'Ocultar opciones de dirección'
+                          : (isSeller ? '+ Enviar a otra dirección' : 'Agregar o editar direcciones')}
+                      </button>
+
+                      {(addressBookOpen || (!addressesLoading && addresses.length === 0)) && (
+                        <div className="checkout-address-book"><BuyerAddressBook usuarioId={userId} onChange={() => loadAddresses({ silent: true })} /></div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="checkout-block-note">
+                      Todos los productos son retiro en tienda, así que no necesitamos una dirección de despacho.
+                      Coordina el retiro con cada vendedor desde el detalle del pedido.
+                    </p>
+                  )}
+
+                  {isQuoteMode && (
+                    <p className="checkout-block-note checkout-quote-terms">
+                      <FileText size={14} /> La entrega ya está acordada en la cotización:
+                      {' '}<strong>{deliveryTermsLabel(quoteLine.shippingMethod) || 'a coordinar con la tienda'}</strong>.
+                    </p>
+                  )}
+                </section>
+            )}
+
+            <section className="apc-card">
+              <h2><span>{documentNo}</span> Documento tributario</h2>
+              <div className="apc-options">
+                {[['BOLETA', 'Boleta', 'Para personas.'], ['FACTURA', 'Factura', 'Para empresas: requiere RUT, razón social y giro.']].map(([value, label, hint]) => (
+                  <label key={value} className={`apc-option ${documentType === value ? 'is-selected' : ''}`}>
+                    <input type="radio" name="checkout-document" value={value} checked={documentType === value} onChange={() => setDocumentType(value)} />
+                    <span><strong>{label}</strong><small>{hint}</small></span>
+                  </label>
+                ))}
+              </div>
+              {documentType === 'FACTURA' && (
+                <div className="apc-fields">
+                  <label>
+                    RUT empresa *
+                    <input
+                      value={invoice.rut}
+                      onChange={(event) => setInvoice((current) => ({ ...current, rut: formatRut(event.target.value) }))}
+                      placeholder="76.123.456-7"
+                      inputMode="text"
+                      maxLength={12}
+                    />
+                    {invoice.rut && !rutValid && <small className="checkout-field-error">El RUT no es válido.</small>}
+                  </label>
+                  <label>
+                    Giro
+                    <input
+                      value={invoice.giro}
+                      onChange={(event) => setInvoice((current) => ({ ...current, giro: event.target.value }))}
+                      placeholder="Actividad comercial"
+                      maxLength={150}
+                    />
+                  </label>
+                  <label className="is-wide">
+                    Razón social
+                    <input
+                      value={invoice.razonSocial}
+                      onChange={(event) => setInvoice((current) => ({ ...current, razonSocial: event.target.value }))}
+                      placeholder="Nombre de la empresa"
+                      maxLength={180}
+                    />
+                  </label>
+                </div>
+              )}
+            </section>
+
+                <section className="apc-card">
+                  <h2><span>{paymentNo}</span> Método de pago</h2>
+                  <p className="shopify-section-subtitle">
+                    <Lock size={13} /> Todas las transacciones son seguras y están encriptadas.
+                  </p>
 
                   <div className="checkout-payment-options-grid" role="radiogroup" aria-label="Métodos de pago">
                     {SIMULATED_PAYMENT_ENABLED && (
@@ -1318,125 +1260,10 @@ export default function CheckoutPage() {
                   )}
                 </section>
 
-                {/* Datos de Facturación (Boleta o Factura) */}
-                <section className="checkout-block" aria-labelledby="checkout-billing-title">
-                  <div className="shopify-section-header">
-                    <h2 id="checkout-billing-title"><ReceiptText size={16} /> Datos de facturación</h2>
-                    <p className="shopify-section-subtitle">
-                      Selecciona el documento tributario que emitirá el vendedor para tu compra.
-                    </p>
-                  </div>
-
-                  <div className="cart-document-options">
-                    <label className={documentType === 'BOLETA' ? 'selected' : ''}>
-                      <input
-                        type="radio"
-                        name="checkout-document"
-                        value="BOLETA"
-                        checked={documentType === 'BOLETA'}
-                        onChange={(event) => setDocumentType(event.target.value)}
-                      />
-                      <ReceiptText size={20} />
-                      <span>
-                        <strong>Boleta electrónica</strong>
-                        <small>Compra personal / Consumidor final</small>
-                      </span>
-                    </label>
-                    <label className={documentType === 'FACTURA' ? 'selected' : ''}>
-                      <input
-                        type="radio"
-                        name="checkout-document"
-                        value="FACTURA"
-                        checked={documentType === 'FACTURA'}
-                        onChange={(event) => setDocumentType(event.target.value)}
-                      />
-                      <Building2 size={20} />
-                      <span>
-                        <strong>Factura electrónica</strong>
-                        <small>Requiere datos tributarios de empresa</small>
-                      </span>
-                    </label>
-                  </div>
-
-                  {documentType === 'FACTURA' && (
-                    <div className="cart-invoice-fields">
-                      <label>
-                        <span>RUT empresa *</span>
-                        <input
-                          value={invoice.rut}
-                          onChange={(event) => setInvoice((current) => ({ ...current, rut: formatRut(event.target.value) }))}
-                          placeholder="76.123.456-7"
-                          inputMode="text"
-                          maxLength={12}
-                        />
-                        {invoice.rut && !rutValid && <small className="checkout-field-error">El RUT no es válido.</small>}
-                      </label>
-                      <label>
-                        <span>Razón social</span>
-                        <input
-                          value={invoice.razonSocial}
-                          onChange={(event) => setInvoice((current) => ({ ...current, razonSocial: event.target.value }))}
-                          placeholder="Nombre de la empresa"
-                          maxLength={180}
-                        />
-                      </label>
-                      <label>
-                        <span>Giro</span>
-                        <input
-                          value={invoice.giro}
-                          onChange={(event) => setInvoice((current) => ({ ...current, giro: event.target.value }))}
-                          placeholder="Actividad comercial"
-                          maxLength={150}
-                        />
-                      </label>
-                    </div>
-                  )}
-                </section>
-
-                {/* Revisión de Productos por Tienda */}
-                <section className="checkout-block" aria-labelledby="checkout-review-title">
-                  <h2 id="checkout-review-title" className="checkout-subheading-sm">
-                    Revisión de productos
-                  </h2>
-
-                  <div className="checkout-recap-lines">
-                    {groups.map((group) => (
-                      <div key={group.key} className="checkout-recap-store">
-                        <h3><Store size={14} /> {group.items[0]?.storeName || group.vendedor || 'Tienda RepuesTop'}</h3>
-                        {group.items.map((item) => {
-                          const delivery = deliveries[item.id];
-                          const address = addresses.find((entry) => String(entry.id) === String(delivery?.addressId));
-                          const vehicle = cartVehicles.find((entry) => entry.key === delivery?.vehicleKey);
-                          return (
-                            <div key={item.id} className="checkout-recap-item">
-                              <p>
-                                <span>{item.quantity} × {item.titulo}</span>
-                                <strong>{formatCLP(item.precio * item.quantity)}</strong>
-                              </p>
-                              {!isQuoteMode && delivery && (
-                                <ul className="checkout-recap-delivery">
-                                  <li>
-                                    <ShippingIcon method={delivery.method} size={12} />
-                                    {(delivery.method || '').replace(/\s*\(.*\)\s*$/, '')}
-                                    {isDispatch(delivery.method) && address ? ` · ${address.calleYNumero}, ${address.comunaNombre}` : ''}
-                                  </li>
-                                  {!item.esUniversal && vehicle && <li><Car size={12} /> {vehicleLabel(vehicle)}</li>}
-                                </ul>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-
-                  <p className="checkout-terms-note">
-                    Al pagar aceptas los <Link to={ROUTES.terms} target="_blank" rel="noreferrer">Términos y Condiciones</Link> y
-                    la <Link to={ROUTES.privacy} target="_blank" rel="noreferrer">Política de Privacidad</Link> de RepuesTop.
-                  </p>
-                </section>
-              </div>
-            )}
+            <p className="checkout-terms-note">
+              Al pagar aceptas los <Link to={ROUTES.terms} target="_blank" rel="noreferrer">Términos y Condiciones</Link> y
+              la <Link to={ROUTES.privacy} target="_blank" rel="noreferrer">Política de Privacidad</Link> de RepuesTop.
+            </p>
 
             {error && <p className="checkout-error"><AlertTriangle size={15} /> {error}</p>}
           </div>
@@ -1447,11 +1274,7 @@ export default function CheckoutPage() {
             costoEnvio={checkoutTotals.costoEnvio}
             total={checkoutTotals.total}
             shippingLabel={checkoutShippingLabel}
-            ctaLabel={
-              step === 'pago'
-                ? (paymentProcessingStatus || (paymentMethod === 'SIMULACION' ? `Simular y pagar ${formatCLP(checkoutTotals.total)}` : `Pagar ${formatCLP(checkoutTotals.total)}`))
-                : 'Continuar con el pago'
-            }
+            ctaLabel={paymentProcessingStatus || (paymentMethod === 'SIMULACION' ? `Simular y pagar ${formatCLP(checkoutTotals.total)}` : `Pagar ${formatCLP(checkoutTotals.total)}`)}
             onCta={advance}
             beforeCta={!isQuoteMode && compatMismatches.length > 0 ? (
               <div className="checkout-compat-summary">
@@ -1479,22 +1302,12 @@ export default function CheckoutPage() {
               texto: mismatchCountText(compatMismatches.length),
               onIr: () => document.querySelector('.checkout-compat-ack')?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
             } : undefined}
-            ctaDisabled={!stepComplete[step] || placing}
+            ctaDisabled={!canPay || placing}
             ctaLoading={placing}
-            warning={stepComplete[step]
+            warning={canPay
               ? (vehicleSkipPending && vehicleSkipWarned ? 'No indicaste tu vehículo. Si igual quieres pagar sin él, vuelve a pulsar Pagar.' : '')
-              : missingForStep}
-          >
-            {step === 'pago' && (
-              <button
-                type="button"
-                className="checkout-summary-back"
-                onClick={() => goStep('entrega')}
-              >
-                <ArrowLeft size={15} /> Volver a entrega
-              </button>
-            )}
-          </CheckoutSummaryPanel>
+              : missingToPay}
+          />
         </div>
       </div>
 

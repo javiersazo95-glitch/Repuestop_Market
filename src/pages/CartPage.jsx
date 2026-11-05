@@ -135,14 +135,14 @@ export default function CartPage() {
   }
 
   return (
-    <main className="cart-page">
+    <main className="cart-page apc-page">
       <div className="cart-page-shell">
         <header className="cart-page-head">
-          <button type="button" className="cart-page-back" onClick={() => nav.goCatalog()}>
-            <ArrowLeft size={16} /> Seguir comprando
+          <button type="button" className="apc-back" style={{ background: 'none', border: 0, padding: 0, cursor: 'pointer' }} onClick={() => nav.goCatalog()}>
+            <ArrowLeft size={15} /> Seguir comprando
           </button>
-          <h1>Mi carrito</h1>
-          <p>{cartCount} {cartCount === 1 ? 'producto' : 'productos'} de {groups.length} {groups.length === 1 ? 'tienda' : 'tiendas'}</p>
+          <h1 className="apc-title">Mi carrito</h1>
+          <p className="apc-sub">{cartCount} {cartCount === 1 ? 'producto' : 'productos'} de {groups.length} {groups.length === 1 ? 'tienda' : 'tiendas'}</p>
         </header>
 
         {cartError && (
@@ -166,7 +166,9 @@ export default function CartPage() {
 
         <div className="cart-page-layout">
           <div className="cart-page-main">
-            {groups.map((group) => (
+            <section className="apc-card">
+              <h2><span>1</span> Tu pedido por tienda</h2>
+              {groups.map((group) => (
               <CartStoreGroup
                 key={group.key}
                 group={group}
@@ -177,7 +179,9 @@ export default function CartPage() {
                 onUpdateQuantity={updateCartQuantity}
                 onRemove={removeFromCart}
               />
-            ))}
+              ))}
+              <p className="apc-note" style={{ margin: 0 }}>El envío y para qué vehículo es cada repuesto se eligen en el siguiente paso, antes de pagar.</p>
+            </section>
           </div>
 
           <CheckoutSummaryPanel

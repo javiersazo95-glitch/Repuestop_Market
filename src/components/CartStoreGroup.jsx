@@ -3,6 +3,9 @@ import { Store } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { storePath } from '../routes/paths';
 import CartLineItem from './CartLineItem';
+import '../styles/auction-purchase.css';
+
+const formatCLP = (value) => `$${Number(value || 0).toLocaleString('es-CL')}`;
 
 /**
  * Las líneas del carrito agrupadas por tienda. Es el patrón de los marketplaces locales
@@ -15,17 +18,25 @@ import CartLineItem from './CartLineItem';
 export default function CartStoreGroup({ group, activeVehicle, compatStatusOf = null, onUpdateQuantity, onRemove }) {
   const { proveedorId, vendedor, items } = group;
 
+  const storeName = vendedor || 'Tienda RepuesTop';
+  const comuna = items[0]?.storeComuna;
+  const subtotal = items.reduce((sum, item) => sum + item.precio * item.quantity, 0);
+  const units = items.reduce((sum, item) => sum + item.quantity, 0);
+
   return (
-    <section className="cart-store-group" aria-label={`Productos de ${vendedor || 'la tienda'}`}>
-      <header className="cart-store-head">
-        <div className="cart-store-id">
-          <span className="cart-store-avatar"><Store size={15} /></span>
+    <article className="ap-store cart-store-card" aria-label={`Productos de ${storeName}`}>
+      <header className="ap-store-head">
+        <span className="ap-store-icon" aria-hidden="true"><Store size={18} /></span>
+        <div>
           {proveedorId ? (
-            <Link to={storePath({ id: proveedorId, nombre: vendedor })}>{vendedor || 'Tienda RepuesTop'}</Link>
+            <Link to={storePath({ id: proveedorId, nombre: vendedor })}><strong>{storeName}</strong></Link>
           ) : (
-            <strong>{vendedor || 'Tienda RepuesTop'}</strong>
+            <strong>{storeName}</strong>
           )}
+          <small>{units} {units === 1 ? 'producto' : 'productos'}</small>
+          {comuna && <small>Tienda en {comuna}</small>}
         </div>
+        <strong className="ap-store-total">{formatCLP(subtotal)}</strong>
       </header>
 
       <div className="cart-store-lines">
@@ -40,6 +51,6 @@ export default function CartStoreGroup({ group, activeVehicle, compatStatusOf = 
           />
         ))}
       </div>
-    </section>
+    </article>
   );
 }

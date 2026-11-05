@@ -131,8 +131,11 @@ export function defaultAddressForMethod(item, method, addresses, currentId = nul
  * la comuna del comprador (la de su dirección principal) "dentro de la comuna" solo si es la de la
  * tienda y "fuera" solo si no. Así lo que se elige en la ficha es lo mismo que el carro confirma.
  */
-export function productShippingOptions(methodsText, buyerComuna, storeComuna) {
+export function productShippingOptions(methodsText, buyerComuna, storeComuna, { noAddress = false } = {}) {
   const methods = parseStoreMethods(methodsText);
+  // Comprador con sesión y sin direcciones: los despachos dependen de su comuna, así que no se
+  // ofrecen hasta que registre una (queda el retiro).
+  if (noAddress) return methods.filter((method) => !['local', 'courier'].includes(deliveryKind(method)));
   if (!normalize(buyerComuna) || !normalize(storeComuna)) return methods;
   const sameComuna = normalize(buyerComuna) === normalize(storeComuna);
   return methods.filter((method) => {

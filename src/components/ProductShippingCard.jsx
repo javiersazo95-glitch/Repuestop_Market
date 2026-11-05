@@ -8,7 +8,7 @@ import { shippingMethodMeta, shippingMethodMessage } from '../utils/cartDelivery
  * antes de comprar o añadir al carro, y el carro solo la confirma. `focused` la resalta cuando
  * se intentó comprar sin elegir.
  */
-const ProductShippingCard = forwardRef(function ProductShippingCard({ methods, selected, onSelect, hours, focused }, ref) {
+const ProductShippingCard = forwardRef(function ProductShippingCard({ methods, selected, onSelect, hours, focused, addressNotice = '' }, ref) {
   return (
     <section ref={ref} className={`product-shipping-card${focused ? ' is-focused' : ''}`} aria-labelledby="product-shipping-card-title">
       <h2 id="product-shipping-card-title"><Truck size={19} /> Opciones de entrega</h2>
@@ -37,6 +37,7 @@ const ProductShippingCard = forwardRef(function ProductShippingCard({ methods, s
           );
         })}
       </div>
+      {addressNotice && <p className="product-shipping-card-info is-warning" role="alert"><AlertTriangle size={16} /> {addressNotice}</p>}
       {selected ? (
         <p className="product-shipping-card-info"><Info size={16} /> {shippingMethodMessage(selected, hours)}</p>
       ) : (

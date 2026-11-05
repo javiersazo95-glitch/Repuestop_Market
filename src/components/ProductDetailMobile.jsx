@@ -73,6 +73,7 @@ export default function ProductDetailMobile({
   onOpenBrandModal,
   onOpenStore,
   shippingMethods,
+  shippingAddressNotice = '',
   selectedShippingMethod,
   onSelectShippingMethod,
   shippingSectionRef,
@@ -286,6 +287,7 @@ export default function ProductDetailMobile({
               );
             })}
           </div>
+          {shippingAddressNotice && <p className="pdm-shipping-info is-warning" role="alert"><AlertTriangle size={15} /> {shippingAddressNotice}</p>}
           {/* Igual que la app: qué implica lo elegido, o que falta elegir antes de comprar. */}
           {selectedShippingMethod ? (
             <p className="pdm-shipping-info"><Info size={15} /> {shippingMethodMessage(selectedShippingMethod, product.horarioVendedor)}</p>
