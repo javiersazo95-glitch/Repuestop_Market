@@ -591,6 +591,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [selectedCatalogProduct, setSelectedCatalogProduct] = useState(null);
   const [selectedTopProduct, setSelectedTopProduct] = useState(null);
   const [selectedQuote, setSelectedQuote] = useState(null);
+  // "Reportar vendedor" desde el menú de la tarjeta abre la cotización con el reporte listo (como `openReport` en la app).
+  const [quoteOpenReport, setQuoteOpenReport] = useState(false);
 
   // Catálogo: paginado en el servidor
   const [catalogPage, setCatalogPage] = useState(0);
@@ -1978,7 +1980,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   quotesAsBuyer={quotesAsBuyer}
                   quoteSummary={quoteSummary}
                   activeQuoteSource={activeQuoteSource}
-                  onSelectQuote={setSelectedQuote}
+                  onSelectQuote={(conversation, options) => { setQuoteOpenReport(Boolean(options?.openReport)); setSelectedQuote(conversation); }}
                 />
               )}
 
@@ -2128,6 +2130,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       {selectedQuote && (
         <QuoteDetailModal
           quote={selectedQuote}
+          initialReport={quoteOpenReport}
           mode={quotesAsBuyer ? 'buyer' : 'seller'}
           isFounder={isSellerFounder}
           onClose={() => {

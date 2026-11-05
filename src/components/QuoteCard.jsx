@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  MessageSquare, Clock, CheckCircle2, XCircle, Send, User, ChevronRight, Lock, CalendarClock, PauseCircle
+  MoreVertical, Flag, LifeBuoy, MessageSquare, Clock, CheckCircle2, XCircle, Send, User, ChevronRight, Lock, CalendarClock, PauseCircle
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
 import { isConversationPaused, isQuoteExpired } from '../utils/quoteFlow';
+import { helpContactPath } from '../routes/paths';
 
 export const UNIFIED_QUOTE_STATUS = {
   PENDIENTE: { label: 'Pendiente de respuesta', icon: Clock, className: 'badge-amber' },
@@ -52,7 +54,10 @@ export default function QuoteCard({
   mode = 'seller',
   onSelectQuote,
   onQuickRespond,
+  onOpenReport,
 }) {
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
   if (!quote) return null;
 
   const quoteIdShort = String(quote.id || '').slice(-6).toUpperCase();
@@ -94,6 +99,24 @@ export default function QuoteCard({
           <span className="order-card-date-meta">{dateStr}{unreadCount > 0 ? ` · ${unreadCount} sin leer` : ''}</span>
         </div>
         <QuoteStatusBadge status={rawStatus} size="small" />
+        {mode === 'buyer' && (
+          <span className="quote-card-menu" onClick={(e) => e.stopPropagation()}>
+            <button type="button" className="quote-card-menu-btn" aria-label="Opciones de conversación" aria-expanded={menuOpen} onClick={() => setMenuOpen((value) => !value)}><MoreVertical size={18} /></button>
+            {menuOpen && (
+              <>
+                <button type="button" className="quote-card-menu-scrim" aria-label="Cerrar opciones" onClick={() => setMenuOpen(false)} />
+                <div className="quote-card-menu-pop" role="menu">
+                  <button type="button" role="menuitem" onClick={() => { setMenuOpen(false); navigate(helpContactPath('buyer-quote')); }}>
+                    <LifeBuoy size={18} /><span><strong>Ayuda con esta cotización</strong><small>Obtén asistencia con esta cotización</small></span>
+                  </button>
+                  <button type="button" role="menuitem" className="is-danger" onClick={() => { setMenuOpen(false); onOpenReport?.(quote); }}>
+                    <Flag size={18} /><span><strong>Reportar vendedor</strong><small>Informa una conducta que incumple las normas</small></span>
+                  </button>
+                </div>
+              </>
+            )}
+          </span>
+        )}
       </div>
 
       {/* Customer Row */}

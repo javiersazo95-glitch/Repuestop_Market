@@ -108,6 +108,7 @@ export default function ProfileQuotesPanel({
               mode={quotesAsBuyer ? 'buyer' : 'seller'}
               onSelectQuote={onSelectQuote}
               onQuickRespond={onSelectQuote}
+              onOpenReport={(conversation) => onSelectQuote(conversation, { openReport: true })}
             />
           ))}
         </div>

@@ -86,7 +86,7 @@ const REPORT_REASONS = [
 ];
 
 export default function QuoteDetailModal({
-  quote, mode = 'seller', isFounder = false, user, storeInfo, onClose, onSendQuoteResponse, onMarkedRead,
+  quote, mode = 'seller', isFounder = false, user, storeInfo, onClose, onSendQuoteResponse, onMarkedRead, initialReport = false,
 }) {
   const navigate = useNavigate();
   const storeId = quote?.proveedorId || quote?.sellerId || user?.sellerId;
@@ -134,7 +134,7 @@ export default function QuoteDetailModal({
   const [quotePreviewOpen, setQuotePreviewOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [isSharingQuote, setIsSharingQuote] = useState(false);
-  const [reportOpen, setReportOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(Boolean(initialReport));
   const [reportReason, setReportReason] = useState('');
   const [reportDetail, setReportDetail] = useState('');
   const [isSubmittingReport, setIsSubmittingReport] = useState(false);

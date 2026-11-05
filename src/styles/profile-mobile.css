@@ -1397,3 +1397,16 @@
 .order-timeline-history li.is-reached .order-timeline-history-copy strong { color: var(--ak-text, #243442); }
 .order-timeline-history li.is-current .order-timeline-history-copy strong { color: var(--ak-primary, #0066ff); }
 .order-timeline-history-copy small { color: var(--ak-text-muted, #5a6b7a); font-size: 12px; }
+
+/* Menú "⋯" de la tarjeta de cotización del comprador (igual que las opciones de conversación de la app). */
+.quote-card-menu { position: relative; margin-left: 4px; display: inline-flex; }
+.quote-card-menu-btn { width: 32px; height: 32px; border: 0; border-radius: 50%; background: none; color: var(--ak-text-muted, #5a6b7a); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.quote-card-menu-btn:hover { background: var(--ak-surface-muted, #f3f5f7); }
+.quote-card-menu-scrim { position: fixed; inset: 0; z-index: 40; border: 0; background: transparent; cursor: default; }
+.quote-card-menu-pop { position: absolute; right: 0; top: 36px; z-index: 41; min-width: 260px; padding: 6px; border: 1px solid var(--ak-divider, #e6eaef); border-radius: 14px; background: #fff; box-shadow: 0 12px 32px rgba(15, 23, 42, .16); display: grid; gap: 2px; }
+.quote-card-menu-pop button { display: flex; align-items: center; gap: 12px; padding: 10px; border: 0; border-radius: 10px; background: none; text-align: left; font: inherit; color: var(--ak-primary, #0066ff); cursor: pointer; }
+.quote-card-menu-pop button:hover { background: var(--ak-surface-muted, #f3f5f7); }
+.quote-card-menu-pop button span { display: grid; gap: 1px; }
+.quote-card-menu-pop strong { font-size: 14px; }
+.quote-card-menu-pop small { color: var(--ak-text-muted, #5a6b7a); font-size: 12px; }
+.quote-card-menu-pop button.is-danger { color: var(--ak-error-text, #b42318); }
