@@ -20,6 +20,8 @@ import VehicleBrandLogo from '../VehicleBrandLogo';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import { canBookTaller } from '../../utils/tallerBooking';
 import MobileStickyBar from '../MobileStickyBar';
+import TallerProfileMobile from './TallerProfileMobile';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import './ad-detail.css';
 import './taller-profile.css';
 
@@ -42,6 +44,7 @@ const HOW_IT_WORKS = [
 ];
 
 export default function TallerProfileView({ taller, onBack, backLabel = 'Volver a talleres' }) {
+  const isMobile = useIsMobile();
   const [imgIndex, setImgIndex] = useState(0);
   const [coverError, setCoverError] = useState({});
   const [logoFailed, setLogoFailed] = useState(false);
@@ -125,6 +128,33 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
       /* el usuario canceló el diálogo de compartir */
     }
   };
+
+  // Celular: la ficha de la app (`TallerPerfilScreen.tsx`); el escritorio conserva la de siempre.
+  if (isMobile) {
+    return (
+      <>
+        <TallerProfileMobile
+          taller={taller}
+          photos={photos}
+          isSaved={isSaved}
+          onToggleSaved={() => { if (!isLoggedIn) { openAuthModal(); return; } toggleTaller(taller); }}
+          onShare={handleShare}
+          shareMsg={shareMsg}
+          onBack={onBack}
+          canBook={canBook}
+          canWhatsapp={canWhatsapp}
+          isOwnTaller={isOwnTaller}
+          onBook={handleBooking}
+          onPhone={handlePhone}
+          onWhatsApp={handleWhatsApp}
+          onMap={() => window.open(`https://www.google.com/maps/search/?api=1&query=${mapsQuery}`, '_blank', 'noopener,noreferrer')}
+          blockNotice={blockNotice}
+          memberSince={memberSince}
+        />
+        {booking && <BookingModal taller={taller} initialService={booking.service?.name || null} onClose={() => setBooking(null)} />}
+      </>
+    );
+  }
 
   const priceCaption = taller.priceFrom != null ? 'Servicios desde' : 'Servicios';
   const priceValue = taller.priceFrom != null ? `$${Number(taller.priceFrom).toLocaleString('es-CL')}` : 'A cotizar';
