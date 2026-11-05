@@ -19,6 +19,7 @@ import { useTrackingSeen } from '../../hooks/useTrackingSeen';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import usePagedList from '../../hooks/usePagedList';
 import ListPager from '../ListPager';
+import FaultsMural from './FaultsMural';
 import { MAX_SEARCH_LENGTH } from '../../utils/inputLimits';
 import '../../styles/faults.css';
 import '../../styles/profile-auctions.css';
@@ -34,7 +35,7 @@ const FAULT_TYPES = [
   ['Otros', /.*/i, 'other'],
 ];
 
-const normalizeComuna = (comuna) => String(comuna || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+export const normalizeComuna = (comuna) => String(comuna || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
 // "Metropolitana" (perfil) calza con "Region Metropolitana de Santiago" (catalogo de las fallas nuevas).
 const sameRegion = (a, b) => {
   const left = normalizeComuna(a);
@@ -42,7 +43,7 @@ const sameRegion = (a, b) => {
   return Boolean(left && right) && (left === right || left.includes(right) || right.includes(left));
 };
 
-const textOf = (fault) => [
+export const textOf = (fault) => [
   fault.titulo, fault.descripcion, fault.antesDelFallo, fault.marca, fault.modelo,
   fault.vehiculo, fault.comuna, fault.region, ...(fault.sintomas || []),
 ].filter(Boolean).join(' ');
@@ -56,7 +57,7 @@ function faultTypeOf(fault) {
 }
 
 // El backend manda `diagnosticos` como cantidad (numero); las otras formas son de respuestas antiguas.
-const diagnosisCountOf = (fault) => Number(
+export const diagnosisCountOf = (fault) => Number(
   fault.cantidadDiagnosticos ?? fault.totalDiagnosticos ?? fault.diagnosticosCount
     ?? (Array.isArray(fault.diagnosticos) ? fault.diagnosticos.length : fault.diagnosticos) ?? 0,
 ) || 0;
@@ -256,14 +257,14 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   }, [isLoggedIn, isWorkshop, intranet]);
 
   useEffect(() => { load(); }, [load]);
-  // Celular: una sola vez, al terminar de cargar, quien ya tiene fallas propias abre en ellas; sin ninguna, el mural.
+  // Una sola vez, al terminar de cargar, quien ya tiene fallas propias abre en ellas; sin ninguna, el mural.
   const initialViewApplied = useRef(false);
   useEffect(() => {
-    if (initialViewApplied.current || loading || intranet || !isLoggedIn || !isMobile) return;
+    if (initialViewApplied.current || loading || intranet || !isLoggedIn) return;
     initialViewApplied.current = true;
     const mineKey = isWorkshop ? 'COMMENTED' : 'MINE';
     if (lists[mineKey].length > 0) setView(mineKey);
-  }, [loading, intranet, isLoggedIn, isMobile, isWorkshop, lists]);
+  }, [loading, intranet, isLoggedIn, isWorkshop, lists]);
   useEffect(() => { if (!isLoggedIn && !intranet) setView('OPEN'); }, [isLoggedIn, intranet]);
   useEffect(() => {
     const timer = setTimeout(() => setQuery(searchText.trim()), 250);
@@ -344,6 +345,11 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
     : error ? <div className="ft-empty" role="alert"><AlertCircle size={20} /><strong>No pudimos cargar las fallas</strong>{error}<br /><button type="button" className="ft-btn ft-btn-outline" onClick={load}>Reintentar</button></div>
       : items.length === 0 ? <div className="ft-empty"><Wrench size={22} /><strong>{empty[0]}</strong>{empty[1]}</div>
         : <><div className="ft-fault-list">{pageItems.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} ownerActions={!isWorkshop && view === 'MINE' ? { onChanged: () => load() } : null} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div><ListPager pagerProps={pagerProps} itemLabel="fallas" /></>;
+
+  // /fallas en escritorio: el mismo esqueleto que Encargos de repuestos.
+  if (heading && !isMobile) {
+    return <FaultsMural lists={lists} view={view} setView={setView} loading={loading} error={error} onRetry={load} isLoggedIn={isLoggedIn} isWorkshop={isWorkshop} user={user} />;
+  }
 
   if (!heading && !mineOnly) {
     const mine = lists[isWorkshop ? 'COMMENTED' : 'MINE'];

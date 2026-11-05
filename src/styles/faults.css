@@ -635,3 +635,11 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 
 /* Los diagnósticos se ven con la imagen de perfil del taller (o su inicial), nunca con un icono genérico. */
 .fdt-record-avatar { width: 40px; height: 40px; flex-shrink: 0; font-size: 15px; background: #dcfce7; color: #166534; }
+
+/* /fallas en escritorio usa el esqueleto de Encargos (clases aw-): dentro de la página de fallas no lleva su propio fondo ni alto. */
+.ft-aw-embed.aw-page { background: transparent; min-height: 0; padding-bottom: 24px; }
+.ft-aw-embed .aw-toolbar .ft-tab { flex: none; }
+.ft-fault-list.is-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.ft-fault-list.is-grid .ft-fault-card { display: flex; flex-direction: column; min-height: 0; }
+.ft-fault-list.is-grid .ft-fault-media { min-height: 170px; }
+.ft-fault-list.is-grid .ft-fault-detail { border-left: 0; border-top: 1px solid #e7ebef; padding-left: 18px; }

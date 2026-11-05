@@ -18,6 +18,7 @@ import AuctionsListMobile from '../components/AuctionsListMobile';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useAuth } from '../context/AuthContext';
 import { useMarketplace } from '../context/MarketplaceContext';
+import { FilterSection, CheckRow, countBy } from '../components/ListFilters';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import '../styles/auctions-list.css';
 import '../styles/auction-mobile.css';
@@ -105,17 +106,6 @@ function matchesTiempo(auction, status, value, now) {
   return false;
 }
 
-function countBy(rows, pick) {
-  const counts = new Map();
-  rows.forEach((row) => {
-    const value = pick(row);
-    if (value) counts.set(value, (counts.get(value) || 0) + 1);
-  });
-  return [...counts.entries()]
-    .map(([value, count]) => ({ value, count }))
-    .sort((a, b) => b.count - a.count || a.value.localeCompare(b.value, 'es'));
-}
-
 function buildPageNumbers(current, total) {
   if (total <= 6) return Array.from({ length: total }, (_, i) => i + 1);
   const sorted = [...new Set([1, total, current - 1, current, current + 1])]
@@ -127,28 +117,6 @@ function buildPageNumbers(current, total) {
     result.push(p);
   });
   return result;
-}
-
-function FilterSection({ id, label, isOpen, onToggle, children }) {
-  return (
-    <div className={`filter-section-group ${isOpen ? 'is-open' : 'is-collapsed'}`}>
-      <button className="filter-group-toggle" type="button" onClick={() => onToggle(id)} aria-expanded={isOpen}>
-        <span className="filter-group-label">{label}</span>
-        <ChevronDown size={16} />
-      </button>
-      {isOpen && <div className="aw-filter-body">{children}</div>}
-    </div>
-  );
-}
-
-function CheckRow({ checked, onChange, label, count }) {
-  return (
-    <label className={`aw-check ${checked ? 'is-checked' : ''}`}>
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <span className="aw-check-label">{label}</span>
-      {count != null && <span className="aw-check-count">{count}</span>}
-    </label>
-  );
 }
 
 function AuctionRow({ auction, status, now, onOpen, pendingQuestions = null, showPayment = false }) {
@@ -223,7 +191,8 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
   const [now, setNow] = useState(() => Date.now());
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [estados, setEstados] = useState(['ACTIVA']);
+  const [estados, setEstados] = useState(['ACTIVA']);           // mural público: abre con las activas
+  const [estadosMine, setEstadosMine] = useState([]);              // Mis encargos: abre con todos los estados
   const [marcas, setMarcas] = useState([]);
   const [modelos, setModelos] = useState([]);
   const [regiones, setRegiones] = useState([]);
@@ -232,6 +201,8 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
   // "Mural publico" / "Mis búsquedas", como la app (26-oct). Lo propio solo existe para quien publica.
   const canSeeMine = isLoggedIn && (role === 'BUYER' || role === 'WORKSHOP');
   const [tab, setTab] = useState(initialTab);
+  const estadosActivos = tab === 'MIS' ? estadosMine : estados;
+  const setEstadosActivos = tab === 'MIS' ? setEstadosMine : setEstados;
   // Casa de repuestos: como la app, el mural y «Mis ofertas en curso» (el seguimiento de sus propuestas).
   const isSellerViewer = isLoggedIn && role === 'SELLER';
   const [activeOffersCount, setActiveOffersCount] = useState(0);
@@ -310,7 +281,9 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
 
   // "Por pagar" solo existe en Mis búsquedas.
   useEffect(() => { if (tab !== 'MIS' && scope === 'POR_PAGAR') setScope('TODAS'); }, [tab, scope]);
-  useEffect(() => { setPage(1); }, [searchQuery, estados, marcas, modelos, regiones, tiempos, scope, sortBy, tab]);
+  useEffect(() => { setPage(1); }, [searchQuery, estados, estadosMine, marcas, modelos, regiones, tiempos, scope, sortBy, tab]);
+  // Las opciones salen de la pestaña abierta: al cambiar de pestaña se sueltan las marcas, modelos, regiones y tiempos elegidos.
+  useEffect(() => { setMarcas([]); setModelos([]); setRegiones([]); setTiempos([]); }, [tab]);
 
   useEffect(() => {
     document.body.style.overflow = isFiltersOpen ? 'hidden' : '';
@@ -325,23 +298,45 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
   const rows = useMemo(() => auctions.map((auction) => ({ auction, status: resolveStatus(auction, now) })), [auctions, now]);
   const myRows = useMemo(() => myAuctions.map((auction) => ({ auction, status: resolveStatus(auction, now) })), [myAuctions, now]);
 
-  const brandOptions = useMemo(() => countBy(rows, ({ auction }) => auction.marca), [rows]);
+  // Solo se ofrecen opciones que tienen datos en la pestaña abierta (con su conteo); lo ya elegido no desaparece.
+  const tabRows = tab === 'MIS' ? myRows : rows;
+  const withSelected = (options, selected) => [
+    ...options,
+    ...selected.filter((value) => !options.some((option) => option.value === value)).map((value) => ({ value, count: 0 })),
+  ];
+  const brandOptions = useMemo(() => withSelected(countBy(tabRows, ({ auction }) => auction.marca), marcas), [tabRows, marcas]);
   // Modelos: si ya hay marcas elegidas, solo los de esas marcas.
   const modelOptions = useMemo(
-    () => countBy(rows.filter(({ auction }) => marcas.length === 0 || marcas.includes(auction.marca)), ({ auction }) => auction.modelo),
-    [rows, marcas],
+    () => withSelected(countBy(tabRows.filter(({ auction }) => marcas.length === 0 || marcas.includes(auction.marca)), ({ auction }) => auction.modelo), modelos),
+    [tabRows, marcas, modelos],
   );
-  const regionOptions = useMemo(() => countBy(rows, ({ auction }) => auction.region), [rows]);
+  const regionOptions = useMemo(() => withSelected(countBy(tabRows, ({ auction }) => auction.region), regiones), [tabRows, regiones]);
+  const estadoOptions = useMemo(() => withSelected(
+    ESTADO_OPTIONS.map((option) => ({
+      ...option,
+      count: tabRows.filter(({ status }) => (option.value === 'ACTIVA' ? status.key === 'activa' || status.key === 'por-finalizar'
+        : option.value === 'POR_FINALIZAR' ? status.key === 'por-finalizar' : status.key === 'finalizada')).length,
+    })).filter((option) => option.count > 0).map((option) => ({ value: option.value, label: option.label, count: option.count })),
+    estadosActivos,
+  ).map((option) => ({ ...option, label: option.label || ESTADO_OPTIONS.find((item) => item.value === option.value)?.label })), [tabRows, estadosActivos]);
+  const tiempoOptions = useMemo(() => withSelected(
+    TIEMPO_OPTIONS.map((option) => ({
+      value: option.value,
+      label: option.label,
+      count: tabRows.filter(({ auction, status }) => matchesTiempo(auction, status, option.value, now)).length,
+    })).filter((option) => option.count > 0),
+    tiempos,
+  ).map((option) => ({ ...option, label: option.label || TIEMPO_OPTIONS.find((item) => item.value === option.value)?.label })), [tabRows, tiempos, now]);
 
   const { muralMatches, mineMatches } = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    const matches = ({ auction, status }, ignoreEstados) => {
+    const matches = ({ auction, status }, estadosSel) => {
       if (q) {
         const haystack = `${auction.repuestoSolicitado || ''} ${auction.marca || ''} ${auction.modelo || ''} ${auction.patenteAnonimizada || ''}`.toLowerCase();
         if (!haystack.includes(q)) return false;
       }
-      if (!ignoreEstados && estados.length > 0) {
-        const ok = estados.some((estado) => {
+      if (estadosSel.length > 0) {
+        const ok = estadosSel.some((estado) => {
           if (estado === 'ACTIVA') return status.key === 'activa' || status.key === 'por-finalizar';
           if (estado === 'POR_FINALIZAR') return status.key === 'por-finalizar';
           return status.key === 'finalizada';
@@ -355,10 +350,10 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
       return true;
     };
     return {
-      muralMatches: rows.filter((row) => matches(row, false)),
-      mineMatches: myRows.filter((row) => matches(row, true)),
+      muralMatches: rows.filter((row) => matches(row, estados)),
+      mineMatches: myRows.filter((row) => matches(row, estadosMine)),
     };
-  }, [rows, myRows, searchQuery, estados, marcas, modelos, regiones, tiempos, now]);
+  }, [rows, myRows, searchQuery, estados, estadosMine, marcas, modelos, regiones, tiempos, now]);
 
   const tabMatches = tab === 'MIS' ? mineMatches : muralMatches;
   const scopeCounts = useMemo(() => ({
@@ -395,7 +390,7 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
   const activeCount = metrics?.solicitudesActivas ?? rows.filter(({ status }) => status.key !== 'finalizada').length;
   const newTodayCount = metrics?.registradasHoy ?? rows.filter(({ auction }) => auction.createdAt && sameDay(new Date(auction.createdAt), new Date(now))).length;
   const offersTodayCount = metrics?.ofertasHoy ?? 0;
-  const activeFiltersCount = estados.length + marcas.length + modelos.length + regiones.length + tiempos.length
+  const activeFiltersCount = estadosActivos.length + marcas.length + modelos.length + regiones.length + tiempos.length
     + (searchQuery.trim() ? 1 : 0) + (scope !== 'TODAS' ? 1 : 0);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -407,6 +402,7 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
   const handleResetFilters = () => {
     setSearchQuery('');
     setEstados([]);
+    setEstadosMine([]);
     setMarcas([]);
     setModelos([]);
     setRegiones([]);
@@ -466,27 +462,10 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
               )}
             </div>
 
-            <FilterSection id="estado" label="Estado" isOpen={openSections.estado} onToggle={toggleSection}>
-              {ESTADO_OPTIONS.map((option) => (
-                <CheckRow
-                  key={option.value}
-                  label={option.label}
-                  checked={estados.includes(option.value)}
-                  onChange={(checked) => toggleIn(setEstados, option.value, checked)}
-                />
-              ))}
-            </FilterSection>
-
             {brandOptions.length > 0 && (
               <FilterSection id="marca" label="Marca del vehículo" isOpen={openSections.marca} onToggle={toggleSection}>
                 {brandOptions.map(({ value, count }) => (
-                  <CheckRow
-                    key={value}
-                    label={value}
-                    count={count}
-                    checked={marcas.includes(value)}
-                    onChange={(checked) => toggleIn(setMarcas, value, checked)}
-                  />
+                  <CheckRow key={value} label={value} count={count} checked={marcas.includes(value)} onChange={(checked) => toggleIn(setMarcas, value, checked)} />
                 ))}
               </FilterSection>
             )}
@@ -494,13 +473,7 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
             {modelOptions.length > 0 && (
               <FilterSection id="modelo" label="Modelo del vehículo" isOpen={openSections.modelo} onToggle={toggleSection}>
                 {modelOptions.map(({ value, count }) => (
-                  <CheckRow
-                    key={value}
-                    label={value}
-                    count={count}
-                    checked={modelos.includes(value)}
-                    onChange={(checked) => toggleIn(setModelos, value, checked)}
-                  />
+                  <CheckRow key={value} label={value} count={count} checked={modelos.includes(value)} onChange={(checked) => toggleIn(setModelos, value, checked)} />
                 ))}
               </FilterSection>
             )}
@@ -508,27 +481,26 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
             {regionOptions.length > 0 && (
               <FilterSection id="region" label="Región" isOpen={openSections.region} onToggle={toggleSection}>
                 {regionOptions.map(({ value, count }) => (
-                  <CheckRow
-                    key={value}
-                    label={value}
-                    count={count}
-                    checked={regiones.includes(value)}
-                    onChange={(checked) => toggleIn(setRegiones, value, checked)}
-                  />
+                  <CheckRow key={value} label={value} count={count} checked={regiones.includes(value)} onChange={(checked) => toggleIn(setRegiones, value, checked)} />
                 ))}
               </FilterSection>
             )}
 
-            <FilterSection id="tiempo" label="Tiempo restante" isOpen={openSections.tiempo} onToggle={toggleSection}>
-              {TIEMPO_OPTIONS.map((option) => (
-                <CheckRow
-                  key={option.value}
-                  label={option.label}
-                  checked={tiempos.includes(option.value)}
-                  onChange={(checked) => toggleIn(setTiempos, option.value, checked)}
-                />
-              ))}
-            </FilterSection>
+            {tiempoOptions.length > 0 && (
+              <FilterSection id="tiempo" label="Tiempo restante" isOpen={openSections.tiempo} onToggle={toggleSection}>
+                {tiempoOptions.map(({ value, label, count }) => (
+                  <CheckRow key={value} label={label} count={count} checked={tiempos.includes(value)} onChange={(checked) => toggleIn(setTiempos, value, checked)} />
+                ))}
+              </FilterSection>
+            )}
+
+            {estadoOptions.length > 0 && (
+              <FilterSection id="estado" label="Estado" isOpen={openSections.estado} onToggle={toggleSection}>
+                {estadoOptions.map(({ value, label, count }) => (
+                  <CheckRow key={value} label={label} count={count} checked={estadosActivos.includes(value)} onChange={(checked) => toggleIn(setEstadosActivos, value, checked)} />
+                ))}
+              </FilterSection>
+            )}
 
             <button type="button" className="aw-clear" onClick={handleResetFilters} disabled={activeFiltersCount === 0}>
               <RotateCcw size={15} /> Limpiar filtros
