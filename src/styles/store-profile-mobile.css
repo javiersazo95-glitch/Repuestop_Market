@@ -67,3 +67,10 @@
 /* Insignia de Tienda Fundadora sobre la portada (como en `mi-tienda.tsx`). */
 .spm-founder { position: absolute; top: 8px; left: 8px; z-index: 2; max-width: calc(100% - 60px); display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px 4px 9px; border: 1px solid #E4C56F; border-radius: 999px; background: #FFF8DC; color: #8A6112; font-size: 12px; font-weight: 800; line-height: 1.2; }
 .spm-founder .founder-info-trigger { color: #8A6112; }
+
+/* Filtro avanzado de la ficha de tienda: buscar por patente. */
+.store-filter-plate { display: flex; flex-direction: column; gap: 6px; }
+.store-filter-plate strong { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; }
+.store-filter-plate small { color: var(--ak-text-muted, #5a6b7a); font-size: 12px; }
+.store-filter-plate .catalog-quick-patente-bar { display: flex; gap: 8px; align-items: center; }
+.store-filter-plate .patente-quick-input { flex: 1; min-width: 0; }

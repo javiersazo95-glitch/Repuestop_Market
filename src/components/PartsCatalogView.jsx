@@ -662,7 +662,8 @@ export default function PartsCatalogView({
   const visiblePricePresets = scopedMinPrice != null
     ? PRICE_PRESETS.filter((preset) => preset >= scopedMinPrice)
     : PRICE_PRESETS;
-  const showQuoteOnlyFilter = !filterSource || filterSource.hayCotizacion || onlyQuoteOnly;
+  // En la ficha de una tienda el interruptor siempre está: se cotiza con ella lo que no tiene precio publicado.
+  const showQuoteOnlyFilter = Boolean(lockedStoreId) || !filterSource || filterSource.hayCotizacion || onlyQuoteOnly;
 
   /**
    * El catálogo paginado NO se consulta sin contexto. Entrar a /repuestos y disparar un
@@ -950,6 +951,7 @@ export default function PartsCatalogView({
         setActiveVehicle(resolved);
         onVehicleChange?.(resolved);
         setOnlyCompatible(true);
+        return true;
       } else {
         setActiveVehicle(null);
         setPatentError(resolved?.mensaje || 'No encontramos ese vehículo. Verifica la patente e intenta de nuevo.');
@@ -960,6 +962,11 @@ export default function PartsCatalogView({
     } finally {
       setPatentSearching(false);
     }
+  };
+
+  /** Desde el filtro avanzado de la ficha de tienda: busca la patente y, si el vehículo existe, cierra el panel. */
+  const searchPlateFromFilters = async () => {
+    if (await handlePatentSearch(patentInput)) setMobileFiltersOpen(false);
   };
 
   // La lista de marcas de repuesto se acota a la categoría elegida, así que al cambiar de
@@ -1476,6 +1483,30 @@ export default function PartsCatalogView({
                 </button>
               </div>
             </div>
+
+            {/* Ficha de tienda: buscar por la patente de otro vehículo desde el filtro avanzado, como el taller en el catálogo. */}
+            {lockedStoreId && (
+              <div className="filter-section-group store-filter-plate">
+                <strong><CarFront size={15} /> Buscar repuesto por patente</strong>
+                <small>Muestra solo los repuestos de esta tienda compatibles con ese vehículo.</small>
+                <div className="catalog-quick-patente-bar">
+                  <input
+                    type="text"
+                    placeholder="Patente (ABCD-12)"
+                    aria-label="Patente del vehículo"
+                    value={patentInput}
+                    maxLength={8}
+                    className="patente-quick-input"
+                    onChange={(e) => { setPatentInput(sanitizePlateInput(e.target.value)); if (patentError) setPatentError(''); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); searchPlateFromFilters(); } }}
+                  />
+                  <button type="button" className="btn-quick-patente-submit" onClick={searchPlateFromFilters} disabled={patentSearching}>
+                    {patentSearching ? <RefreshCw size={15} className="spin-icon" /> : 'Buscar'}
+                  </button>
+                </div>
+                {patentError && <span className="quick-patente-error">{patentError}</span>}
+              </div>
+            )}
 
             {/* Filter 0: Modalidad de compra. Un interruptor, no tres opciones: el estado
                 neutro es no filtrar, y no necesita una opcion propia que lo diga. */}
