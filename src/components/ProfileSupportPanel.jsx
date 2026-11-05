@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, ChevronRight, CircleAlert, Headphones, Inbox, Loader2, MessageSquare } from 'lucide-react';
-import { getMyReportsApi, getMySupportTicketsApi } from '../services/api';
+import { AlertTriangle, ChevronRight, CircleAlert, Handshake, Headphones, Inbox, Loader2, MessageSquare } from 'lucide-react';
+import { getMyMediationsApi, getMyReportsApi, getMySupportTicketsApi } from '../services/api';
+import { MEDIATION_STATUS_LABELS } from '../data/mediationStatus';
 import MediationCaseView from './MediationCaseView';
 import SupportTicketDetailModal from './SupportTicketDetailModal';
 
@@ -17,10 +18,11 @@ const CLOSED_STATUSES = ['RESUELTO', 'CERRADO', 'CANCELADO', 'RESUELTA', 'CERRAD
 
 const AREAS = [
   { id: 'todos', label: 'Todos', icon: Inbox },
+  { id: 'reclamos', label: 'Reclamos', icon: Handshake },
   { id: 'reportes', label: 'Reportes', icon: AlertTriangle },
-  { id: 'soporte', label: 'Soporte técnico', icon: Headphones },
+  { id: 'soporte', label: 'Consultas a soporte', icon: Headphones },
 ];
-const AREA_LABELS = { reportes: 'Reporte', soporte: 'Soporte' };
+const AREA_LABELS = { reclamos: 'Reclamo', reportes: 'Reporte', soporte: 'Consulta' };
 const STATE_FILTERS = [['abiertos', 'Abiertos'], ['cerrados', 'Resueltos'], ['todos', 'Todos']];
 
 function formatDate(value) {
@@ -38,6 +40,7 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
   const isSeller = Boolean(user?.sellerId);
   const [tickets, setTickets] = useState([]);
   const [reports, setReports] = useState([]);
+  const [mediations, setMediations] = useState([]);
   const [activeArea, setActiveArea] = useState('todos');
   const [stateFilter, setStateFilter] = useState('abiertos');
   const [loading, setLoading] = useState(true);
@@ -77,12 +80,15 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
     setLoading(true);
     setError('');
     try {
-      const [ticketsRes, reportsRes] = await Promise.all([
+      // Los reclamos (mediaciones) fallan sin tumbar el resto: son una sección más, como en la app.
+      const [ticketsRes, reportsRes, mediationsRes] = await Promise.all([
         getMySupportTicketsApi(userId),
         getMyReportsApi(userId),
+        getMyMediationsApi(userId).catch(() => []),
       ]);
       setTickets(toList(ticketsRes));
       setReports(toList(reportsRes));
+      setMediations(toList(mediationsRes));
     } catch (requestError) {
       setError(requestError.message || 'No se pudieron cargar tus reportes y consultas.');
     } finally {
@@ -106,6 +112,18 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
   // juntos, ordenarlos por fecha y filtrarlos por estado con un solo criterio.
   const cases = useMemo(() => {
     const rows = [
+      ...mediations.map((mediation) => ({
+        key: `m-${mediation.id}`,
+        area: 'reclamos',
+        status: mediation.status || 'EN_MEDIACION',
+        estado: mediation.displayStatus || MEDIATION_STATUS_LABELS[mediation.status] || mediation.status || 'En mediación',
+        titulo: mediation.title || `Reclamo del pedido ${mediation.orderId ? `#${mediation.orderId}` : ''}`.trim(),
+        detalle: mediation.nextAction || mediation.reason || mediation.stage || 'Sin detalle disponible.',
+        numero: mediation.externalId || (mediation.orderId ? `#${mediation.orderId}` : null),
+        fecha: mediation.updatedAt || mediation.createdAt,
+        onOpen: mediation.orderId ? () => { const next = new URLSearchParams(searchParams); next.set('caso', mediation.orderId); setSearchParams(next); } : undefined,
+        accion: 'Ver reclamo',
+      })),
       ...reports.map((report) => ({
         key: `r-${report.id}`,
         area: 'reportes',
@@ -130,7 +148,7 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
       })),
     ];
     return rows.sort((a, b) => new Date(b.fecha || 0) - new Date(a.fecha || 0));
-  }, [reports, supportTickets]);
+  }, [reports, supportTickets, mediations, searchParams, setSearchParams]);
 
   const byArea = activeArea === 'todos' ? cases : cases.filter((item) => item.area === activeArea);
   const visibles = byArea.filter((item) => (
@@ -138,6 +156,7 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
   ));
   const counts = {
     todos: cases.length,
+    reclamos: mediations.length,
     reportes: reports.length,
     soporte: supportTickets.length,
   };
@@ -186,8 +205,10 @@ export default function ProfileSupportPanel({ user, deepLinkTicketId, onClearDee
     <section className="profile-panel profile-cases-panel">
       <div className="profile-cases-header">
         <div>
-          <h2 className="profile-panel-title">Reportes/Soporte</h2>
-          <p>Consulta tus reportes a usuarios y tus consultas al equipo de soporte.</p>
+          <h2 className="profile-panel-title">Tus reportes y reclamos</h2>
+          <p>{isSeller
+            ? 'Revisa reportes, reclamos de compradores y respuestas de soporte desde un solo lugar.'
+            : 'Revisa reportes, reclamos de tus compras y respuestas de soporte desde un solo lugar.'}</p>
         </div>
         <span>{abiertos} {abiertos === 1 ? 'caso abierto' : 'casos abiertos'} de {cases.length}</span>
       </div>
