@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ArrowRight, Banknote, Box, ChevronRight, MessageCircle, MessageSquare, PackagePlus, Send, Sparkles, Store, Timer, Truck, Wallet } from 'lucide-react';
+import { AlertCircle, ArrowRight, Crown, Banknote, Box, ChevronRight, MessageCircle, MessageSquare, PackagePlus, Send, Sparkles, Store, Timer, Truck, Wallet } from 'lucide-react';
+import { founderBenefitLabel } from '../../utils/founderBenefit';
+import FounderBenefitInfo from '../FounderBenefitInfo';
 import { getSellerBalanceApi, getSellerInventorySummaryApi, resolveMediaUrl } from '../../services/api';
 import '../../styles/seller-home.css';
 
@@ -14,7 +16,7 @@ const itemName = (item) => item?.nombre || item?.name || item?.productName || 'P
  * Los pedidos y las conversaciones llegan del panel; el saldo y el inventario se piden aquí.
  */
 export default function SellerHomeSummary({
-  sellerId, storeName, city, isOpen, orders, openChats, quoteSentCount, loading,
+  sellerId, storeName, city, isOpen, logo, founder, orders, openChats, quoteSentCount, loading,
   onOpenOrders, onOpenChats, onOpenProducts, onOpenWithdrawals, onPublish, onOpenProduct,
 }) {
   const [saldo, setSaldo] = useState(undefined); // undefined = cargando, null = falló
@@ -87,10 +89,14 @@ export default function SellerHomeSummary({
     <div className="sh">
       <section className="sh-hero">
         <div className="sh-identity">
-          <span className="sh-avatar"><Store size={26} /></span>
+          <span className="sh-avatar">{logo ? <img src={logo} alt="Foto de tu tienda" /> : <Store size={26} />}</span>
           <span className="sh-identity-copy"><small>Panel vendedor · {city || 'Sin ciudad'}</small><strong>{storeName || 'Tu tienda'}</strong></span>
           {isOpen != null && <span className={`sh-chip ${isOpen ? 'is-green' : 'is-red'}`}>{isOpen ? 'Abierta' : 'Cerrada'}</span>}
         </div>
+        {founder && (
+          <span className="sh-founder"><Crown size={13} strokeWidth={2.4} /> Fundador · {founderBenefitLabel(founder.until)}
+            <FounderBenefitInfo founderSince={founder.since} founderUntil={founder.until} /></span>
+        )}
         <div className="sh-hero-stats">
           <div className="sh-priority">
             <small>Prioridad ahora</small>

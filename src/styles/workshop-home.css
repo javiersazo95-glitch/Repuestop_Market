@@ -46,3 +46,18 @@
 .wh-quick { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .wh-quick button { display: grid; justify-items: center; gap: 6px; padding: 14px 6px; border: 1px solid var(--ak-divider, #e6eaef); border-radius: var(--ak-radius-lg, 16px); background: var(--ak-surface, #fff); color: var(--ak-primary, #0066ff); font: inherit; cursor: pointer; }
 .wh-quick span { font-size: 12px; font-weight: 700; color: var(--ak-text, #243442); text-align: center; }
+.wh-identity { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; border: 1px solid var(--ak-divider, #e6eaef); border-radius: var(--ak-radius-lg, 16px); background: #fff; box-shadow: var(--ak-shadow-card); text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.wh-identity.is-alert { border-color: var(--ak-warning-border, #fde3a7); background: var(--ak-warning-bg, #fff7e6); }
+.wh-identity-logo { flex: none; width: 56px; height: 56px; border-radius: 50%; overflow: hidden; display: inline-flex; align-items: center; justify-content: center; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary, #0066ff); }
+.wh-identity-logo img { width: 100%; height: 100%; object-fit: cover; }
+.wh-identity-copy { flex: 1; min-width: 0; display: grid; gap: 4px; }
+.wh-identity-copy > strong { font-size: 17px; color: var(--ak-ink, #0f172a); }
+.wh-booking { display: flex; align-items: flex-start; gap: 6px; }
+.wh-booking > i { flex: none; width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: var(--ak-text-subtle, #8a97a5); }
+.wh-booking.is-on > i { background: #18a957; }
+.wh-booking > span { display: grid; gap: 1px; }
+.wh-booking b { font-size: 13px; }
+.wh-booking.is-on b { color: var(--ak-success-text, #0e7038); }
+.wh-booking.is-warn { color: var(--ak-warning-text, #9a5a00); }
+.wh-booking small { color: var(--ak-text-muted, #5a6b7a); font-size: 12px; }
+.wh-identity-edit { flex: none; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary, #0066ff); }

@@ -1422,3 +1422,9 @@
 /* Aviso «Falta» sobre el icono de un acceso del menú Más (como el hint de la app en Métodos de envío y Datos bancarios). */
 .pmm-tile-icon { position: relative; }
 .pmm-tile-hint { position: absolute; top: -6px; right: -12px; padding: 1px 6px; border-radius: 999px; background: #fdecea; color: #b42318; font-style: normal; font-size: 10px; font-weight: 800; line-height: 15px; border: 1px solid #fff; }
+
+@media (max-width: 768px) {
+  /* La app no tiene portada en el inicio del vendedor ni del taller: su Resumen arranca con la tarjeta de identidad. */
+  .profile-dashboard[data-role="seller"][data-active-tab="resumen"] .facebook-cover-hero-container,
+  .profile-dashboard[data-role="workshop"][data-active-tab="resumen"] .facebook-cover-hero-container { display: none; }
+}

@@ -431,7 +431,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const [activeTab, setActiveTabState] = useState(initialTab);
   const [profileNavOpen, setProfileNavOpen] = useState(false);
   // Celular + tienda: muestra bajo "Mi tienda y datos" el panel completo de ajustes.
-  const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
   const [videoTutorialOpen, setVideoTutorialOpen] = useState(false);
 
   useEffect(() => {
@@ -1474,7 +1473,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   }
 
   return (
-    <div className={`profile-dashboard ${isSeller ? 'seller-profile-dashboard' : 'buyer-profile-dashboard'}`} data-active-tab={activeTab}>
+    <div className={`profile-dashboard ${isSeller ? 'seller-profile-dashboard' : 'buyer-profile-dashboard'}`} data-active-tab={activeTab} data-role={isSeller ? 'seller' : isWorkshop ? 'workshop' : 'buyer'}>
       {/* Top Bar */}
       <div className="profile-topbar">
         <div className="profile-topbar-inner">
@@ -1832,7 +1831,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               {activeTab === 'resumen' && isWorkshop && !isBuyerBlocked && (
                 <WorkshopActiveAppointments onOpenAppointments={() => setActiveTab('citas_taller')} />
               )}
-              {activeTab === 'resumen' && isWorkshop && !isBuyerBlocked && (
+              {activeTab === 'resumen' && isWorkshop && !isBuyerBlocked && !isMobileView && (
                 <WorkshopBookingStatus onOpenWorkshop={() => setActiveTab('mi_taller')} onOpenService={() => setActiveTab('diagnostico')} />
               )}
               {activeTab === 'resumen' && isWorkshop && isMobileView && !isBuyerBlocked && (
@@ -1842,6 +1841,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   onOpenOrders={() => setActiveTab('pedidos')}
                   onOpenNeeds={() => setActiveTab('subastas')}
                   onNewNeed={() => setActiveTab('subastas')}
+                  onOpenWorkshop={() => setActiveTab('mi_taller')}
+                  onOpenService={() => setActiveTab('diagnostico')}
                 />
               )}
               {activeTab === 'resumen' && isSeller && isMobileView && !isSellerBlocked && !isBuyerBlocked && (
@@ -1850,6 +1851,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   storeName={storeInfo?.storeName || user?.storeName}
                   city={storeInfo?.ciudad || storeInfo?.comuna || user?.city}
                   isOpen={storeInfo?.isOpen ?? storeInfo?.abierto ?? null}
+                  logo={resolveMediaUrl(user?.userProfileUrl || storeInfo?.logoUrl || '')}
+                  founder={storeInfo?.founder ? { since: storeInfo.founderSince ?? user?.founderSince ?? null, until: storeInfo.founderUntil ?? user?.founderUntil ?? null } : null}
                   orders={orders || []}
                   loading={ordersQuery.isLoading}
                   openChats={(conversations || []).filter((conversation) => (
@@ -2045,12 +2048,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   effectiveSellerId={effectiveSellerId}
                   onOpenMediaModal={() => handleOpenMediaModal('avatar')}
                   onOpenCoverTemplates={handleOpenCoverTemplates}
-                  settingsOpen={mobileSettingsOpen}
-                  onOpenSettings={() => setMobileSettingsOpen((open) => !open)}
-                  onOpenWithdrawals={() => setActiveTab('tienda_bancarios')}
                 />
               )}
-              {(activeTab === 'tienda_datos' || activeTab === 'datos') && (!isMobileView || !isSeller || mobileSettingsOpen) && (
+              {(activeTab === 'tienda_datos' || activeTab === 'datos') && (!isMobileView || !isSeller) && (
                 <ProfileAccountDataPanel
                   user={user}
                   isSeller={isSeller}

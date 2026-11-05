@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CalendarDays, ChevronRight, MessageCircle, PackageCheck, SearchCheck, Wrench } from 'lucide-react';
+import { AlertCircle, CalendarDays, ChevronRight, MessageCircle, PackageCheck, PencilLine, SearchCheck, Store, Wrench } from 'lucide-react';
+import { fetchMiTaller } from '../../services/talleresStorage';
+import { daysLeft, getDiagnosticStatus } from '../../services/workshopApi';
 import EngineIcon from '../EngineIcon';
 import { useAuth } from '../../context/AuthContext';
 import { getAppointmentsSummaryApi, getBuyerOrdersApi, getNotificationsApi, resolveMediaUrl } from '../../services/api';
@@ -91,7 +93,7 @@ function NeedTrackingRow({ need, onClick }) {
  * Resumen del taller en la versión móvil: el mismo inicio de la app (`mobile/app/(workshop)/index.tsx`) con el
  * resumen de actividad, lo que requiere atención, el seguimiento de las búsquedas publicadas y los accesos rápidos.
  */
-export default function WorkshopHomeSummary({ onOpenAppointments, onOpenFaults, onOpenOrders, onNewNeed, onOpenNeeds }) {
+export default function WorkshopHomeSummary({ onOpenAppointments, onOpenFaults, onOpenOrders, onNewNeed, onOpenNeeds, onOpenWorkshop, onOpenService }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const userId = user?.userId ?? user?.id ?? null;
@@ -119,6 +121,24 @@ export default function WorkshopHomeSummary({ onOpenAppointments, onOpenFaults, 
   }, [userId]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Tarjeta de identidad (como la app): «Recibir citas en línea» de Mi taller manda; los días son lo que queda del servicio.
+  const [booking, setBooking] = useState(null);
+  useEffect(() => {
+    let active = true;
+    Promise.all([fetchMiTaller(), getDiagnosticStatus()])
+      .then(([taller, status]) => { if (active) setBooking({ enabled: taller?.hasOnlineBooking === true, days: daysLeft(status) }); })
+      .catch(() => { if (active) setBooking({ enabled: false, days: 0, unknown: true }); });
+    return () => { active = false; };
+  }, []);
+  const workshopName = user?.workshopName || user?.businessName || user?.userName || 'Taller automotriz';
+  const logo = resolveMediaUrl(user?.userProfileUrl || user?.buyerProfileUrl || '');
+  const bookingDaysText = booking?.days === 1 ? '1 día' : `${booking?.days ?? 0} días`;
+  const bookingIdle = booking && !booking.enabled && booking.days > 0;
+  const bookingTitle = !booking ? 'Agendamiento…' : booking.enabled ? 'Agendamiento encendido' : bookingIdle ? 'No se puede agendar contigo' : 'Agendamiento apagado';
+  const bookingDetail = !booking || booking.unknown ? '' : booking.enabled
+    ? (booking.days > 0 ? `${booking.days === 1 ? 'Te queda' : 'Te quedan'} ${bookingDaysText} de citas activas` : 'Sin días activos: renueva en Monedas')
+    : bookingIdle ? `Tienes ${bookingDaysText} activos, pero el agendamiento está apagado. Enciéndelo en Mi taller.` : 'Actívalo en Monedas para recibir citas';
 
   const appointments = data.appointments?.taller;
   const appointmentCount = appointments ? (appointments.porResponder ?? 0) + (appointments.aceptadas ?? 0) : null;
@@ -154,6 +174,18 @@ export default function WorkshopHomeSummary({ onOpenAppointments, onOpenFaults, 
 
   return (
     <div className="wh">
+      <button type="button" className={`wh-identity ${bookingIdle ? 'is-alert' : ''}`} onClick={booking && !booking.enabled && !bookingIdle ? onOpenService : onOpenWorkshop} aria-label={`${workshopName}. ${bookingTitle}. Editar mi taller`}>
+        <span className="wh-identity-logo">{logo ? <img src={logo} alt="" /> : <Store size={24} />}</span>
+        <span className="wh-identity-copy">
+          <strong>{workshopName}</strong>
+          <span className={`wh-booking ${booking?.enabled ? 'is-on' : bookingIdle ? 'is-warn' : ''}`}>
+            {bookingIdle ? <AlertCircle size={14} /> : <i />}
+            <span><b>{bookingTitle}</b>{bookingDetail && <small>{bookingDetail}</small>}</span>
+          </span>
+        </span>
+        <span className="wh-identity-edit"><PencilLine size={17} /></span>
+      </button>
+
       <div className="wh-heading">
         <h2>Resumen de actividad</h2>
         <small>Hoy · {todayLabel()}</small>

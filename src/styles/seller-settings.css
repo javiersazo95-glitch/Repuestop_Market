@@ -17,3 +17,59 @@
 .sst-status.is-ok { background: var(--ak-success-bg, #eafbf1); color: var(--ak-success-text, #0e7038); }
 .sst-status.is-warn { background: var(--ak-warning-bg, #fff7e6); color: var(--ak-warning-text, #9a5a00); }
 .sst-doc-group { display: grid; gap: 8px; }
+
+/* Cabecera con el icono de la sección (como `SellerSectionScreen.tsx`). */
+.sst-head { grid-template-columns: auto 1fr; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--ak-primary-border, #bfd6f7); border-radius: 16px; background: #fff; box-shadow: var(--ak-shadow-card); }
+.sst-head-icon { width: 48px; height: 48px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary, #0066ff); }
+.sst-head-copy { display: grid; gap: 2px; min-width: 0; }
+.sst-title { margin: 0; font-size: 20px; font-weight: 800; color: var(--ak-ink, #0f172a); }
+
+/* Redes sociales (como `SocialLinksManager.tsx`). */
+.sst-social { display: grid; gap: 14px; }
+.sst-share { display: grid; gap: 12px; padding: 14px; border-radius: 16px; background: var(--ak-primary, #0066ff); color: #fff; }
+.sst-share-head { display: flex; align-items: center; gap: 10px; }
+.sst-share-head > span:last-child { display: grid; gap: 2px; }
+.sst-share-head strong { font-size: 17px; }
+.sst-share-head small { color: rgba(255, 255, 255, .8); font-size: 12.5px; }
+.sst-share-icon { flex: none; width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #fff; color: var(--ak-primary, #0066ff); }
+.sst-share-pill { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border-radius: 12px; background: rgba(255, 255, 255, .16); font-size: 13.5px; font-weight: 600; }
+.sst-share-pill span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sst-share-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sst-share-actions button { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border-radius: 12px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+.sst-share-actions .is-ghost { border: 1px solid rgba(255, 255, 255, .55); background: transparent; color: #fff; }
+.sst-share-actions .is-solid { border: 0; background: #fff; color: var(--ak-primary, #0066ff); }
+.sst-share-actions button:disabled { opacity: .6; cursor: default; }
+.sst-channels { display: flex; justify-content: space-between; padding: 0 4px; }
+.sst-channels a { display: grid; justify-items: center; gap: 4px; min-width: 56px; text-decoration: none; }
+.sst-channels a.is-disabled { pointer-events: none; opacity: .5; }
+.sst-channels a > span { width: 52px; height: 52px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+.sst-channels small { color: var(--ak-text-muted, #5a6b7a); font-size: 12px; }
+.sst-network { display: flex; align-items: center; gap: 8px; padding-right: 12px; }
+.sst-network + .sst-network { border-top: 1px solid #eef2f7; }
+.sst-network-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 10px 12px; border: 0; background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.sst-network-tile { flex: none; width: 40px; height: 40px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+.sst-network-copy { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.sst-network-copy strong { font-size: 15px; }
+.sst-network-copy small { color: var(--ak-text-muted, #5a6b7a); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sst-add-chip { display: inline-flex; align-items: center; gap: 2px; height: 32px; padding: 0 12px; border-radius: 16px; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary, #0066ff); font-size: 13px; font-weight: 700; }
+.sst-open { flex: none; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary, #0066ff); }
+.sst-outline { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 46px; border: 1px solid var(--ak-primary, #0066ff); border-radius: 12px; background: #fff; color: var(--ak-primary, #0066ff); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+.sst-modal-backdrop { position: fixed; inset: 0; z-index: 1300; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(18, 28, 45, .45); }
+.sst-modal { width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; display: grid; gap: 18px; padding: 20px; border: 1px solid var(--ak-border, #d9e0e7); border-radius: 12px; background: #fff; }
+.sst-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.sst-modal-head > span { display: grid; gap: 2px; }
+.sst-modal-head strong { font-size: 18px; }
+.sst-modal-head small { color: var(--ak-text-muted, #5a6b7a); font-size: 12.5px; }
+.sst-switch { position: relative; flex: none; width: 46px; height: 28px; cursor: pointer; }
+.sst-switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.sst-switch i { position: absolute; inset: 0; border-radius: 999px; background: var(--ak-border, #d9e0e7); transition: background .15s; }
+.sst-switch i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); transition: transform .15s; }
+.sst-switch input:checked + i { background: var(--ak-primary, #0066ff); }
+.sst-switch input:checked + i::after { transform: translateX(18px); }
+.sst-switch input:focus-visible + i { outline: 2px solid var(--ak-primary, #0066ff); outline-offset: 2px; }
+.sst-modal-form { display: grid; gap: 14px; }
+.sst-field { display: grid; gap: 6px; }
+.sst-field > span { font-size: 13px; font-weight: 700; }
+.sst-field input { min-height: 46px; padding: 0 12px; border: 1px solid var(--ak-border, #d9e0e7); border-radius: 10px; font: inherit; font-size: 15px; }
+.sst-field-error { color: var(--ak-error-text, #b42318); font-size: 12.5px; }
+.sst-modal-actions { display: grid; gap: 10px; }

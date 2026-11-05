@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  Camera, ChevronRight, Clock, CreditCard, FileText, Eye, Mail, Map, MapPin, Navigation, Pencil, Phone, Settings2,
+  Camera, Clock, Crown, FileText, Eye, Mail, Map, MapPin, Navigation, Pencil, Phone,
   Store, User,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -11,6 +11,8 @@ import { resolverUbicacionPorNombre } from '../../services/geoLookup';
 import { qk } from '../../services/queryKeys';
 import { isValidClPhone } from '../../services/adapters';
 import { storePath } from '../../routes/paths';
+import { founderBenefitLabel } from '../../utils/founderBenefit';
+import FounderBenefitInfo from '../FounderBenefitInfo';
 import '../../styles/store-profile-mobile.css';
 
 /** Fila del grupo: icono, titulo, resumen de lo registrado y lapiz si se puede editar. El editor se abre debajo. */
@@ -157,12 +159,12 @@ function LocationEditor({ region, comuna, onSave, onCancel }) {
 }
 
 /**
- * "Mi tienda y datos" en el celular: igual que `app/(seller)/mi-tienda.tsx`. Portada y foto de perfil con sus camaras
- * arriba; debajo solo dos grupos (representante legal y datos de la tienda) que se editan en linea, fila por fila.
- * Lo demas (marcas, redes, envios, direcciones, clave, notificaciones) queda en "Más ajustes de la tienda".
+ * "Mi tienda y datos" en el celular: igual que `app/(seller)/mi-tienda.tsx`. Portada (con la insignia de Fundador) y foto
+ * de perfil con sus camaras arriba; debajo solo dos grupos (representante legal y datos de la tienda) que se editan en
+ * linea, fila por fila. Redes, documentos, envios, banco, marcas y clave tienen su pantalla en «Configuración» del menú Más.
  */
 export default function StoreProfileMobile({
-  user, storeInfo, effectiveSellerId, onOpenMediaModal, onOpenCoverTemplates, onOpenSettings, onOpenWithdrawals, settingsOpen,
+  user, storeInfo, effectiveSellerId, onOpenMediaModal, onOpenCoverTemplates,
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -175,7 +177,8 @@ export default function StoreProfileMobile({
   const city = storeInfo?.comuna || storeInfo?.city || user?.comuna || user?.city || '';
   const hours = storeInfo?.hours || user?.hours || '';
   const isOpen = typeof (storeInfo?.isOpen ?? storeInfo?.open) === 'boolean' ? (storeInfo.isOpen ?? storeInfo.open) : null;
-  const cover = resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || '');
+  // Sin portada propia va la de siempre del Market (`tiensoft_cover.jpg`), igual que `storeCoverSource` de la app.
+  const cover = resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || '') || '/tiensoft_cover.jpg';
   const logo = resolveMediaUrl(user?.userProfileUrl || storeInfo?.logoUrl || '');
   const sellerId = effectiveSellerId || user?.sellerId;
 
@@ -209,7 +212,13 @@ export default function StoreProfileMobile({
     <div className="spm">
       <div className="spm-hero">
         <div className="spm-cover">
-          {cover ? <img src={cover} alt="Portada de la tienda" /> : <span className="spm-cover-empty" aria-hidden="true" />}
+          <img src={cover} alt="Portada de la tienda" />
+          {storeInfo?.founder && (
+            <span className="spm-founder">
+              <Crown size={13} strokeWidth={2.4} /> Fundador · {founderBenefitLabel(storeInfo.founderUntil ?? user?.founderUntil ?? null)}
+              <FounderBenefitInfo founderSince={storeInfo.founderSince ?? user?.founderSince ?? null} founderUntil={storeInfo.founderUntil ?? user?.founderUntil ?? null} />
+            </span>
+          )}
           {sellerId && (
             <button type="button" className="spm-icon-btn is-top" aria-label="Ver mi tienda pública" onClick={() => navigate(storePath({ id: sellerId, nombre: storeName }))}>
               <Eye size={16} />
@@ -289,24 +298,6 @@ export default function StoreProfileMobile({
         </Row>
       </Group>
 
-      <Group title="Configuración">
-        <button type="button" className="spm-link" onClick={onOpenSettings} aria-expanded={settingsOpen}>
-          <span className="spm-row-icon"><Settings2 size={17} aria-hidden="true" /></span>
-          <span className="spm-row-copy">
-            <strong>Más ajustes de la tienda</strong>
-            <small>Direcciones de entrega, notificaciones y datos de facturación</small>
-          </span>
-          <ChevronRight size={18} className={`spm-chevron ${settingsOpen ? 'is-open' : ''}`} aria-hidden="true" />
-        </button>
-        <button type="button" className="spm-link" onClick={onOpenWithdrawals}>
-          <span className="spm-row-icon"><CreditCard size={17} aria-hidden="true" /></span>
-          <span className="spm-row-copy">
-            <strong>Datos bancarios</strong>
-            <small>La cuenta donde recibes el dinero de tus ventas</small>
-          </span>
-          <ChevronRight size={18} className="spm-chevron" aria-hidden="true" />
-        </button>
-      </Group>
     </div>
   );
 }
