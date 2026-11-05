@@ -5,5 +5,7 @@ export const SELLER_SETTINGS = {
   tienda_envios: { title: 'Métodos de envío', subtitle: 'Define cómo entregas los pedidos: retiro, dentro o fuera de la comuna.' },
   tienda_bancarios: { title: 'Datos bancarios', subtitle: 'La cuenta donde recibes el dinero de tus ventas.' },
   tienda_marcas: { title: 'Marcas especialistas', subtitle: 'Las marcas de vehículo que más conoces; se destacan en el perfil de tu tienda.' },
+  mis_direcciones: { title: 'Mis direcciones', subtitle: 'Las direcciones donde recibes tus compras. Elige cuál usar al pagar.' },
+  notificaciones: { title: 'Notificaciones', subtitle: 'Elige cuántos avisos quieres recibir. Se guarda en tu cuenta y vale también en la app.' },
   cambiar_clave: { title: 'Cambiar contraseña', subtitle: 'Te enviamos un código a tu correo para confirmar el cambio.' },
 };

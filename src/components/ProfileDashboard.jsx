@@ -25,6 +25,7 @@ import ProfileSummaryPanel from './ProfileSummaryPanel';
 import WorkshopHomeSummary from './workshop/WorkshopHomeSummary';
 import SellerHomeSummary from './seller/SellerHomeSummary';
 import SellerSettingsScreen from './seller/SellerSettingsScreen';
+import BuyerProfileMobile from './profile/BuyerProfileMobile';
 import { SELLER_SETTINGS } from '../data/sellerSettings';
 import ProfileFeedbackPanel from './ProfileFeedbackPanel';
 import ProfileOrdersPanel from './ProfileOrdersPanel';
@@ -190,6 +191,9 @@ const SELLER_SIDEBAR_GROUPS = [
 
 // Secciones que ya no existen para la cuenta vendedora (compras y talleres): un enlace guardado vuelve al resumen.
 // Favoritos sí está para la tienda: la app lo ofrece en «Explorar» del menú Más del vendedor.
+// Subpantallas de la cuenta que también tienen el comprador y el taller.
+const ACCOUNT_SUBSCREENS = ['mis_direcciones', 'notificaciones', 'cambiar_clave'];
+
 const SELLER_REMOVED_TABS = ['compras', 'mis_cotizaciones', 'mis_preguntas', 'chats_vendedor', 'mi_taller', 'citas_taller'];
 
 // Cuenta suspendida (pruebas en dev, 2026-10-09): la tienda solo atiende lo ya vendido (sus
@@ -2035,7 +2039,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               {activeTab === 'feedback' && !isSellerBlocked && !isBuyerBlocked && <ProfileFeedbackPanel />}
 
-              {isSeller && SELLER_SETTINGS[activeTab] && (
+              {SELLER_SETTINGS[activeTab] && (isSeller || ACCOUNT_SUBSCREENS.includes(activeTab)) && (
                 <SellerSettingsScreen section={activeTab} user={user} storeInfo={storeInfo} sellerId={effectiveSellerId} />
               )}
 
@@ -2050,7 +2054,17 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   onOpenCoverTemplates={handleOpenCoverTemplates}
                 />
               )}
-              {(activeTab === 'tienda_datos' || activeTab === 'datos') && (!isMobileView || !isSeller) && (
+              {/* Celular + comprador o taller: «Mis datos y perfil» de la app (`profile-edit.tsx`). */}
+              {isMobileView && !isSeller && activeTab === 'datos' && (
+                <BuyerProfileMobile
+                  user={user}
+                  isWorkshop={isWorkshop}
+                  onOpenMediaModal={() => handleOpenMediaModal('avatar')}
+                  onOpenTab={setActiveTab}
+                  onCloseAccount={() => setShowDeleteAccountModal(true)}
+                />
+              )}
+              {(activeTab === 'tienda_datos' || activeTab === 'datos') && !isMobileView && (
                 <ProfileAccountDataPanel
                   user={user}
                   isSeller={isSeller}

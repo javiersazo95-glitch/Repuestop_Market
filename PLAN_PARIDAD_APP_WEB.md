@@ -706,6 +706,9 @@ ofertas, seguimiento, favoritos, reserva de cita, ficha del taller, menú Más).
 | Mis pedidos (comprador) | filtros de categoría y vendedor | `app/(buyer)/orders.tsx` |
 | Soporte | área «Reclamos» (mediaciones) junto a Reportes y Consultas a soporte | `app/support-tickets.tsx` |
 | Menú Más del vendedor | Configuración con los 7 accesos de la app (Mi tienda y datos, Redes sociales, Documentos, Métodos de envío, Datos bancarios, Marcas especialistas, Cambiar contraseña), cada uno con su pantalla (`seller/SellerSettingsScreen.jsx`) y aviso «Falta» en envíos y banco; Favoritos en Explorar; contadores Pedidos / Cotizaciones / Preguntas | `app/(seller)/mas.tsx`, `app/(seller)/tienda-*.tsx` |
+| Redes sociales / Mi tienda y datos | «Comparte tu tienda» con enlace, Copiar/Compartir y canales (WhatsApp, Facebook, Messenger, Telegram, Correo); «Redes de tu tienda» con Agregar/Abrir y ventana de edición con interruptor; portada por defecto e insignia Fundador; sin el grupo Configuración (cada ajuste tiene su pantalla) | `seller/SocialLinksManager.tsx`, `app/(seller)/mi-tienda.tsx` |
+| Mis datos y perfil (comprador / taller, móvil) | `profile/BuyerProfileMobile.jsx`: Datos personales en tarjetas bloqueadas hasta «Editar datos», factura (comprador), Cerrar cuenta y menú Configuración (Acreditación, Mis direcciones, Notificaciones, Cambiar contraseña) con subpantallas propias | `app/profile-edit.tsx` |
+| Resumen móvil (vendedor / taller) | sin portada; tarjeta de identidad con logo, estado del agendamiento (taller) e insignia Fundador (vendedor) | `app/(seller)/index.tsx`, `app/(workshop)/index.tsx` |
 | Directorio de talleres | varios servicios buscados como etiquetas («Servicios buscados») y orden por los que cubren más | `app/talleres.tsx` |
 
 Pendiente de revisar con sesión real (no hay backend en el entorno de desarrollo del agente): el resumen móvil del taller y del

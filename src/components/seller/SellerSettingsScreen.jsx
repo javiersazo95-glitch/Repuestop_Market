@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle, Building2, CarFront, CheckCircle2, Copy, CreditCard, ExternalLink, FileText, FolderOpen, Landmark, Link2, ListOrdered,
-  Loader2, Lock, Mail, MessageCircle, MessagesSquare, PencilLine, Plus, Send, Share2, Truck, User,
+  Bell, Loader2, Lock, Mail, MapPin, MessageCircle, MessagesSquare, PencilLine, Plus, Send, Share2, Truck, User,
 } from 'lucide-react';
 import SocialIcon, { SOCIAL_COLORS } from '../SocialIcon';
 import ShippingMethodsPicker from '../ShippingMethodsPicker';
@@ -11,6 +11,8 @@ import SpecialistBrandsManager from '../SpecialistBrandsManager';
 import SellerVerificationCard from '../SellerVerificationCard';
 import CertificadoCumplimientoCard from '../CertificadoCumplimientoCard';
 import ChangePasswordCard from '../ChangePasswordCard';
+import BuyerAddressBook from '../BuyerAddressBook';
+import NotificationPreferencesPanel from '../NotificationPreferencesPanel';
 import { BankAccountModal, isCompleteBankAccount } from '../SellerWithdrawalsPanel';
 import {
   getSellerBankAccountApi, updateSellerShippingMethodsApi, updateStoreSocialLinksApi,
@@ -267,7 +269,7 @@ function BankSection({ sellerId, email }) {
 }
 
 // El mismo icono de cada acceso del menú Más (cabecera de `SellerSectionScreen.tsx` de la app).
-const SECTION_ICONS = { tienda_redes: Share2, tienda_documentos: FolderOpen, tienda_envios: Truck, tienda_bancarios: CreditCard, tienda_marcas: CarFront, cambiar_clave: Lock };
+const SECTION_ICONS = { mis_direcciones: MapPin, notificaciones: Bell, tienda_redes: Share2, tienda_documentos: FolderOpen, tienda_envios: Truck, tienda_bancarios: CreditCard, tienda_marcas: CarFront, cambiar_clave: Lock };
 
 export default function SellerSettingsScreen({ section, user, storeInfo, sellerId }) {
   const queryClient = useQueryClient();
@@ -303,7 +305,9 @@ export default function SellerSettingsScreen({ section, user, storeInfo, sellerI
           </section>
         </>
       )}
-      {section === 'cambiar_clave' && <ChangePasswordCard user={{ ...user, taxId: storeInfo?.taxId || user?.taxId }} isSeller />}
+      {section === 'cambiar_clave' && <ChangePasswordCard user={{ ...user, taxId: storeInfo?.taxId || user?.taxId }} isSeller={Boolean(user?.sellerId)} />}
+      {section === 'mis_direcciones' && <div className="sst-card"><BuyerAddressBook usuarioId={user?.userId} /></div>}
+      {section === 'notificaciones' && <div className="sst-card"><NotificationPreferencesPanel /></div>}
     </section>
   );
 }
