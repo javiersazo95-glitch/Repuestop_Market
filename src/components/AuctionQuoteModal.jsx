@@ -521,6 +521,27 @@ function deliveryExplain(type, options, auction) {
   return '';
 }
 
+/** Métodos bloqueados agrupados por motivo: si varios comparten la razón, se dice una sola vez. */
+function blockedDeliveryNotes(options) {
+  const groups = [];
+  options.filter((option) => !option.disponible && option.motivo).forEach((option) => {
+    const group = groups.find((item) => item.motivo === option.motivo);
+    if (group) group.metodos.push(option.metodo); else groups.push({ motivo: option.motivo, metodos: [option.metodo] });
+  });
+  return groups;
+}
+
+/** "1 día 04 h 23 min" / "04 h 23 min" / "23 min": mismo formato que el detalle del encargo. */
+function formatRemaining(ms) {
+  const totalMinutes = Math.max(0, Math.floor(ms / 60000));
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+  if (days > 0) return `${days} ${days === 1 ? 'día' : 'días'} ${String(hours).padStart(2, '0')} h ${String(minutes).padStart(2, '0')} min`;
+  if (hours > 0) return `${String(hours).padStart(2, '0')} h ${String(minutes).padStart(2, '0')} min`;
+  return `${minutes} min`;
+}
+
 function defaultDeliveryType(options, myQuote) {
   const allowed = options.filter((option) => option.disponible).map((option) => option.metodo);
   if (myQuote?.tipoEntrega && allowed.includes(myQuote.tipoEntrega)) return myQuote.tipoEntrega;
@@ -533,6 +554,14 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
   const pendingItems = useMemo(() => (auction.items || []).filter((item) => item.pendiente), [auction.items]);
 
   const [lines, setLines] = useState(() => initialLines(auction, myQuote));
+  // Tiempo que le queda al encargo para recibir ofertas: se actualiza solo mientras el popup está abierto.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+  const deadline = auction?.fechaLimite ? new Date(auction.fechaLimite).getTime() : NaN;
+  const remainingMs = Number.isNaN(deadline) ? null : deadline - now;
   const [createFor, setCreateFor] = useState(null);
   const [justCreated, setJustCreated] = useState('');
 
@@ -711,12 +740,9 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
                       <option key={option.metodo} value={option.metodo} disabled={!option.disponible}>{option.metodo}{option.disponible ? '' : ' (no disponible)'}</option>
                     ))}
                   </select>
-                  <small>
-                    Según la comuna del pedido{auction?.comuna ? ` (${auction.comuna})` : ''} y los métodos que publicó tu tienda; el costo del envío dentro de la comuna es el que publicaste.
-                  </small>
                   <small className="aq-delivery-explain">{deliveryExplain(deliveryType, deliveryChoices, auction)}</small>
-                  {deliveryChoices.filter((option) => !option.disponible && option.motivo).map((option) => (
-                    <small key={option.metodo} className="aq-delivery-reason"><b>{option.metodo}:</b> {option.motivo}</small>
+                  {blockedDeliveryNotes(deliveryChoices).map((group) => (
+                    <small key={group.motivo} className="aq-delivery-reason"><b>No disponible{group.metodos.length > 1 ? 's' : ''}: {group.metodos.join(' y ')}.</b> {group.motivo}</small>
                   ))}
                   {noDeliveryAllowed && <small className="aq-delivery-reason is-blocking">Tu tienda no tiene un método de envío que sirva para este pedido: actualiza tus métodos de envío en Mi tienda para poder ofertar.</small>}
                 </label>
@@ -743,6 +769,9 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
                 <div><dt>Repuestos</dt><dd>{(auction.items || []).length || 1}</dd></div>
                 <div><dt>Disponibles</dt><dd>{pendingItems.length}</dd></div>
                 <div><dt>Presupuesto tope</dt><dd>{auction?.presupuestoMaximo ? money(auction.presupuestoMaximo) : 'Sin tope'}</dd></div>
+                {remainingMs !== null && (
+                  <div><dt>Tiempo restante</dt><dd className={remainingMs <= 0 ? 'is-expired' : remainingMs < 3600000 ? 'is-urgent' : ''}>{remainingMs <= 0 ? 'Finalizado' : formatRemaining(remainingMs)}</dd></div>
+                )}
                 <div><dt>Plazo máximo</dt><dd>{auction?.tiempoMaximoEnvio || 'A convenir'}</dd></div>
                 <div><dt>Envío</dt><dd>{auction?.tipoEnvio || 'Cualquiera'}</dd></div>
               </dl>
