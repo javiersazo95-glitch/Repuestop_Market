@@ -1,5 +1,5 @@
 /* Asistente de agenda del taller: contraparte de `mobile/components/talleres/AgendaConfigModal.tsx`. */
-.aw-card { display: flex; flex-direction: column; max-height: min(92vh, 760px); }
+.agw-card { display: flex; flex-direction: column; max-height: min(92vh, 760px); }
 .aw-progress { display: flex; gap: 6px; padding: 0 2px 10px; }
 .aw-progress i { flex: 1; height: 5px; border-radius: 999px; background: var(--ak-divider, #e6eaef); }
 .aw-progress i.is-active { background: #059669; }

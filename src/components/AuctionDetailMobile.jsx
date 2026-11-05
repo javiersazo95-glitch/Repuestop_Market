@@ -394,7 +394,7 @@ export default function AuctionDetailMobile({
 
       {/* Comentarios */}
       <section className="am-card" id="am-comments">
-        <h3 className="am-section-title"><MessageCircle size={20} /> Comentarios de usuarios <span className="am-muted">({comments.length})</span></h3>
+        <h3 className="am-section-title"><MessageCircle size={20} /> Comentarios <span className="am-muted">({comments.length})</span></h3>
         {comments.map((comment) => {
           // La tienda que comenta se visita desde su avatar y su nombre («· Ver perfil»), como en la app.
           const storeId = commentStoreId(comment, cotizaciones);

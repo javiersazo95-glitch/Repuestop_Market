@@ -70,7 +70,7 @@ export default function AuctionCommentsPanel({ auctionId, title = '', isOpen, ca
     <section className="as-card as-comments" aria-label="Comentarios del encargo">
       <div className="as-comments-head">
         <h2 className="as-title">
-          <span><MessageCircle size={18} /> Comentarios de usuarios</span>
+          <span><MessageCircle size={18} /> Comentarios</span>
           <small>{comments.length}</small>
         </h2>
       </div>

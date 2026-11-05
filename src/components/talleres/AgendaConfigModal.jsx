@@ -120,7 +120,7 @@ export default function AgendaConfigModal({ isOpen, configToEdit, onClose, onSav
 
   return createPortal(
     <div className="booking-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose?.(); }} role="dialog" aria-modal="true">
-      <div className="booking-modal-card agenda-config-modal-card aw-card">
+      <div className="booking-modal-card agenda-config-modal-card agw-card">
         <div className="booking-modal-header">
           <div>
             <h3><CalendarClock size={22} className="text-emerald-600" /> {title || (configToEdit ? 'Editar configuración' : 'Nueva configuración de agenda')}</h3>
