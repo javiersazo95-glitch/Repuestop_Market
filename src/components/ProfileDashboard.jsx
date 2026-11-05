@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import ProfileMoreMenu from './ProfileMoreMenu';
+import { MOBILE_APP_TABS } from '../data/mobileAppTabs';
 import VideoTutorialModal from './VideoTutorialModal';
 import { useAuth } from '../context/AuthContext';
 import RepuesTopLogo from './RepuesTopLogo';
@@ -317,33 +318,7 @@ const WORKSHOP_SIDEBAR_GROUPS = [
   }
 ];
 
-// Barra inferior de la version movil (<=768px): los 4 accesos principales de cada rol.
-// Los items se DERIVAN de `sidebarGroups` (ya filtrado por cuenta bloqueada), asi que
-// nunca aparece aqui una pestaña que el sidebar oculta. El quinto boton es "Mas", que
-// abre la hoja con todos los grupos.
-// Barra inferior del celular: las mismas pestañas, etiquetas e iconos que la app según el perfil
-// (`AppBottomTabBar.tsx`). `tab` abre esa sección de la cuenta; `to` sale a la página pública equivalente
-// (la app también cambia de pantalla). El quinto botón es "Más", que abre la hoja con todos los grupos.
-const MOBILE_APP_TABS = {
-  buyer: [
-    { key: 'inicio', label: 'Inicio', icon: Home, to: ROUTES.home },
-    { key: 'fallas', label: 'Mis fallas', icon: EngineIcon, tab: 'mis_fallas' },
-    { key: 'repuestos', label: 'Repuestos', icon: Cog, tab: 'repuestos', virtual: true },
-    { key: 'busco', label: 'Encargar', icon: Search, tab: 'subastas' },
-  ],
-  seller: [
-    { key: 'inicio', label: 'Inicio', icon: Home, tab: 'resumen' },
-    { key: 'pedidos', label: 'Pedidos', icon: ShoppingBag, tab: 'pedidos' },
-    { key: 'inventario', label: 'Inventario', icon: Box, tab: 'productos' },
-    { key: 'buscan', label: 'Encargos', icon: Telescope, tab: 'buscan', virtual: true },
-  ],
-  workshop: [
-    { key: 'inicio', label: 'Inicio', icon: Gauge, tab: 'resumen' },
-    { key: 'fallas', label: 'Mis fallas', icon: EngineIcon, tab: 'fallas_taller' },
-    { key: 'repuestos', label: 'Repuestos', icon: Cog, tab: 'repuestos', virtual: true },
-    { key: 'busco', label: 'Encargar', icon: Search, tab: 'subastas' },
-  ],
-};
+// Pestañas de la barra inferior del celular por perfil: ver `data/mobileAppTabs.js` (la comparte la barra global).
 
 const ORDER_STATUS_LABELS = {
   PENDIENTE: 'Pendiente de pago',
@@ -433,7 +408,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const location = useLocation();
   const canGoBack = Boolean(location.key && location.key !== 'default');
   const [activeTab, setActiveTabState] = useState(initialTab);
-  const [profileNavOpen, setProfileNavOpen] = useState(false);
+  const [profileNavOpen, setProfileNavOpen] = useState(() => new URLSearchParams(location.search).get('mas') === '1');
+  // «Más» de la barra inferior global llega con ?mas=1: se abre el menú una vez y se limpia la URL.
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('mas') === '1') {
+      setProfileNavOpen(true);
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.search]); // eslint-disable-line react-hooks/exhaustive-deps
   // Celular + tienda: muestra bajo "Mi tienda y datos" el panel completo de ajustes.
   const [videoTutorialOpen, setVideoTutorialOpen] = useState(false);
 

@@ -4,6 +4,7 @@ import Header from '../components/Header';
 import Footer from '../components/Footer';
 import AboutHeader from '../components/about/AboutHeader';
 import AuthModal from '../components/AuthModal';
+import MobileAppTabBar from '../components/MobileAppTabBar';
 import CartAddedToast from '../components/CartAddedToast';
 import QuotationRequestModal from '../components/QuotationRequestModal';
 import { useAuth } from '../context/AuthContext';
@@ -144,6 +145,7 @@ export default function AppLayout() {
       />
 
       <CartAddedToast />
+      <MobileAppTabBar />
 
     </div>
   );

@@ -1,0 +1,25 @@
+/* Barra inferior fija del market en el celular (contraparte de `AppBottomTabBar.tsx` de la app). Solo con sesión iniciada. */
+.mobile-app-tabbar { display: none; }
+@media (max-width: 768px) {
+  body.has-app-tabbar { --pub-tab-h: calc(62px + env(safe-area-inset-bottom, 0px)); padding-bottom: var(--pub-tab-h); }
+  body.has-app-tabbar.has-mobile-cta { padding-bottom: calc(68px + var(--pub-tab-h)); }
+  .mobile-app-tabbar {
+    position: fixed; z-index: 850; left: 0; right: 0; bottom: 0;
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
+    height: var(--pub-tab-h, 62px); padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: #fff; border-top: 1px solid var(--ak-divider, #e6eaef); box-shadow: 0 -4px 16px rgba(15, 23, 42, .08);
+  }
+  .mobile-app-tabbar button {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    min-width: 0; border: 0; background: none; font: inherit; cursor: pointer; color: var(--ak-text-muted, #5a6b7a);
+  }
+  .mobile-app-tabbar button span { font-size: 11px; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mobile-app-tabbar button.active { color: var(--ak-primary, #0066ff); }
+  .mobile-app-tabbar button.active span { font-weight: 800; }
+  /* Lo que ya iba pegado abajo sube por encima de la barra. */
+  body.has-app-tabbar .mobile-sticky-bar { bottom: var(--pub-tab-h); }
+  body.has-app-tabbar.has-mobile-cta .cookie-consent { bottom: calc(var(--pub-cta-h) + var(--pub-tab-h)); }
+  body.has-app-tabbar:not(.has-mobile-cta) .cookie-consent { bottom: var(--pub-tab-h); }
+  body.has-app-tabbar .cart-added-toast { bottom: calc(10px + var(--pub-cta-h, 0px) + var(--pub-tab-h)); }
+  body.has-app-tabbar .cart-page-alert.is-floating { bottom: calc(10px + var(--pub-cta-h, 0px) + var(--pub-tab-h)); }
+}
