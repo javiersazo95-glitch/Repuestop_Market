@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { Search, X } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Search, SlidersHorizontal, X } from 'lucide-react';
 import OrderCard from './OrderCard';
 import { useLocation } from 'react-router-dom';
 import usePagedList, { recentOrdersNote } from '../hooks/usePagedList';
@@ -84,25 +84,38 @@ export default function BuyerOrdersBrowser({ orders, loading = false, emptyLabel
   const [status, setStatus] = useRestoredState(viewId, 'status', 'all');
   const [date, setDate] = useRestoredState(viewId, 'date', 'all');
   const [sort, setSort] = useRestoredState(viewId, 'sort', 'recent');
+  // Categoría y vendedor (selección múltiple), igual que el filtro de la app.
+  const [categories, setCategories] = useRestoredState(viewId, 'categories', []);
+  const [sellers, setSellers] = useRestoredState(viewId, 'sellers', []);
+  const [moreFilters, setMoreFilters] = useState(false);
 
   const list = useMemo(() => (Array.isArray(orders) ? orders : []), [orders]);
   const counts = useMemo(() => Object.fromEntries(
     STATUS_FILTERS.map((filter) => [filter.key, list.filter((order) => matchesStatus(order, filter.key)).length]),
   ), [list]);
 
+  const orderSeller = (order) => (order?.vendedorNombre || order?.nombreTienda || order?.sellerName || (order?.items || []).find((item) => item?.nombreTienda || item?.sellerName)?.nombreTienda
+    || (order?.items || []).find((item) => item?.sellerName)?.sellerName || '').trim();
+  const orderCategories = (order) => (order?.items || []).map((item) => String(item?.categoria || item?.categoriaNombre || item?.productCategory || item?.category || '').trim()).filter(Boolean);
+  const categoryOptions = useMemo(() => [...new Set(list.flatMap(orderCategories))].sort((a, b) => a.localeCompare(b, 'es')), [list]);
+  const sellerOptions = useMemo(() => [...new Set(list.map(orderSeller).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es')), [list]);
+  const toggleIn = (setter) => (value) => setter((current) => (current.includes(value) ? current.filter((item) => item !== value) : [...current, value]));
+
   const visible = useMemo(() => {
     const term = normalize(query);
     const since = date === 'all' ? 0 : Date.now() - Number(date) * 86_400_000;
     const filtered = list.filter((order) => matchesStatus(order, status)
       && (!since || orderTime(order) >= since)
+      && (categories.length === 0 || orderCategories(order).some((category) => categories.some((chosen) => normalize(chosen) === normalize(category))))
+      && (sellers.length === 0 || sellers.some((chosen) => normalize(chosen) === normalize(orderSeller(order))))
       && (!term || searchableText(order).includes(term)));
     return [...filtered].sort((a, b) => {
       if (sort === 'oldest') return orderTime(a) - orderTime(b);
       if (sort === 'amount') return Number(b?.total || 0) - Number(a?.total || 0);
       return orderTime(b) - orderTime(a);
     });
-  }, [list, query, status, date, sort]);
-  const { pageItems, pagerProps } = usePagedList(visible, JSON.stringify([query, status, date, sort]), undefined, viewId);
+  }, [list, query, status, date, sort, categories, sellers]);
+  const { pageItems, pagerProps } = usePagedList(visible, JSON.stringify([query, status, date, sort, categories, sellers]), undefined, viewId);
   useScrollMemory(list.length > 0);
 
   // Mientras carga no se dice "Aún no has realizado pedidos": eso confundia a quien si tenia.
@@ -113,7 +126,7 @@ export default function BuyerOrdersBrowser({ orders, loading = false, emptyLabel
     return <div className="profile-empty-state"><p>{emptyLabel}</p></div>;
   }
 
-  const hasFilters = Boolean(query) || status !== 'all' || date !== 'all';
+  const hasFilters = Boolean(query) || status !== 'all' || date !== 'all' || categories.length > 0 || sellers.length > 0;
 
   return (
     <div className="buyer-orders-browser">
@@ -124,7 +137,7 @@ export default function BuyerOrdersBrowser({ orders, loading = false, emptyLabel
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Buscar por código, repuesto o tienda"
+            placeholder="Buscar pedido, repuesto o vendedor"
             aria-label="Buscar pedidos"
           />
           {query && (
@@ -137,7 +150,33 @@ export default function BuyerOrdersBrowser({ orders, loading = false, emptyLabel
         <select value={sort} onChange={(event) => setSort(event.target.value)} aria-label="Ordenar pedidos">
           {SORTS.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
         </select>
+        {(categoryOptions.length > 0 || sellerOptions.length > 0) && (
+          <button type="button" className="buyer-orders-more" aria-expanded={moreFilters} onClick={() => setMoreFilters((value) => !value)}>
+            <SlidersHorizontal size={14} /> Filtros{categories.length + sellers.length > 0 ? ` (${categories.length + sellers.length})` : ''}
+          </button>
+        )}
       </div>
+
+      {moreFilters && (
+        <div className="buyer-orders-extra">
+          <div>
+            <strong>Categoría</strong>
+            <div className="buyer-orders-extra-chips">
+              {categoryOptions.length === 0 ? <small>Sin categorías registradas</small> : categoryOptions.map((category) => (
+                <button key={category} type="button" className={`buyer-orders-chip ${categories.includes(category) ? 'is-active' : ''}`} aria-pressed={categories.includes(category)} onClick={() => toggleIn(setCategories)(category)}>{category}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <strong>Vendedor</strong>
+            <div className="buyer-orders-extra-chips">
+              {sellerOptions.length === 0 ? <small>Sin vendedores registrados</small> : sellerOptions.map((seller) => (
+                <button key={seller} type="button" className={`buyer-orders-chip ${sellers.includes(seller) ? 'is-active' : ''}`} aria-pressed={sellers.includes(seller)} onClick={() => toggleIn(setSellers)(seller)}>{seller}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="buyer-orders-chips" role="tablist" aria-label="Filtrar por estado">
         {STATUS_FILTERS.filter((filter) => filter.key === 'all' || counts[filter.key] > 0).map((filter) => (
@@ -158,7 +197,7 @@ export default function BuyerOrdersBrowser({ orders, loading = false, emptyLabel
         <div className="profile-empty-state">
           <p>Ningún pedido coincide con la búsqueda.</p>
           {hasFilters && (
-            <button type="button" className="btn-view-details" onClick={() => { setQuery(''); setStatus('all'); setDate('all'); }}>
+            <button type="button" className="btn-view-details" onClick={() => { setQuery(''); setStatus('all'); setDate('all'); setCategories([]); setSellers([]); }}>
               Limpiar filtros
             </button>
           )}

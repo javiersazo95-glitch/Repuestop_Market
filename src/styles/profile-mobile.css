@@ -1410,3 +1410,11 @@
 .quote-card-menu-pop strong { font-size: 14px; }
 .quote-card-menu-pop small { color: var(--ak-text-muted, #5a6b7a); font-size: 12px; }
 .quote-card-menu-pop button.is-danger { color: var(--ak-error-text, #b42318); }
+
+/* Filtros de categoría y vendedor del listado de pedidos del comprador. */
+.buyer-orders-more { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border: 1px solid #d6e0ed; border-radius: 8px; background: #fff; color: var(--ak-primary, #0066ff); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.buyer-orders-extra { display: grid; gap: 12px; margin-bottom: 12px; padding: 12px; border: 1px solid var(--ak-divider, #e6eaef); border-radius: 12px; background: #fff; }
+.buyer-orders-extra > div { display: grid; gap: 6px; }
+.buyer-orders-extra strong { font-size: 13px; }
+.buyer-orders-extra small { color: var(--ak-text-muted, #5a6b7a); }
+.buyer-orders-extra-chips { display: flex; flex-wrap: wrap; gap: 6px; }
