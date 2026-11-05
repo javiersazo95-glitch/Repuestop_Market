@@ -7,6 +7,7 @@ import { acceptAuctionOffer, markAuctionOfferSeen, rejectAuctionOffer } from '..
 import { resolveMediaUrl } from '../../services/api';
 import { auctionCheckoutPath } from '../../routes/paths';
 import ConfirmDialog from '../ConfirmDialog';
+import RejectOfferDialog from '../RejectOfferDialog';
 import { offerValidityLabel } from '../../utils/offerValidity';
 import StoreProfileLink from '../StoreProfileLink';
 import AuctionAvatar from '../AuctionAvatar';
@@ -68,12 +69,12 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
   const canPay = Boolean(auction.esCreador) && (quote.esGanadora || quote.id === auction.cotizacionGanadoraId);
   const fastest = deliveryRank(quote) === fastestRank && comparable.length > 1;
 
-  const run = async () => {
+  const run = async (reason) => {
     const kind = confirm;
     setBusy(true);
     setError('');
     try {
-      const updated = kind === 'accept' ? await acceptAuctionOffer(auction.id, quote.id, quote.precioFinal ?? quote.precio) : await rejectAuctionOffer(auction.id, quote.id);
+      const updated = kind === 'accept' ? await acceptAuctionOffer(auction.id, quote.id, quote.precioFinal ?? quote.precio) : await rejectAuctionOffer(auction.id, quote.id, reason);
       onChanged?.(updated);
       setConfirm(null);
       if (kind === 'accept') setAccepted(true); else onClose();
@@ -182,17 +183,23 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
       )}
 
       <ConfirmDialog
-        isOpen={Boolean(confirm)}
-        title={confirm === 'accept' ? 'Aceptar oferta' : 'Rechazar oferta'}
-        message={confirm === 'accept'
-          ? `¿Aceptar la oferta de ${quote.nombreTienda} por ${formatCLP(total)}? Las demás ofertas por los mismos repuestos quedarán superadas. Luego completas el pago de lo aceptado.`
-          : `¿Rechazar la oferta de ${quote.nombreTienda}? La tienda verá que la rechazaste.`}
-        confirmLabel={confirm === 'accept' ? 'Aceptar' : 'Rechazar'}
-        cancelLabel="Volver"
-        tone={confirm === 'accept' ? 'warning' : 'danger'}
+        isOpen={confirm === 'accept'}
+        title="Aceptar oferta"
+        message={`¿Aceptar la oferta de ${quote.nombreTienda} por ${formatCLP(total)}? Las demás ofertas por los mismos repuestos quedarán superadas. Luego completas el pago de lo aceptado.`}
+        confirmLabel="Sí, aceptar oferta"
+        cancelLabel="No, volver"
+        tone="go"
         isBusy={busy}
         error={error}
-        onConfirm={run}
+        onConfirm={() => run()}
+        onCancel={() => setConfirm(null)}
+      />
+      <RejectOfferDialog
+        isOpen={confirm === 'reject'}
+        storeName={quote.nombreTienda}
+        isBusy={busy}
+        error={error}
+        onConfirm={(reason) => run(reason)}
         onCancel={() => setConfirm(null)}
       />
       <ConfirmDialog

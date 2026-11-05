@@ -20,6 +20,8 @@ export default function ConfirmDialog({
   cancelLabel = 'No, volver',
   isBusy = false,
   error = '',
+  children = null,
+  confirmDisabled = false,
   tone = 'danger',
   onConfirm,
   onCancel,
@@ -48,13 +50,15 @@ export default function ConfirmDialog({
 
         <p className="confirm-dialog-message">{message}</p>
 
+        {children}
+
         {error && <p className="confirm-dialog-error">{error}</p>}
 
         <div className="confirm-dialog-actions">
           <button type="button" className="btn-auth-secondary" onClick={onCancel} disabled={isBusy}>
             {cancelLabel}
           </button>
-          <button type="button" className={isDanger ? 'btn-auth-danger' : 'btn-auth-primary'} onClick={onConfirm} disabled={isBusy}>
+          <button type="button" className={isDanger ? 'btn-auth-danger' : 'btn-auth-primary'} onClick={onConfirm} disabled={isBusy || confirmDisabled}>
             {isBusy && <Loader2 size={16} className="spin-icon" />}
             {confirmLabel}
           </button>

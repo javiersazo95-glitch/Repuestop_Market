@@ -9,6 +9,7 @@ import {
 import { acceptAuctionOffer, getAuctionDetail, markAuctionOfferSeen, rejectAuctionOffer } from '../services/auctionApi';
 import AuctionAvatar from './AuctionAvatar';
 import ConfirmDialog from './ConfirmDialog';
+import RejectOfferDialog from './RejectOfferDialog';
 import StoreProfileLink from './StoreProfileLink';
 import AuctionImageViewer from './AuctionImageViewer';
 import { resolveMediaUrl } from '../services/api';
@@ -135,10 +136,8 @@ function DeliveryBox({ quote }) {
   );
 }
 
-function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, confirming, busy, onAskConfirm, onCancel, onAccept, onReject, compact = false, focused = false }) {
+function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, onAskConfirm, onAskReject, compact = false, focused = false }) {
   const [expanded, setExpanded] = useState(focused);
-  const [rejecting, setRejecting] = useState(false);
-  const [reason, setReason] = useState('');
   const [photoOpen, setPhotoOpen] = useState(false);
   const seenSent = useRef(false);
   // La tienda ve "Revisada por el comprador" en Gestión subastas apenas se abre el detalle de su oferta.
@@ -170,7 +169,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
       {expired && <span className="ao-tag is-muted">Vencida</span>}
     </>
   );
-  const quickActions = canAccept && !confirming && !rejecting;
+  const quickActions = canAccept;
 
   return (
     <article className={`ao-offer fit-${fit.level} ${accepted ? 'is-winner' : ''} ${discarded || rejected ? 'is-discarded' : ''}`}>
@@ -196,7 +195,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
           <div className="ao-row-actions" role="cell">
             {quickActions && (
               <>
-                <button type="button" className="ao-btn-outline is-reject is-sm" onClick={() => { onCancel(); setRejecting(true); }}><XCircle size={14} /> Rechazar</button>
+                <button type="button" className="ao-btn-outline is-reject is-sm" onClick={onAskReject}><XCircle size={14} /> Rechazar</button>
                 <button type="button" className="ao-btn-primary is-sm" onClick={onAskConfirm}><CheckCircle2 size={14} /> Aceptar</button>
               </>
             )}
@@ -341,46 +340,16 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
         </footer>
       )}
 
-      {canAccept && !(compact && !rejecting && !confirming) && (
+      {canAccept && !compact && (
         <footer className="ao-offer-foot">
-          {rejecting ? (
-            <>
-              <label className="ao-reject-reason">
-                <span>¿Por qué la rechazas? (opcional, la tienda lo verá)</span>
-                <textarea value={reason} onChange={(event) => setReason(event.target.value)} maxLength={300} rows={2} placeholder="Ej: el precio supera mi presupuesto, no es el repuesto que busco…" />
-              </label>
-              <div>
-                <button type="button" className="ao-btn-outline" onClick={() => { setRejecting(false); setReason(''); }} disabled={busy}>Volver</button>
-                <button type="button" className="ao-btn-danger" onClick={() => onReject(reason)} disabled={busy}>
-                  <XCircle size={15} /> {busy ? 'Procesando…' : 'Confirmar rechazo'}
-                </button>
-              </div>
-            </>
-          ) : confirming ? (
-            <>
-              <p>
-                <AlertCircle size={15} />
-                {validLines.length > 0
-                  ? ` Aceptas ${validLines.length} ${validLines.length === 1 ? 'repuesto' : 'repuestos'} de esta tienda por ${money(coverage ? coverage.total : total)}. ${missing.length > 0 ? 'Los repuestos que no incluye seguirán disponibles para otras tiendas.' : 'Con esto completas tu pedido.'}`
-                  : ' Aceptas esta oferta.'}
-              </p>
-              <div>
-                <button type="button" className="ao-btn-outline" onClick={onCancel} disabled={busy}>Cancelar</button>
-                <button type="button" className="ao-btn-primary" onClick={onAccept} disabled={busy}>
-                  <CheckCircle2 size={15} /> {busy ? 'Procesando…' : 'Confirmar aceptación'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="ao-offer-actions">
-              <button type="button" className="ao-btn-outline is-reject" onClick={() => { onCancel(); setRejecting(true); }}>
-                <XCircle size={15} /> Rechazar
-              </button>
-              <button type="button" className="ao-btn-primary" onClick={onAskConfirm}>
-                <Gavel size={15} /> {missing.length > 0 ? 'Aceptar esta oferta (parcial)' : 'Aceptar esta oferta'}
-              </button>
-            </div>
-          )}
+          <div className="ao-offer-actions">
+            <button type="button" className="ao-btn-outline is-reject" onClick={onAskReject}>
+              <XCircle size={15} /> Rechazar
+            </button>
+            <button type="button" className="ao-btn-primary" onClick={onAskConfirm}>
+              <Gavel size={15} /> {missing.length > 0 ? 'Aceptar esta oferta (parcial)' : 'Aceptar esta oferta'}
+            </button>
+          </div>
         </footer>
       )}
       {photoOpen && (
@@ -400,6 +369,7 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [confirmId, setConfirmId] = useState(null);
+  const [rejectId, setRejectId] = useState(null);
   const [busy, setBusy] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -448,6 +418,7 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
   }, [detail]);
 
   const confirmQuote = confirmId != null ? offers.find((quote) => quote.id === confirmId) : null;
+  const rejectQuote = rejectId != null ? offers.find((quote) => quote.id === rejectId) : null;
 
   if (!isOpen) return null;
 
@@ -480,6 +451,7 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
     setError('');
     try {
       await rejectAuctionOffer(auctionId, quote.id, reason);
+      setRejectId(null);
       await load();
       onChanged?.();
     } catch (err) {
@@ -687,11 +659,9 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
                   isSuggested={suggestion?.quoteId === quote.id}
                   isBest={bestPrice != null && fit.total === bestPrice}
                   isOpen={isOpenAuction}
-                  confirming={false}
                   busy={busy}
                   onAskConfirm={() => setConfirmId(quote.id)}
-                  onCancel={() => setConfirmId(null)}
-                  onAccept={() => handleAccept(quote)}
+                  onAskReject={() => { setError(''); setRejectId(quote.id); }}
                   onReject={(reason) => handleReject(quote, reason)}
                   compact={fullScreen}
                   focused={focusOfferId === quote.id}
@@ -724,6 +694,14 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
         {payFooter}
       </div>
 
+      <RejectOfferDialog
+        isOpen={Boolean(rejectQuote)}
+        storeName={rejectQuote?.nombreTienda}
+        isBusy={busy}
+        error={error}
+        onConfirm={(reason) => handleReject(rejectQuote, reason)}
+        onCancel={() => { if (!busy) { setRejectId(null); setError(''); } }}
+      />
       <ConfirmDialog
         isOpen={Boolean(confirmQuote)}
         tone="go"
