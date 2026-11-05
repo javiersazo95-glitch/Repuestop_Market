@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { getAuctionMetrics, getAuctions, getMyAuctionOffers, getMyAuctionRequests, getPendingQuestionCounts } from '../services/auctionApi';
 import ProfileAuctionManagementPanel from '../components/ProfileAuctionManagementPanel';
+import OfferTrackingMobile from '../components/OfferTrackingMobile';
 import { resolveMediaUrl } from '../services/api';
 import { paymentDeadlineInfo } from '../utils/paymentDeadline';
 import { auctionDetailPath, ROUTES } from '../routes/paths';
@@ -556,7 +557,8 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
         ))}
       </div>
     );
-    const panel = <ProfileAuctionManagementPanel embedded />;
+    // En el celular, la misma pantalla de la app (`PropuestasSeguimiento`); en el computador, el panel de seguimiento.
+    const panel = isMobile ? <OfferTrackingMobile /> : <ProfileAuctionManagementPanel embedded />;
     if (embedded || isMobile) return <div className="aw-offers-tab">{tabStrip}{panel}</div>;
     return <main className="aw-page"><div className="container aw-shell">{tabStrip}{panel}</div></main>;
   }

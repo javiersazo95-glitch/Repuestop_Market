@@ -710,6 +710,7 @@ ofertas, seguimiento, favoritos, reserva de cita, ficha del taller, menú Más).
 | Mis datos y perfil (comprador / taller, móvil) | `profile/BuyerProfileMobile.jsx`: Datos personales en tarjetas bloqueadas hasta «Editar datos», factura (comprador), Cerrar cuenta y menú Configuración (Acreditación, Mis direcciones, Notificaciones, Cambiar contraseña) con subpantallas propias | `app/profile-edit.tsx` |
 | Resumen móvil (vendedor / taller) | sin portada; tarjeta de identidad con logo, estado del agendamiento (taller) e insignia Fundador (vendedor) | `app/(seller)/index.tsx`, `app/(workshop)/index.tsx` |
 | Encargos (tienda) | pestañas «Mural público» y «Mis ofertas en curso» con el seguimiento de propuestas y los filtros Todas / En curso / Ganadas / Cerradas / Guardadas | `app/subastas/index.tsx`, `app/subastas/seguimiento.tsx` |
+| Mis ofertas en curso (tienda, móvil) | `OfferTrackingMobile.jsx`: 4 contadores (En curso, Revisadas, Aceptadas, Pagadas), buscador con hoja «Filtrar mis ofertas», tarjeta con franja Tu oferta / Competencia / Comprador / Cierra en, alertas, «Detalle» con Novedades, Seguimiento, Condiciones y Repuestos, botón Pedido y guardadas | `PropuestasSeguimiento` en `app/subastas/seguimiento.tsx` |
 | Documentos (tienda) | «Verificación comercial», «Documentos cargados» numerados con vista previa (`GET /proveedores/{id}/documentos`) y certificado del SII | `app/(seller)/tienda-documentos.tsx` |
 | Directorio de talleres | varios servicios buscados como etiquetas («Servicios buscados») y orden por los que cubren más | `app/talleres.tsx` |
 
