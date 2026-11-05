@@ -4,16 +4,17 @@ import { createPortal } from 'react-dom';
 import {
   Search,
   AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Clock, Gavel, Lightbulb, MapPin, MinusCircle, Package, PackageCheck,
-  ShieldCheck, Star, Trophy, Truck, X, XCircle,
+  ShieldCheck, Star, Trophy, Truck, Wallet, X, XCircle, CalendarDays,
 } from 'lucide-react';
 import { acceptAuctionOffer, getAuctionDetail, markAuctionOfferSeen, rejectAuctionOffer } from '../services/auctionApi';
 import AuctionAvatar from './AuctionAvatar';
+import ConfirmDialog from './ConfirmDialog';
 import StoreProfileLink from './StoreProfileLink';
 import AuctionImageViewer from './AuctionImageViewer';
 import { resolveMediaUrl } from '../services/api';
 import { evaluateOffer, shippingClass, suggestOffer } from '../utils/auctionOfferFit';
 import { usePaymentDeadline } from '../utils/paymentDeadline';
-import { offerValidityLabel } from '../utils/offerValidity';
+import { offerRemainingText, offerValidityLabel } from '../utils/offerValidity';
 import '../styles/auction-offers.css';
 
 const nf = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
@@ -29,11 +30,13 @@ function formatShortDate(iso) {
   return new Date(iso).toLocaleString('es-CL', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
-function Term({ label, value }) {
+function Term({ label, value, icon: Icon, sub, tone }) {
   return (
     <div className="ao-term">
+      {Icon && <i className="ao-term-icon" aria-hidden="true"><Icon size={15} /></i>}
       <dt>{label}</dt>
       <dd>{value || '—'}</dd>
+      {sub && <small className={tone ? `is-${tone}` : ''}>{sub}</small>}
     </div>
   );
 }
@@ -317,13 +320,13 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
           )}
 
           <dl className="ao-terms">
-            <Term label="Método de entrega" value={quote.tipoEntrega} />
-            {quote.costoEnvio > 0 && <Term label="Costo del envío" value={`${money(quote.costoEnvio)} (se suma al total al pagar)`} />}
-            {quote.envioPorPagar && <Term label="Costo del envío" value="Por pagar: no está incluido en el total" />}
-            <Term label="Disponibilidad" value={availabilitySentence(quote.disponibilidadDias) || availabilityLabel(quote.disponibilidadDias)} />
-            <Term label="Despacho" value={quote.tiempoEntrega} />
-            <Term label="Garantía" value={quote.garantia || 'Garantía legal'} />
-            <Term label="Vigencia de la oferta" value={offerValidityLabel(quote)} />
+            <Term icon={Truck} label="Método de entrega" value={quote.tipoEntrega} />
+            {quote.costoEnvio > 0 && <Term icon={Wallet} label="Costo del envío" value={money(quote.costoEnvio)} sub="Se suma al total al pagar" />}
+            {quote.envioPorPagar && <Term icon={Wallet} label="Costo del envío" value="Por pagar" sub="No está incluido en el total" tone="warn" />}
+            <Term icon={Package} label="Disponibilidad" value={availabilitySentence(quote.disponibilidadDias) || availabilityLabel(quote.disponibilidadDias)} />
+            <Term icon={Clock} label="Despacho" value={quote.tiempoEntrega} />
+            <Term icon={ShieldCheck} label="Garantía" value={quote.garantia || 'Garantía legal'} />
+            <Term icon={CalendarDays} label="Vigencia de la oferta" value={quote.vigencia || '—'} sub={offerRemainingText(quote) || undefined} tone={quote.vencida ? 'lost' : 'ok'} />
           </dl>
 
           <FitPanel fit={fit} auction={auction} />
@@ -443,6 +446,8 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
       || validCount(b) - validCount(a)
       || (a.precioFinal ?? a.precio ?? 0) - (b.precioFinal ?? b.precio ?? 0));
   }, [detail]);
+
+  const confirmQuote = confirmId != null ? offers.find((quote) => quote.id === confirmId) : null;
 
   if (!isOpen) return null;
 
@@ -682,7 +687,7 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
                   isSuggested={suggestion?.quoteId === quote.id}
                   isBest={bestPrice != null && fit.total === bestPrice}
                   isOpen={isOpenAuction}
-                  confirming={confirmId === quote.id}
+                  confirming={false}
                   busy={busy}
                   onAskConfirm={() => setConfirmId(quote.id)}
                   onCancel={() => setConfirmId(null)}
@@ -718,6 +723,21 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
 
         {payFooter}
       </div>
+
+      <ConfirmDialog
+        isOpen={Boolean(confirmQuote)}
+        tone="go"
+        title="Aceptar oferta"
+        message={confirmQuote
+          ? `¿Aceptar la oferta de ${confirmQuote.nombreTienda} por ${money(evaluateOffer(detail, confirmQuote).total || confirmQuote.precioFinal || confirmQuote.precio)}? Las demás ofertas por los mismos repuestos quedarán superadas. Luego completas el pago de lo aceptado.`
+          : ''}
+        confirmLabel="Sí, aceptar oferta"
+        cancelLabel="No, volver"
+        isBusy={busy}
+        error={error}
+        onConfirm={() => handleAccept(confirmQuote)}
+        onCancel={() => { if (!busy) { setConfirmId(null); setError(''); } }}
+      />
     </div>
   );
 
