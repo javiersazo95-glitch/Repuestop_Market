@@ -327,7 +327,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!mainAddress) {
-      setError('Registra una dirección para publicar tu búsqueda: la usamos para ubicarla y para que las tiendas sepan si despachan a tu comuna.');
+      setError('Registra una dirección para publicar tu encargo: la usamos para ubicarlo y para que las tiendas sepan si despachan a tu comuna.');
       return;
     }
     if (!manualVehicle && !vehicle?.chasis) {
@@ -387,7 +387,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
       if (onSuccess) onSuccess(creada);
       onClose();
     } catch (err) {
-      setError(err?.message || (isEditing ? 'No pudimos guardar los cambios de tu encargo.' : 'Hubo un error al publicar la búsqueda de repuestos.'));
+      setError(err?.message || (isEditing ? 'No pudimos guardar los cambios de tu encargo.' : 'Hubo un error al publicar el encargo de repuestos.'));
     } finally {
       setLoading(false);
     }
@@ -421,7 +421,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
               {!plateVehicle && (
                 <div className="ft-tabs" role="tablist" aria-label="Cómo indicar el vehículo">
                   <button type="button" role="tab" aria-selected={vehicleMode === 'plate'} className={`ft-tab ${vehicleMode === 'plate' ? 'is-active' : ''}`} onClick={() => setVehicleMode('plate')}>Por patente<RecommendedBadge /></button>
-                  <button type="button" role="tab" aria-selected={vehicleMode === 'manual'} className={`ft-tab ${vehicleMode === 'manual' ? 'is-active' : ''}`} onClick={() => setVehicleMode('manual')}>Búsqueda manual</button>
+                  <button type="button" role="tab" aria-selected={vehicleMode === 'manual'} className={`ft-tab ${vehicleMode === 'manual' ? 'is-active' : ''}`} onClick={() => setVehicleMode('manual')}>Encargo manual</button>
                 </div>
               )}
               {!plateVehicle && vehicleMode === 'plate' && <PlateBenefitHint />}
@@ -575,7 +575,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
               value={addressChoice}
               onChange={(e) => setAddressChoice(e.target.value)}
               disabled={!addressesLoaded}
-              aria-label="Dirección de la búsqueda"
+              aria-label="Dirección del encargo"
             >
               {!addressesLoaded && <option value="">Cargando tus direcciones…</option>}
               {addresses.map((address) => (

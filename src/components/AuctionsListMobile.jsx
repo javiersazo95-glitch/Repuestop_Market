@@ -63,8 +63,8 @@ function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = nu
         <div className="am-card-body">
           <div className="am-card-head">
             <span className={`am-card-state is-${toPay > 0 ? 'por-pagar' : status.key}`}>{toPay > 0 ? 'Por pagar' : status.label}</span>
-            <button type="button" className="am-card-view" onClick={() => onOpen(auction.id, toPay > 0 ? { offers: true } : undefined)} aria-label={toPay > 0 ? 'Ver ofertas y pagar' : 'Ver búsqueda'}>
-              <Eye size={13} /> {toPay > 0 ? 'Ver ofertas y pagar' : 'Ver búsqueda'} <ChevronRight size={13} />
+            <button type="button" className="am-card-view" onClick={() => onOpen(auction.id, toPay > 0 ? { offers: true } : undefined)} aria-label={toPay > 0 ? 'Ver ofertas y pagar' : 'Ver encargo'}>
+              <Eye size={13} /> {toPay > 0 ? 'Ver ofertas y pagar' : 'Ver encargo'} <ChevronRight size={13} />
             </button>
           </div>
           <h3 className="am-card-title">{auction.repuestoSolicitado}</h3>
@@ -160,9 +160,9 @@ export default function AuctionsListMobile({
       <SectionHero
         gradient={['#0B3B91', '#0066ff', '#2E9BFF']}
         eyebrow={{ icon: forStores ? <Telescope /> : <Search />, label: mineTab ? 'SEGUIMIENTO' : forStores ? 'ENCARGOS' : 'ENCARGAR' }}
-        title={mineTab ? 'Mis búsquedas' : forStores ? 'Atender encargos' : 'Encargar repuesto'}
+        title={mineTab ? 'Mis encargos' : forStores ? 'Atender encargos' : 'Encargar repuesto'}
         subtitle={mineTab
-          ? 'Sigue tus búsquedas y las ofertas que recibiste de las tiendas.'
+          ? 'Sigue tus encargos y las ofertas que recibiste de las tiendas.'
           : forStores
             ? 'Mira qué repuestos buscan los compradores y envía tu oferta.'
             : 'Publica el repuesto que buscas y recibe ofertas de varias tiendas.'}
@@ -178,7 +178,7 @@ export default function AuctionsListMobile({
       />
 
       {tabs && (
-        <div className="am-tabs" role="tablist" aria-label="Búsqueda de repuestos">
+        <div className="am-tabs" role="tablist" aria-label="Encargos de repuestos">
           {tabs.map((item) => (
             <button key={item.value} type="button" role="tab" aria-selected={tab === item.value} className={tab === item.value ? 'is-active' : ''} onClick={() => { onTabChange?.(item.value); setVisibleCount(8); }}>
               {item.label} ({item.count})
@@ -215,7 +215,7 @@ export default function AuctionsListMobile({
           type="button"
           className={`am-icon-btn ${sortOpen || sortBy !== 'RECIENTES' ? 'is-active' : ''}`}
           onClick={() => setSortOpen((open) => !open)}
-          aria-label="Ordenar búsquedas"
+          aria-label="Ordenar encargos"
           aria-expanded={sortOpen}
         >
           <ArrowUpDown size={22} />
@@ -244,7 +244,7 @@ export default function AuctionsListMobile({
       {error ? (
         <div className="am-empty">
           <Gavel size={32} />
-          <h2>No pudimos cargar las búsquedas</h2>
+          <h2>No pudimos cargar los encargos</h2>
           <p>{error}</p>
           <button type="button" className="am-btn" onClick={onRetry}>Reintentar</button>
         </div>
@@ -255,10 +255,10 @@ export default function AuctionsListMobile({
       ) : rows.length === 0 ? (
         <div className="am-empty">
           <Gavel size={32} />
-          <h2>No hay búsquedas de repuestos en esta sección</h2>
+          <h2>No hay encargos de repuestos en esta sección</h2>
           {canCreate && <p>Publica lo que necesitas para recibir cotizaciones de tiendas verificadas.</p>}
           {activeFiltersCount > 0 && <button type="button" className="am-btn am-btn-outline" onClick={onResetFilters}>Limpiar filtros</button>}
-          {canCreate && <button type="button" className="am-btn" onClick={onCreate}>Publicar búsqueda de repuesto</button>}
+          {canCreate && <button type="button" className="am-btn" onClick={onCreate}>Publicar encargo de repuesto</button>}
         </div>
       ) : (
         <div className="am-list-cards">
@@ -267,14 +267,14 @@ export default function AuctionsListMobile({
           ))}
           {rows.length > visibleCount && (
             <button type="button" className="am-btn am-btn-outline" onClick={() => setVisibleCount((count) => count + 8)}>
-              Ver más búsquedas ({rows.length - visibleCount})
+              Ver más encargos ({rows.length - visibleCount})
             </button>
           )}
         </div>
       )}
 
       {canCreate && (
-        <button type="button" className="am-fab" onClick={onCreate} aria-label="Publicar una búsqueda de repuestos">
+        <button type="button" className="am-fab" onClick={onCreate} aria-label="Publicar un encargo de repuestos">
           <Plus size={26} />
         </button>
       )}

@@ -171,7 +171,7 @@ export default function AuctionDetailPage() {
   const [saveNotice, setSaveNotice] = useState('');
   const [isPurchaseOpen, setIsPurchaseOpen] = useState(false);
 
-  useDocumentTitle(auction?.repuestoSolicitado ? `${auction.repuestoSolicitado} · Búsqueda de repuestos` : 'Detalle de búsqueda de repuestos');
+  useDocumentTitle(auction?.repuestoSolicitado ? `${auction.repuestoSolicitado} · Encargo de repuestos` : 'Detalle del encargo de repuestos');
 
   const isSeller = String(user?.role || role || '').toUpperCase() === 'SELLER' || Boolean(user?.sellerId);
   const sellerId = user?.sellerId || user?.proveedorId;
@@ -204,7 +204,7 @@ export default function AuctionDetailPage() {
       setSaved(Boolean(detail?.guardada));
     } catch (err) {
       console.error('Error cargando detalle subasta:', err);
-      setError(err?.message || 'No pudimos cargar los detalles de esta búsqueda de repuestos.');
+      setError(err?.message || 'No pudimos cargar los detalles de este encargo de repuestos.');
     } finally {
       setLoading(false);
     }
@@ -234,7 +234,7 @@ export default function AuctionDetailPage() {
   if (loading && !auction) {
     return (
       <main className="av-page">
-        <div className="container av-shell"><div className="as-card av-state"><p className="as-muted">Cargando información de la búsqueda de repuestos…</p></div></div>
+        <div className="container av-shell"><div className="as-card av-state"><p className="as-muted">Cargando información del encargo de repuestos…</p></div></div>
       </main>
     );
   }
@@ -245,10 +245,10 @@ export default function AuctionDetailPage() {
         <div className="container av-shell">
           <div className="as-card av-state">
             <span className="av-state-icon"><AlertCircle size={30} /></span>
-            <h1>Búsqueda de repuestos no disponible</h1>
-            <p className="as-muted">{error || 'La búsqueda de repuestos no existe o fue retirada.'}</p>
+            <h1>Encargo de repuestos no disponible</h1>
+            <p className="as-muted">{error || 'El encargo de repuestos no existe o fue retirado.'}</p>
             <button type="button" className="as-btn-primary" style={{ maxWidth: 220 }} onClick={() => navigate(ROUTES.auctions)}>
-              Volver a Búsqueda de repuestos
+              Volver a Encargos de repuestos
             </button>
           </div>
         </div>
@@ -310,7 +310,7 @@ export default function AuctionDetailPage() {
           saveNotice={saveNotice}
           onToggleSaved={toggleSaved}
           onEdit={() => (auction.editable === false
-            ? flashSaveNotice(auction.motivoNoEditable || 'Esta búsqueda de repuestos ya no se puede editar.')
+            ? flashSaveNotice(auction.motivoNoEditable || 'Este encargo de repuestos ya no se puede editar.')
             : setIsEditOpen(true))}
           canRepublish={canRepublish}
           onRepublish={() => setIsRepublishOpen(true)}
@@ -324,7 +324,7 @@ export default function AuctionDetailPage() {
           <ChevronRight size={14} />
           <Link to={ROUTES.auctions}>Subastas</Link>
           <ChevronRight size={14} />
-          <span aria-current="page">Detalle de búsqueda de repuestos</span>
+          <span aria-current="page">Detalle del encargo de repuestos</span>
         </nav>
 
         <div className="av-layout">
@@ -368,8 +368,8 @@ export default function AuctionDetailPage() {
                 )}
                 <div className="av-how-mini">
                   <HelpCircle size={18} />
-                  <p><strong>¿Cómo funcionan las búsquedas de repuestos?</strong> Las tiendas ofertan en privado, el comprador elige y paga por la plataforma.</p>
-                  <AuctionInfoTip label="Cómo funciona una búsqueda de repuestos" align="right">
+                  <p><strong>¿Cómo funcionan los encargos de repuestos?</strong> Las tiendas ofertan en privado, el comprador elige y paga por la plataforma.</p>
+                  <AuctionInfoTip label="Cómo funciona un encargo de repuestos" align="right">
                     <ol className="av-how-steps">
                       <li><b>El comprador publica su pedido.</b> Indica la patente, los repuestos, su tope de presupuesto y el plazo.</li>
                       <li><b>Las tiendas ofertan en privado.</b> Las casas de repuestos verificadas ofrecen lo que tienen; pueden cubrir solo una parte.</li>
@@ -437,7 +437,7 @@ export default function AuctionDetailPage() {
                           className={`av-action-btn av-edit-btn ${auction.editable === false ? 'is-locked' : ''}`}
                           aria-disabled={auction.editable === false}
                           onClick={() => (auction.editable === false
-                            ? flashSaveNotice(auction.motivoNoEditable || 'Esta búsqueda de repuestos ya no se puede editar.')
+                            ? flashSaveNotice(auction.motivoNoEditable || 'Este encargo de repuestos ya no se puede editar.')
                             : setIsEditOpen(true))}
                         >
                           {auction.editable === false ? <Lock size={15} /> : <Pencil size={15} />} Editar
@@ -504,7 +504,7 @@ export default function AuctionDetailPage() {
                   <small>
                     {cotizaciones.length === 0
                       ? 'Las casas de repuestos ya fueron notificadas'
-                      : `${cotizaciones.length === 1 ? 'Una tienda verificada ya cotizó' : 'Tiendas verificadas ya cotizaron'} esta búsqueda`}
+                      : `${cotizaciones.length === 1 ? 'Una tienda verificada ya cotizó' : 'Tiendas verificadas ya cotizaron'} este encargo`}
                   </small>
                 </div>
                 {canQuote && (
@@ -591,7 +591,7 @@ export default function AuctionDetailPage() {
       )}
 
       {!isMobile && (canQuote || (esCreador && isOpen && (cotizaciones.length > 0 || acceptedCount > 0))) && (
-        <MobileStickyBar label={isOpen ? 'Tiempo restante' : 'Búsqueda'} value={isOpen ? formatRemaining(remainingMs) : statusLabel} hint={`${cotizaciones.length} ${cotizaciones.length === 1 ? 'oferta' : 'ofertas'}`} ariaLabel="Acciones de la búsqueda de repuestos">
+        <MobileStickyBar label={isOpen ? 'Tiempo restante' : 'Encargo'} value={isOpen ? formatRemaining(remainingMs) : statusLabel} hint={`${cotizaciones.length} ${cotizaciones.length === 1 ? 'oferta' : 'ofertas'}`} ariaLabel="Acciones del encargo de repuestos">
           {canQuote && (
             <button type="button" className="mobile-sticky-bar__btn" onClick={() => setIsQuoteModalOpen(true)}>
               {miCotizacion ? <Pencil size={17} /> : <Gavel size={17} />} {miCotizacion ? 'Modificar oferta' : 'Enviar oferta'}

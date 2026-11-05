@@ -64,8 +64,8 @@ function resultStep(offer) {
     case 'ACEPTADA': return { title: 'Aceptada: el comprador debe pagar', tone: 'done', done: true };
     case 'PAGO_PENDIENTE': return { title: 'Pedido creado, esperando el pago', tone: 'warn', done: true };
     case 'PAGADA': return { title: 'Pagada: ya es un pedido tuyo', tone: 'done', done: true };
-    case 'EXPIRADA': return { title: 'La búsqueda cerró sin adjudicarte', tone: 'lost', done: true };
-    case 'CANCELADA': return { title: 'La búsqueda fue cancelada', tone: 'lost', done: true };
+    case 'EXPIRADA': return { title: 'El encargo cerró sin adjudicarte', tone: 'lost', done: true };
+    case 'CANCELADA': return { title: 'El encargo fue cancelado', tone: 'lost', done: true };
     default: return { title: 'Esperando decisión', tone: undefined, done: false };
   }
 }
@@ -127,7 +127,7 @@ function OfferCard({ item, seenSignature, onSeen, onOpenNeed, onOpenOrder }) {
         </div>
         <div className="ota-head-right">
           <Badge label={STATE_LABEL[oferta.estado] || oferta.estado} tone={tone} />
-          <button type="button" className="ota-need-btn" onClick={() => onOpenNeed(necesidad.id)} aria-label={`Ver búsqueda ${necesidad.id}`}><FileText size={17} /></button>
+          <button type="button" className="ota-need-btn" onClick={() => onOpenNeed(necesidad.id)} aria-label={`Ver encargo ${necesidad.id}`}><FileText size={17} /></button>
         </div>
       </div>
 
@@ -135,7 +135,7 @@ function OfferCard({ item, seenSignature, onSeen, onOpenNeed, onOpenOrder }) {
         <Cell label="Tu oferta" value={formatCLP(oferta.totalVigente)} tone={overBudget ? 'bad' : undefined} />
         <Cell label="Competencia" value={competitors > 0 ? `${competitors} ${competitors === 1 ? 'oferta' : 'ofertas'}` : 'Sin competencia'} tone={competitors > 0 ? undefined : 'muted'} />
         <Cell label="Comprador" value={seen ? 'Revisada' : 'Sin revisar'} tone={seen ? 'ok' : 'muted'} />
-        <Cell label={open ? 'Cierra en' : 'Búsqueda'} value={open ? formatRemaining(necesidad.segundosRestantes ?? 0) : 'Cerrada'} tone={open ? undefined : 'muted'} />
+        <Cell label={open ? 'Cierra en' : 'Encargo'} value={open ? formatRemaining(necesidad.segundosRestantes ?? 0) : 'Cerrado'} tone={open ? undefined : 'muted'} />
       </div>
 
       {(overBudget || missing > 0) && (
@@ -238,7 +238,7 @@ function SavedCard({ auction, myOffer, busy, onRemove, onOpenNeed }) {
       </div>
       <div className="ota-actions">
         <button type="button" className="ota-btn is-secondary" disabled={busy} onClick={() => onRemove(auction.id)}>Quitar</button>
-        <button type="button" className="ota-btn is-primary" onClick={() => onOpenNeed(auction.id)}>Ver búsqueda</button>
+        <button type="button" className="ota-btn is-primary" onClick={() => onOpenNeed(auction.id)}>Ver encargo</button>
       </div>
     </article>
   );
@@ -336,13 +336,13 @@ export default function OfferTrackingMobile() {
           {filter === 'saved' ? <Bookmark size={30} /> : <SearchX size={30} />}
           <strong>
             {filter === 'saved'
-              ? 'No tienes solicitudes guardadas. Abre una búsqueda de repuestos y presiona «Guardar» para hacerle seguimiento.'
+              ? 'No tienes solicitudes guardadas. Abre un encargo de repuestos y presiona «Guardar» para hacerle seguimiento.'
               : offers.length === 0
-                ? 'Aún no has enviado ofertas. Entra a las búsquedas de repuestos y ofrece tus repuestos.'
+                ? 'Aún no has enviado ofertas. Entra a los encargos de repuestos y ofrece tus repuestos.'
                 : 'No hay ofertas en este filtro.'}
           </strong>
           {offers.length === 0 && filter !== 'saved' && (
-            <button type="button" className="ota-btn is-primary" onClick={() => navigate(ROUTES.auctions)}>Ver búsquedas de repuestos</button>
+            <button type="button" className="ota-btn is-primary" onClick={() => navigate(ROUTES.auctions)}>Ver encargos de repuestos</button>
           )}
         </div>
       ) : filter === 'saved' ? (

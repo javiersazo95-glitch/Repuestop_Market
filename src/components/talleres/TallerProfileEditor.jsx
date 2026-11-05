@@ -33,7 +33,7 @@ function BookingProgress({ status }) {
     <div className="taller-editor__progress">
       <div className="taller-editor__progress-track"><div style={{ width: `${Math.round(prizeProgress(status) * 100)}%` }} /></div>
       <p>
-        <span>Gratis · {done}/{status.necesidadesPorGratis} búsquedas de repuestos</span>
+        <span>Gratis · {done}/{status.necesidadesPorGratis} encargos de repuestos</span>
         <strong className={status.activo && days > 3 ? 'is-ok' : 'is-warn'}>{status.activo ? (days === 1 ? '1 día activo' : `${days} días activos`) : 'Sin días activos'}</strong>
       </p>
     </div>

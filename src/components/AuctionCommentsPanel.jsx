@@ -67,7 +67,7 @@ export default function AuctionCommentsPanel({ auctionId, title = '', isOpen, ca
     && !comments.some((comment) => comment.respondeAId === latest.id);
 
   return (
-    <section className="as-card as-comments" aria-label="Comentarios de la búsqueda">
+    <section className="as-card as-comments" aria-label="Comentarios del encargo">
       <div className="as-comments-head">
         <h2 className="as-title">
           <span><MessageCircle size={18} /> Comentarios de usuarios</span>
@@ -76,9 +76,9 @@ export default function AuctionCommentsPanel({ auctionId, title = '', isOpen, ca
       </div>
 
       {!isOpen ? (
-        <p className="as-muted as-closed">Esta búsqueda de repuestos ya no recibe comentarios.</p>
+        <p className="as-muted as-closed">Este encargo de repuestos ya no recibe comentarios.</p>
       ) : isLoggedIn && !canComment ? (
-        <p className="as-muted as-closed">Solo las tiendas pueden comentar esta búsqueda para afinar su oferta; el comprador responde aquí.</p>
+        <p className="as-muted as-closed">Solo las tiendas pueden comentar este encargo para afinar su oferta; el comprador responde aquí.</p>
       ) : isCreator ? (
         <p className="as-muted as-closed">Responde cada pregunta desde «Ver más comentarios»: tu respuesta queda anidada en esa pregunta.</p>
       ) : isLoggedIn ? (
@@ -103,7 +103,7 @@ export default function AuctionCommentsPanel({ auctionId, title = '', isOpen, ca
       {loading ? (
         <p className="as-muted">Cargando comentarios…</p>
       ) : !latest ? (
-        <p className="as-muted as-empty">Aún no hay comentarios sobre esta búsqueda. Pregunta lo que necesites saber para afinar tu cotización.</p>
+        <p className="as-muted as-empty">Aún no hay comentarios sobre este encargo. Pregunta lo que necesites saber para afinar tu cotización.</p>
       ) : (
         <ul className="as-comment-list">
           <li key={latest.id} className="as-comment">
@@ -135,7 +135,7 @@ export default function AuctionCommentsPanel({ auctionId, title = '', isOpen, ca
         <AuctionQuestionsModal
           auctionId={auctionId}
           title={title}
-          eyebrow={isCreator ? 'Comentarios de tu búsqueda' : 'Comentarios de la búsqueda'}
+          eyebrow={isCreator ? 'Comentarios de tu encargo' : 'Comentarios del encargo'}
           canReply={isCreator && isOpen}
           onClose={() => {
             setAllOpen(false);

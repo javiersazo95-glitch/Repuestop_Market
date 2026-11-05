@@ -70,7 +70,7 @@ function NeedTrackingRow({ need, onClick }) {
     { label: 'Adjudicada', value: progress, tone: awarded > 0 || need.adjudicada ? 'ok' : 'idle' },
   ];
   return (
-    <button type="button" className="wh-track" onClick={onClick} aria-label={`Seguir la búsqueda ${need.repuestoSolicitado}`}>
+    <button type="button" className="wh-track" onClick={onClick} aria-label={`Seguir el encargo ${need.repuestoSolicitado}`}>
       <span className="wh-track-head">
         <span className="wh-track-thumb">{photo ? <img src={photo} alt="" /> : <SearchCheck size={20} />}</span>
         <span className="wh-track-copy">
@@ -244,7 +244,7 @@ export default function WorkshopHomeSummary({ onOpenAppointments, onOpenFaults, 
           {offerNeed && (
             <ActivityRow
               icon={SearchCheck}
-              title="Nueva oferta para tu búsqueda"
+              title="Nueva oferta para tu encargo"
               detail={`${offerNeed.repuestoSolicitado} · ${offerNeed.totalCotizaciones} ${offerNeed.totalCotizaciones === 1 ? 'oferta' : 'ofertas'}`}
               tone="amber"
               onClick={() => navigate(auctionDetailPath(offerNeed.id))}
@@ -274,7 +274,7 @@ export default function WorkshopHomeSummary({ onOpenAppointments, onOpenFaults, 
       {trackedNeeds.length > 0 && (
         <section className="wh-section">
           <div className="wh-heading">
-            <h2>Seguimiento de tu búsqueda</h2>
+            <h2>Seguimiento de tu encargo</h2>
             <button type="button" className="wh-link" onClick={onOpenNeeds}>Ver todo ›</button>
           </div>
           <div className="wh-card">

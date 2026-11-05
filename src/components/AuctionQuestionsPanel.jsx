@@ -183,10 +183,10 @@ export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPe
                     {sending ? <Loader2 size={15} className="qq-spin" /> : <Send size={15} />} Responder
                   </button>
                 </div>
-                <p className="qq-note">Tu respuesta se publica en los comentarios de la búsqueda como «Respuesta del cliente».</p>
+                <p className="qq-note">Tu respuesta se publica en los comentarios del encargo como «Respuesta del cliente».</p>
               </form>
             ) : (
-              <p className="qq-note">Esta búsqueda ya cerró, por lo que no se pueden agregar respuestas.</p>
+              <p className="qq-note">Este encargo ya cerró, por lo que no se pueden agregar respuestas.</p>
             )}
           </>
         ) : (

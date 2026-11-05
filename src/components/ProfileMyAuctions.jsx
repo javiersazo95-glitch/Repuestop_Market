@@ -260,12 +260,12 @@ export default function ProfileMyAuctions() {
     <div className="profile-panel seller-quotes-panel ft-profile-faults">
       <div className="seller-quotes-heading">
         <div>
-          <span className="seller-quotes-eyebrow"><Gavel size={14} /> Búsqueda de repuestos</span>
+          <span className="seller-quotes-eyebrow"><Gavel size={14} /> Encargo de repuestos</span>
           <h2 className="profile-panel-title">Encargar repuesto</h2>
           <p>Arma un pedido con todos los repuestos que necesitas, recibe ofertas de las tiendas y acepta las que te sirvan, aunque cubran solo una parte. Aquí le haces seguimiento a cada encargo.</p>
         </div>
         <div className="seller-quotes-heading-actions">
-          <button type="button" className="pa-btn-primary" onClick={() => setCreating(true)}><Plus size={16} /> Publicar búsqueda</button>
+          <button type="button" className="pa-btn-primary" onClick={() => setCreating(true)}><Plus size={16} /> Publicar encargo</button>
         </div>
       </div>
 

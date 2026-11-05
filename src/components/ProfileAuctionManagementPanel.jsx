@@ -174,12 +174,12 @@ function PublicQuestions({ auctionId, isOpen }) {
   };
 
   return (
-    <section className="pt-questions" aria-label="Preguntas públicas de la búsqueda">
-      <h4><MessageCircle size={16} /> Preguntas públicas de la búsqueda <small>Las preguntas y respuestas son públicas para esta búsqueda de repuestos.</small></h4>
+    <section className="pt-questions" aria-label="Preguntas públicas del encargo">
+      <h4><MessageCircle size={16} /> Preguntas públicas del encargo <small>Las preguntas y respuestas son públicas para este encargo de repuestos.</small></h4>
       {loading ? (
         <p className="pt-muted"><Loader2 size={14} className="pg-spin" /> Cargando preguntas…</p>
       ) : comments.length === 0 ? (
-        <p className="pt-muted">Aún no hay preguntas sobre esta búsqueda.</p>
+        <p className="pt-muted">Aún no hay preguntas sobre este encargo.</p>
       ) : (
         <ul className="pt-comment-list">
           {comments.filter((comment) => comment.respondeAId == null || !comments.some((c) => c.id === comment.respondeAId)).map((comment) => (
@@ -215,7 +215,7 @@ function PublicQuestions({ auctionId, isOpen }) {
 /** Preguntas que la tienda hizo a las búsquedas, cada una con la respuesta anidada del comprador. */
 function MyQuestionsList({ questions, onOpen }) {
   if (questions.length === 0) {
-    return <EmptyState label="Aún no has hecho preguntas. Abre una búsqueda de repuestos y pregunta lo que necesites para afinar tu oferta." />;
+    return <EmptyState label="Aún no has hecho preguntas. Abre un encargo de repuestos y pregunta lo que necesites para afinar tu oferta." />;
   }
   return (
     <ul className="pt-myq-list">
@@ -228,7 +228,7 @@ function MyQuestionsList({ questions, onOpen }) {
               <strong title={question.necesidadTitulo}>{question.necesidadTitulo}</strong>
               <span className={`pt-pill is-${answered ? 'green' : 'amber'}`}>{answered ? 'Respondida' : 'Sin respuesta'}</span>
               <small>{formatDateTime(question.createdAt)}</small>
-              <button type="button" className="pt-btn" onClick={() => onOpen(question.necesidadId)}>Ver búsqueda <ArrowRight size={14} /></button>
+              <button type="button" className="pt-btn" onClick={() => onOpen(question.necesidadId)}>Ver encargo <ArrowRight size={14} /></button>
             </header>
             <p className="pt-myq-text">{question.texto}</p>
             {(question.respuestas || []).map((reply) => (
@@ -269,10 +269,10 @@ function DetailPanel({ item, busy, onEdit, onOpen, onOrder }) {
       <div className="pt-buyer">
         <span className="pt-avatar-lg"><User size={20} /></span>
         <span><small>Comprador</small><strong>{necesidad.comprador || 'Comprador'}</strong>{necesidad.ubicacion && <em>{necesidad.ubicacion}</em>}</span>
-        <button type="button" className="pt-btn" onClick={() => onOpen(necesidad.id)}>Ver búsqueda <ArrowRight size={14} /></button>
+        <button type="button" className="pt-btn" onClick={() => onOpen(necesidad.id)}>Ver encargo <ArrowRight size={14} /></button>
       </div>
 
-      <h4 className="pt-section-title"><ClipboardList size={18} /> Comparación de la búsqueda</h4>
+      <h4 className="pt-section-title"><ClipboardList size={18} /> Comparación del encargo</h4>
       <div className="pt-compare">
         <section className="is-buyer">
           <h5>Lo que pide el comprador</h5>
@@ -368,7 +368,7 @@ function OfferCardMobile({ item, seenSignature, onSeen, busy, onEdit, onOpen, on
         <div><small>Tu oferta</small><strong className={overBudget ? 'is-bad' : ''}>{money(oferta.totalVigente)}</strong></div>
         <div><small>Competencia</small><strong className={competitors > 0 ? '' : 'is-muted'}>{competitors > 0 ? `${competitors} ${competitors === 1 ? 'oferta' : 'ofertas'}` : 'Sin competencia'}</strong></div>
         <div><small>Comprador</small><strong className={seen ? 'is-ok' : 'is-muted'}>{seen ? 'Revisada' : 'Sin revisar'}</strong></div>
-        <div><small>{open ? 'Cierra en' : 'Búsqueda'}</small><strong className={open ? '' : 'is-muted'}>{open ? formatRemaining(necesidad.segundosRestantes) : 'Cerrada'}</strong></div>
+        <div><small>{open ? 'Cierra en' : 'Encargo'}</small><strong className={open ? '' : 'is-muted'}>{open ? formatRemaining(necesidad.segundosRestantes) : 'Cerrado'}</strong></div>
       </div>
       {(overBudget || missing > 0) && (
         <div className="otm-alerts">
@@ -381,7 +381,7 @@ function OfferCardMobile({ item, seenSignature, onSeen, busy, onEdit, onOpen, on
           {news.hasNews && <i className="trk-dot" />}<strong>Detalle</strong>{expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
         </button>
         <div className="otm-actions">
-          <button type="button" className="otm-btn" onClick={() => onOpen(necesidad.id)}>Ver búsqueda</button>
+          <button type="button" className="otm-btn" onClick={() => onOpen(necesidad.id)}>Ver encargo</button>
           {oferta.pedidoId && <button type="button" className="otm-btn is-primary" onClick={() => onOrder(oferta.pedidoId)}><PackageCheck size={14} /> Pedido</button>}
         </div>
       </div>
@@ -558,7 +558,7 @@ export default function ProfileAuctionManagementPanel({ embedded = false } = {})
         </div>
         {!embedded && (
           <button type="button" className="pt-btn is-primary" onClick={() => navigate(ROUTES.auctions)}>
-            <PackageSearch size={15} /> Ver búsquedas públicas
+            <PackageSearch size={15} /> Ver encargos públicos
           </button>
         )}
       </header>
@@ -593,11 +593,11 @@ export default function ProfileAuctionManagementPanel({ embedded = false } = {})
             <MyQuestionsList questions={visibleQuestions} onOpen={(id) => navigate(auctionDetailPath(id))} />
           ) : filter === 'saved' ? (
             visibleSaved.length === 0 ? (
-              <EmptyState label="No tienes solicitudes guardadas. Abre una búsqueda de repuestos y presiona «Guardar» para hacerle seguimiento." />
+              <EmptyState label="No tienes solicitudes guardadas. Abre un encargo de repuestos y presiona «Guardar» para hacerle seguimiento." />
             ) : (
               <div className="pt-table-wrap">
                 <table className="pt-table">
-                  <thead><tr><th>Búsqueda</th><th>Vehículo</th><th>Ofertas</th><th>Estado</th><th>Tiempo restante</th><th /></tr></thead>
+                  <thead><tr><th>Encargo</th><th>Vehículo</th><th>Ofertas</th><th>Estado</th><th>Tiempo restante</th><th /></tr></thead>
                   <tbody>
                     {visibleSaved.map((auction) => (
                       <SavedRow key={auction.id} auction={auction} myOffer={myOfferIds.has(auction.id)} busy={removingId === auction.id} onOpen={(id) => navigate(auctionDetailPath(id))} onRemove={removeSaved} />
@@ -607,7 +607,7 @@ export default function ProfileAuctionManagementPanel({ embedded = false } = {})
               </div>
             )
           ) : visible.length === 0 ? (
-            <EmptyState label={offers.length === 0 ? 'Aún no has enviado ofertas. Entra a las búsquedas de repuestos públicas y ofrece tus repuestos.' : 'No hay propuestas en este filtro.'} />
+            <EmptyState label={offers.length === 0 ? 'Aún no has enviado ofertas. Entra a los encargos de repuestos públicos y ofrece tus repuestos.' : 'No hay propuestas en este filtro.'} />
           ) : isMobile ? (
             <div className="otm-list">
               {visible.map((item) => (
@@ -628,7 +628,7 @@ export default function ProfileAuctionManagementPanel({ embedded = false } = {})
               <div className="pt-table-wrap">
                 <table className="pt-table">
                   <thead>
-                    <tr><th className="pt-col-need">Búsqueda</th><th className="pt-col-vehicle">Vehículo</th><th className="pt-col-state">Estado</th><th className="pt-col-date">Última actividad</th></tr>
+                    <tr><th className="pt-col-need">Encargo</th><th className="pt-col-vehicle">Vehículo</th><th className="pt-col-state">Estado</th><th className="pt-col-date">Última actividad</th></tr>
                   </thead>
                   <tbody>
                     {visible.map((item) => {

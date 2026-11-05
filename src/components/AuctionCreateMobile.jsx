@@ -198,17 +198,17 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
       if (onSuccess) onSuccess(created);
       onClose();
     } catch (err) {
-      setError(err?.message || (isEditing ? 'No pudimos guardar los cambios de tu pedido.' : 'No se pudo publicar la búsqueda de repuestos.'));
+      setError(err?.message || (isEditing ? 'No pudimos guardar los cambios de tu encargo.' : 'No se pudo publicar el encargo de repuestos.'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="am-create" role="dialog" aria-modal="true" aria-label={isEditing ? 'Editar búsqueda' : 'Publicar búsqueda'}>
+    <div className="am-create" role="dialog" aria-modal="true" aria-label={isEditing ? 'Editar encargo' : 'Publicar encargo'}>
       <form className="am-page am-form" onSubmit={submit} noValidate>
         <button type="button" className="am-back" onClick={onClose}><ArrowLeft size={16} /> Volver</button>
-        {(isEditing || template) && <h1 className="am-form-heading">{isEditing ? 'Editar búsqueda de repuestos' : 'Publicar de nuevo tu búsqueda'}</h1>}
+        {(isEditing || template) && <h1 className="am-form-heading">{isEditing ? 'Editar encargo de repuestos' : 'Publicar de nuevo tu encargo'}</h1>}
 
         <section className="am-card">
           <h3 className="am-form-title">1. Datos del vehículo</h3>
@@ -229,7 +229,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
               {!plateVehicle && (
                 <div className="am-tabs" role="tablist" aria-label="Cómo indicar el vehículo">
                   <button type="button" role="tab" aria-selected={vehicleMode === 'plate'} className={vehicleMode === 'plate' ? 'is-active' : ''} onClick={() => setVehicleMode('plate')}>Por patente<RecommendedBadge /></button>
-                  <button type="button" role="tab" aria-selected={vehicleMode === 'manual'} className={vehicleMode === 'manual' ? 'is-active' : ''} onClick={() => setVehicleMode('manual')}>Búsqueda manual</button>
+                  <button type="button" role="tab" aria-selected={vehicleMode === 'manual'} className={vehicleMode === 'manual' ? 'is-active' : ''} onClick={() => setVehicleMode('manual')}>Encargo manual</button>
                 </div>
               )}
               {!plateVehicle && vehicleMode === 'plate' && <PlateBenefitHint />}
@@ -359,7 +359,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
 
         {error && <p className="am-error am-error-box" role="alert">{error}</p>}
         <button type="submit" className="am-btn" disabled={loading}>
-          {loading ? <Loader2 size={18} className="am-spin" /> : null} {isEditing ? 'Guardar cambios' : 'Publicar búsqueda de repuestos'}
+          {loading ? <Loader2 size={18} className="am-spin" /> : null} {isEditing ? 'Guardar cambios' : 'Publicar encargo de repuestos'}
         </button>
       </form>
     </div>

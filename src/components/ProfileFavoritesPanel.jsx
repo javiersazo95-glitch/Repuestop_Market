@@ -26,7 +26,7 @@ const TABS = [
   { id: 'products', label: 'Repuestos', Icon: Package },
   { id: 'talleres', label: 'Talleres', Icon: Wrench },
   { id: 'faults', label: 'Fallas', Icon: Car },
-  { id: 'auctions', label: 'Búsquedas', Icon: PackageSearch },
+  { id: 'auctions', label: 'Encargos', Icon: PackageSearch },
   { id: 'stores', label: 'Casas de repuestos', Icon: Store },
 ];
 
@@ -35,7 +35,7 @@ function EmptySection({ type, onExplore }) {
     products: { Icon: Package, title: 'Aún no guardas repuestos', text: 'Explora el catálogo y toca el corazón de los repuestos que quieras revisar después.', button: 'Explorar repuestos' },
     talleres: { Icon: Wrench, title: 'Aún no guardas talleres', text: 'Guarda talleres para volver a ver sus servicios y reservar rápidamente.', button: 'Explorar talleres' },
     faults: { Icon: Car, title: 'Aún no guardas fallas', text: 'Guarda las fallas automotrices que quieras seguir o diagnosticar más tarde.', button: 'Ver fallas automotrices' },
-    auctions: { Icon: PackageSearch, title: 'Aún no guardas búsquedas', text: 'Abre una búsqueda de repuestos y presiona «Guardar» para tenerla aquí.', button: 'Ver búsquedas' },
+    auctions: { Icon: PackageSearch, title: 'Aún no guardas encargos', text: 'Abre un encargo de repuestos y presiona «Guardar» para tenerlo aquí.', button: 'Ver encargos' },
     stores: { Icon: Store, title: 'Aún no guardas casas de repuestos', text: 'Sigue tus tiendas preferidas para tener siempre su catálogo a mano.', button: 'Explorar casas de repuestos' },
   }[type];
   return (
@@ -56,11 +56,11 @@ function SavedAuctionRow({ auction, onOpen, onRemove }) {
         {auction.fotoPrincipalUrl ? <img src={resolveMediaUrl(auction.fotoPrincipalUrl)} alt="" /> : <PackageSearch size={26} />}
       </span>
       <span className="fav-m-copy">
-        <em className="fav-m-overline">{auction.estado === 'ACTIVA' ? 'Búsqueda activa' : 'Búsqueda cerrada'}</em>
-        <strong>{auction.repuestoSolicitado || 'Búsqueda de repuestos'}</strong>
+        <em className="fav-m-overline">{auction.estado === 'ACTIVA' ? 'Encargo activo' : 'Encargo cerrado'}</em>
+        <strong>{auction.repuestoSolicitado || 'Encargo de repuestos'}</strong>
         <small>{[auction.marca, auction.modelo, auction.anio].filter(Boolean).join(' ') || 'Vehículo no informado'}</small>
       </span>
-      <button type="button" className="fav-m-heart" aria-label={`Quitar la búsqueda ${auction.repuestoSolicitado || ''} de guardadas`} onClick={(e) => { e.stopPropagation(); onRemove(); }}>
+      <button type="button" className="fav-m-heart" aria-label={`Quitar el encargo ${auction.repuestoSolicitado || ''} de guardadas`} onClick={(e) => { e.stopPropagation(); onRemove(); }}>
         <Bookmark size={17} fill="currentColor" />
       </button>
     </div>
@@ -206,7 +206,7 @@ export default function ProfileFavoritesPanel({ userId, productFavorites = [], i
     { type: 'products', title: 'Repuestos favoritos', subtitle: 'Productos que guardaste para revisar o comprar', count: normalizedProducts.length },
     { type: 'talleres', title: 'Talleres favoritos', subtitle: 'Talleres que quieres tener a mano', count: savedTalleres.length },
     { type: 'faults', title: 'Fallas guardadas', subtitle: 'Fallas automotrices que quieres seguir', count: savedFaults.length },
-    { type: 'auctions', title: 'Búsquedas de repuestos guardadas', subtitle: 'Búsquedas a las que quieres hacer seguimiento', count: savedAuctions.length },
+    { type: 'auctions', title: 'Encargos de repuestos guardados', subtitle: 'Encargos a los que quieres hacer seguimiento', count: savedAuctions.length },
     { type: 'stores', title: 'Casas de repuestos favoritas', subtitle: 'Vendedores y catálogos que sigues', count: savedStores.length },
   ];
 
@@ -316,7 +316,7 @@ function FavoritesMobile({
     { id: 'products', label: 'Repuestos', count: products.length },
     { id: 'talleres', label: 'Talleres', count: talleres.length },
     { id: 'faults', label: 'Fallas', count: faults.length },
-    { id: 'auctions', label: 'Búsquedas', count: auctions.length },
+    { id: 'auctions', label: 'Encargos', count: auctions.length },
     { id: 'stores', label: 'Tiendas', count: stores.length },
   ];
 
@@ -456,7 +456,7 @@ function FavoritesMobile({
       {show('auctions') && (
         <section className="fav-m-section">
           <SectionTitle
-            title="Búsquedas guardadas"
+            title="Encargos guardados"
             count={auctions.length}
             actionLabel={tab === 'all' && auctions.length > 2 ? 'Ver todos' : undefined}
             onAction={() => setTab('auctions')}
@@ -468,7 +468,7 @@ function FavoritesMobile({
               ))}
             </div>
           ) : (
-            <EmptyMobile icon={PackageSearch} title="Aún no tienes búsquedas guardadas" text="Abre una búsqueda de repuestos y presiona «Guardar» para tenerla aquí." action="Ver búsquedas" onAction={() => onExplore('auctions')} />
+            <EmptyMobile icon={PackageSearch} title="Aún no tienes encargos guardados" text="Abre un encargo de repuestos y presiona «Guardar» para tenerlo aquí." action="Ver encargos" onAction={() => onExplore('auctions')} />
           )}
         </section>
       )}

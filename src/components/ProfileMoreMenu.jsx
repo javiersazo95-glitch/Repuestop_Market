@@ -21,7 +21,7 @@ const COLORS = {
 };
 
 const SECTIONS_META = {
-  Explorar: { icon: Compass, color: '#0066ff', subtitle: 'Repuestos, talleres, fallas y búsquedas' },
+  Explorar: { icon: Compass, color: '#0066ff', subtitle: 'Repuestos, talleres, fallas y encargos' },
   'Mi actividad': { icon: Activity, color: '#7C3AED', subtitle: 'Lo que tienes en curso' },
   'Gestión del taller': { icon: Hammer, color: '#EA580C', subtitle: 'Tu taller, tus compras y tus citas' },
   Configuración: { icon: Settings, color: '#0D9488', subtitle: 'Tu tienda y tu cuenta' },

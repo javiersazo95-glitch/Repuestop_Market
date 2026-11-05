@@ -5,7 +5,7 @@ import AuctionQuestionsPanel from './AuctionQuestionsPanel';
 import '../styles/auction-questions.css';
 
 /** Popup con todas las preguntas de las tiendas a una búsqueda, donde el comprador las responde. */
-export default function AuctionQuestionsModal({ auctionId, title, eyebrow = 'Comentarios de tu búsqueda', canReply, onPendingChange, onClose }) {
+export default function AuctionQuestionsModal({ auctionId, title, eyebrow = 'Comentarios de tu encargo', canReply, onPendingChange, onClose }) {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const onKey = (event) => { if (event.key === 'Escape') onClose(); };

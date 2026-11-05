@@ -21,7 +21,7 @@ const STATUS_FILTERS = [
 const SOURCE_FILTERS = [
   { value: 'cart', label: 'Carrito' },
   { value: 'quote', label: 'Cotización' },
-  { value: 'auction', label: 'Búsqueda de repuestos' },
+  { value: 'auction', label: 'Encargo de repuestos' },
 ];
 
 const DATE_FILTERS = [
@@ -205,7 +205,7 @@ export default function SellerOrdersPanel({ orders = [], sellerId, onSelectOrder
         <label><ArrowDownUp size={16} /><span>Ordenar</span><select value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="newest">Más nuevos primero</option><option value="oldest">Más antiguos primero</option></select></label>
       </div>
 
-      {!orders.length ? <div className="seller-orders-empty"><span><ShoppingBag size={27} /></span><strong>Aún no hay pedidos pagados</strong><p>Cuando un comprador complete un pago, el pedido aparecerá aquí con su detalle real.</p></div> : !visibleOrders.length ? <div className="seller-orders-empty"><span><SlidersHorizontal size={27} /></span><strong>No encontramos pedidos</strong><p>Ajusta la búsqueda o limpia los filtros para volver a ver tus pedidos.</p><button type="button" onClick={clearFilters}>Limpiar filtros</button></div> : <><div className="profile-orders-cards-grid seller-orders-card-grid">{pageItems.map((order) => <OrderCard key={order.id} order={order} mode="seller" withdrawalDate={withdrawalDatesByOrder[String(order.id)]} onSelectOrder={onSelectOrder} onUpdateStatus={readOnly ? undefined : onUpdateStatus} onRegisterSaleReceipt={readOnly ? undefined : onRegisterSaleReceipt} />)}</div><ListPager pagerProps={pagerProps} itemLabel="pedidos" note={recentOrdersNote(orders.length)} /></>}
+      {!orders.length ? <div className="seller-orders-empty"><span><ShoppingBag size={27} /></span><strong>Aún no hay pedidos pagados</strong><p>Cuando un comprador complete un pago, el pedido aparecerá aquí con su detalle real.</p></div> : !visibleOrders.length ? <div className="seller-orders-empty"><span><SlidersHorizontal size={27} /></span><strong>No encontramos pedidos</strong><p>Ajustal encargo o limpia los filtros para volver a ver tus pedidos.</p><button type="button" onClick={clearFilters}>Limpiar filtros</button></div> : <><div className="profile-orders-cards-grid seller-orders-card-grid">{pageItems.map((order) => <OrderCard key={order.id} order={order} mode="seller" withdrawalDate={withdrawalDatesByOrder[String(order.id)]} onSelectOrder={onSelectOrder} onUpdateStatus={readOnly ? undefined : onUpdateStatus} onRegisterSaleReceipt={readOnly ? undefined : onRegisterSaleReceipt} />)}</div><ListPager pagerProps={pagerProps} itemLabel="pedidos" note={recentOrdersNote(orders.length)} /></>}
     </div>
   );
 }

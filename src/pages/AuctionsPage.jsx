@@ -41,7 +41,7 @@ const TIEMPO_OPTIONS = [
 ];
 
 const SCOPE_OPTIONS = [
-  { value: 'TODAS', label: 'Todas las búsquedas' },
+  { value: 'TODAS', label: 'Todos los encargos' },
   { value: 'CON_OFERTAS', label: 'Con ofertas' },
   { value: 'SIN_OFERTAS', label: 'Sin ofertas' },
   // Solo en "Mis búsquedas": las que tienen ofertas aceptadas esperando el pago.
@@ -198,7 +198,7 @@ function AuctionRow({ auction, status, now, onOpen, pendingQuestions = null, sho
       </div>
 
       <button type="button" className="aw-card-cta" onClick={() => onOpen(auction.id, toPay > 0 ? { offers: true } : undefined)}>
-        {toPay > 0 ? 'Ver ofertas y pagar' : 'Ver búsqueda'} <ArrowRight size={16} />
+        {toPay > 0 ? 'Ver ofertas y pagar' : 'Ver encargo'} <ArrowRight size={16} />
       </button>
     </article>
   );
@@ -269,7 +269,7 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
       setAuctions(data?.content || (Array.isArray(data) ? data : []));
     } catch (err) {
       console.error('Error cargando subastas:', err);
-      if (!silent) setError('No pudimos conectar con el servidor de búsquedas de repuestos. Verifica tu conexión o reintenta.');
+      if (!silent) setError('No pudimos conectar con el servidor de encargos de repuestos. Verifica tu conexión o reintenta.');
     } finally {
       if (!silent) setLoading(false);
     }
@@ -390,7 +390,7 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
   }, [tabMatches, scope, sortBy]);
   // Sin búsquedas propias el mural va primero (muestra que hay actividad); con búsquedas, lo propio abre la lista.
   const tabMural = { value: 'MURAL', label: 'Mural público', count: muralMatches.length };
-  const tabMine = { value: 'MIS', label: 'Mis búsquedas', count: mineMatches.length };
+  const tabMine = { value: 'MIS', label: 'Mis encargos', count: mineMatches.length };
   const tabOffers = { value: 'OFERTAS', label: 'Mis ofertas en curso', count: activeOffersCount };
   const tabs = canSeeMine
     ? (myAuctions.length > 0 ? [tabMine, tabMural] : [tabMural, tabMine])
@@ -549,7 +549,7 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
   // «Mis ofertas en curso»: las mismas pestañas arriba y, debajo, el seguimiento de propuestas (`PropuestasSeguimiento` de la app).
   if (isSellerViewer && tab === 'OFERTAS') {
     const tabStrip = (
-      <div className={isMobile ? 'am-tabs' : 'aw-tabs'} role="tablist" aria-label="Búsqueda de repuestos">
+      <div className={isMobile ? 'am-tabs' : 'aw-tabs'} role="tablist" aria-label="Encargos de repuestos">
         {tabs.map((item) => (
           <button key={item.value} type="button" role="tab" aria-selected={tab === item.value} className={tab === item.value ? 'is-active' : ''} onClick={() => setTab(item.value)}>
             {item.label} ({nf.format(item.count)})
@@ -607,22 +607,22 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
         <nav className="aw-breadcrumb" aria-label="Ruta de navegación">
           <Link to={ROUTES.home}>Inicio</Link>
           <span>/</span>
-          <span aria-current="page">Búsqueda de repuestos</span>
+          <span aria-current="page">Encargos de repuestos</span>
         </nav>
 
         <header className="aw-head">
           <div className="aw-head-text">
-            <h1>Búsqueda de repuestos</h1>
+            <h1>Encargos de repuestos</h1>
             <p>Encuentra solicitudes de compra y ofrece el repuesto que alguien necesita.</p>
           </div>
           {canCreate && (
             <button type="button" className="aw-btn-publish" onClick={handleOpenCreateModal}>
-              <Plus size={18} /> Publicar búsqueda
+              <Plus size={18} /> Publicar encargo
             </button>
           )}
         </header>
 
-        <section className="aw-stats" aria-label="Resumen de búsquedas de repuestos">
+        <section className="aw-stats" aria-label="Resumen de encargos de repuestos">
           <div className="aw-stat">
             <span className="aw-stat-icon is-solid"><FileText size={17} /></span>
             <span><strong>{nf.format(activeCount)}</strong><small>solicitudes activas</small></span>
@@ -642,7 +642,7 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
 
           <section className="aw-main">
             {tabs && (
-              <div className="aw-tabs" role="tablist" aria-label="Búsqueda de repuestos">
+              <div className="aw-tabs" role="tablist" aria-label="Encargos de repuestos">
                 {tabs.map((item) => (
                   <button key={item.value} type="button" role="tab" aria-selected={tab === item.value} className={tab === item.value ? 'is-active' : ''} onClick={() => setTab(item.value)}>
                     {item.label} ({nf.format(item.count)})
@@ -694,7 +694,7 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
             {error ? (
               <div className="aw-empty">
                 <div className="aw-empty-icon is-error"><AlertCircle size={30} /></div>
-                <h3>Error al cargar las búsquedas de repuestos</h3>
+                <h3>Error al cargar los encargos de repuestos</h3>
                 <p>{error}</p>
                 <button type="button" className="aw-btn-publish" onClick={() => loadAuctions()}>Reintentar</button>
               </div>
@@ -705,13 +705,13 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
             ) : visible.length === 0 ? (
               <div className="aw-empty">
                 <div className="aw-empty-icon"><Gavel size={30} /></div>
-                <h3>{tab === 'MIS' && myAuctions.length === 0 ? 'Aún no publicas búsquedas de repuestos' : 'No hay búsquedas de repuestos con estos filtros'}</h3>
-                <p>{tab === 'MIS' && myAuctions.length === 0 ? 'Publica lo que necesitas y aquí verás las ofertas y preguntas de las tiendas.' : 'Prueba cambiando los filtros o publica tú la búsqueda de repuestos para recibir cotizaciones de tiendas verificadas.'}</p>
+                <h3>{tab === 'MIS' && myAuctions.length === 0 ? 'Aún no publicas encargos de repuestos' : 'No hay encargos de repuestos con estos filtros'}</h3>
+                <p>{tab === 'MIS' && myAuctions.length === 0 ? 'Publica lo que necesitas y aquí verás las ofertas y preguntas de las tiendas.' : 'Prueba cambiando los filtros o publica tú el encargo de repuestos para recibir cotizaciones de tiendas verificadas.'}</p>
                 <div className="aw-empty-actions">
                   {activeFiltersCount > 0 && (
                     <button type="button" className="aw-btn-outline" onClick={handleResetFilters}><RotateCcw size={15} /> Limpiar filtros</button>
                   )}
-                  {canCreate && <button type="button" className="aw-btn-publish" onClick={handleOpenCreateModal}><Plus size={16} /> Publicar búsqueda</button>}
+                  {canCreate && <button type="button" className="aw-btn-publish" onClick={handleOpenCreateModal}><Plus size={16} /> Publicar encargo</button>}
                 </div>
               </div>
             ) : (
@@ -755,9 +755,9 @@ export default function AuctionsPage({ embedded = false, initialTab = 'MURAL' })
       </div>
 
       {canCreate && (
-        <MobileStickyBar label="Solicitudes activas" value={nf.format(activeCount)} hint="¿Necesitas un repuesto?" ariaLabel="Publicar una búsqueda">
+        <MobileStickyBar label="Solicitudes activas" value={nf.format(activeCount)} hint="¿Necesitas un repuesto?" ariaLabel="Publicar un encargo">
           <button type="button" className="mobile-sticky-bar__btn" onClick={handleOpenCreateModal}>
-            <Plus size={18} /> Publicar búsqueda
+            <Plus size={18} /> Publicar encargo
           </button>
         </MobileStickyBar>
       )}
