@@ -4,7 +4,9 @@ import { normalizePlate } from '../utils/vehicleLookup';
 import AuctionManualVehicle from './AuctionManualVehicle';
 import { PlateBenefitHint, RecommendedBadge } from './PlateRecommended';
 import usePlateLookup, { maskPlate } from '../utils/usePlateLookup';
-import { getComunasApi, getRegionesApi } from '../services/api';
+import { getAddressesApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import QuickAddressForm from './AuctionQuickAddressForm';
 import { createAuction, updateAuction, uploadAuctionPhoto } from '../services/auctionApi';
 import { resolveMediaUrl } from '../services/api';
 import { MAX_PRICE, MAX_QUANTITY, onlyDigits } from '../utils/inputLimits';
@@ -17,6 +19,8 @@ const TIPO_ENVIO_OPTIONS = ['Despacho a domicilio', 'Retiro en tienda'];
 const MAX_PHOTOS = 5;
 const MAX_ITEMS = 20;
 let itemSeq = 0;
+const NEW_ADDRESS = '__new__';
+const sameLabel = (a, b) => String(a || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase() === String(b || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
 const newItem = (otroVehiculo = false) => ({ key: `item-${++itemSeq}`, nombre: '', cantidad: '1', descripcion: '', otroVehiculo, patente: '' });
 
 
@@ -88,26 +92,47 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
   const [presupuesto, setPresupuesto] = useState(() => (source?.presupuestoMaximo ? String(Math.round(source.presupuestoMaximo)) : ''));
   const [plazo, setPlazo] = useState(() => source?.tiempoMaximoEnvio || '24 horas');
   const [tipoEnvio, setTipoEnvio] = useState(() => (/retiro/i.test(source?.tipoEnvio || '') ? 'Retiro en tienda' : 'Despacho a domicilio'));
-  const [regiones, setRegiones] = useState([]);
-  const [comunas, setComunas] = useState([]);
-  const [regionId, setRegionId] = useState('');
-  const [comunaId, setComunaId] = useState('');
+  // Dirección de entrega: se elige de las guardadas o se agrega una nueva (como en la app). Con retiro en tienda no se pide.
+  const { user } = useAuth();
+  const userId = user?.userId ?? user?.id;
+  const [addresses, setAddresses] = useState([]);
+  const [addressesLoaded, setAddressesLoaded] = useState(false);
+  const [addressChoice, setAddressChoice] = useState('');
+  const knownAddressIds = useRef(new Set());
+  const loadAddresses = useCallback(async () => {
+    if (!userId) { setAddressesLoaded(true); return; }
+    try {
+      const data = await getAddressesApi(userId);
+      const list = Array.isArray(data) ? data : [];
+      const created = list.find((address) => !knownAddressIds.current.has(String(address.id)));
+      const firstLoad = knownAddressIds.current.size === 0;
+      knownAddressIds.current = new Set(list.map((address) => String(address.id)));
+      setAddresses(list);
+      setAddressChoice((current) => {
+        if (!firstLoad && created) return String(created.id);
+        if (current && current !== NEW_ADDRESS && list.some((address) => String(address.id) === current)) return current;
+        const saved = auction?.direccionId != null ? list.find((address) => String(address.id) === String(auction.direccionId)) : null;
+        if (saved) return String(saved.id);
+        const sameComuna = auction?.comuna ? list.find((address) => sameLabel(address.comunaNombre, auction.comuna)) : null;
+        if (sameComuna) return String(sameComuna.id);
+        const main = list.find((address) => address.esPrincipal) || list[0];
+        return main ? String(main.id) : NEW_ADDRESS;
+      });
+    } catch {
+      setAddresses([]);
+      setAddressChoice(NEW_ADDRESS);
+    } finally {
+      setAddressesLoaded(true);
+    }
+  }, [userId]);
+  useEffect(() => { loadAddresses(); }, [loadAddresses]);
+  const selectedAddress = addresses.find((address) => String(address.id) === addressChoice) || null;
+  const esRetiro = /retiro/i.test(tipoEnvio);
+  const ubicacion = selectedAddress || (esRetiro ? addresses.find((address) => address.esPrincipal) || addresses[0] || null : null);
+  const pedirDireccion = !esRetiro || !ubicacion;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    let active = true;
-    getRegionesApi('CL').then((list) => { if (active) setRegiones(Array.isArray(list) ? list : []); }).catch(() => {});
-    return () => { active = false; };
-  }, []);
-
-  useEffect(() => {
-    if (!regionId) { setComunas([]); return undefined; }
-    let active = true;
-    getComunasApi(regionId).then((list) => { if (active) setComunas(Array.isArray(list) ? list : []); }).catch(() => {});
-    return () => { active = false; };
-  }, [regionId]);
 
   useEffect(() => {
     const previous = document.body.style.overflow;
@@ -162,6 +187,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
 
   const submit = async (event) => {
     event.preventDefault();
+    if (!ubicacion) { setError('Registra una dirección para publicar tu encargo: la usamos para ubicarlo y para que las tiendas sepan si despachan a tu comuna.'); return; }
     if (!manualVehicle && !vehicle?.chasis) { setError('Ingresa la patente de tu vehículo o usa la búsqueda manual.'); return; }
     const blank = items.findIndex((item) => !item.nombre.trim());
     if (blank >= 0) { setError(`Indica el nombre del repuesto ${blank + 1}.`); return; }
@@ -195,8 +221,9 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
         tiempoMaximoEnvio: plazo,
         tipoEnvio,
         presupuestoMaximo: presupuesto ? parseFloat(presupuesto) : undefined,
-        region: regiones.find((r) => String(r.id) === String(regionId))?.nombre || undefined,
-        comuna: comunas.find((c) => String(c.id) === String(comunaId))?.nombre || undefined,
+        region: ubicacion?.regionNombre || undefined,
+        comuna: ubicacion?.comunaNombre || undefined,
+        direccionId: !esRetiro && selectedAddress ? Number(selectedAddress.id) : undefined,
         fotos,
       };
       const created = isEditing ? await updateAuction(auction.id, payload) : await createAuction(payload);
@@ -348,18 +375,24 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
               {TIPO_ENVIO_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </Field>
-          <Field label="Región">
-            <select value={regionId} onChange={(event) => { setRegionId(event.target.value); setComunaId(''); }}>
-              <option value="">Selecciona una región</option>
-              {regiones.map((region) => <option key={region.id} value={region.id}>{region.nombre}</option>)}
-            </select>
-          </Field>
-          <Field label="Comuna">
-            <select value={comunaId} onChange={(event) => setComunaId(event.target.value)} disabled={!regionId}>
-              <option value="">{regionId ? 'Selecciona una comuna' : 'Elige una región primero'}</option>
-              {comunas.map((comuna) => <option key={comuna.id} value={comuna.id}>{comuna.nombre}</option>)}
-            </select>
-          </Field>
+          {pedirDireccion ? (
+            <>
+              <Field label="Dirección de entrega">
+                <select value={addressChoice} disabled={!addressesLoaded} onChange={(event) => setAddressChoice(event.target.value)}>
+                  {!addressesLoaded && <option value="">Cargando tus direcciones…</option>}
+                  {addresses.map((address) => (
+                    <option key={address.id} value={String(address.id)}>
+                      {address.calleYNumero} · {[address.comunaNombre, address.regionNombre].filter(Boolean).join(', ')}{address.esPrincipal ? ' (principal)' : ''}
+                    </option>
+                  ))}
+                  <option value={NEW_ADDRESS}>+ Agregar una dirección nueva</option>
+                </select>
+              </Field>
+              {addressChoice === NEW_ADDRESS && <QuickAddressForm userId={userId} onCreated={loadAddresses} />}
+            </>
+          ) : (
+            <p className="am-muted">Retiras en la tienda: no necesitas indicar una dirección de entrega.</p>
+          )}
         </section>
 
         {error && <p className="am-error am-error-box" role="alert">{error}</p>}

@@ -6,10 +6,10 @@ import {
 import { normalizePlate } from '../utils/vehicleLookup';
 import usePlateLookup, { maskPlate } from '../utils/usePlateLookup';
 import { shippingClass } from '../utils/auctionOfferFit';
-import { createAddressApi, getAddressesApi, resolveMediaUrl } from '../services/api';
-import { resolverUbicacionPorNombre } from '../services/geoLookup';
+import { getAddressesApi, resolveMediaUrl } from '../services/api';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import AuctionCreateMobile from './AuctionCreateMobile';
+import QuickAddressForm from './AuctionQuickAddressForm';
 import AuctionManualVehicle from './AuctionManualVehicle';
 import { PlateBenefitHint, RecommendedBadge } from './PlateRecommended';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -141,61 +141,6 @@ function ItemEditor({ item, index, canRemove, forLabel, onChange, onRemove, onVe
   );
 }
 
-/** Alta mínima de una dirección: un solo campo con sugerencias; la comuna y la región salen de la sugerencia elegida. */
-function QuickAddressForm({ userId, onCreated }) {
-  const [text, setText] = useState('');
-  const [place, setPlace] = useState(null);   // { comunaId, comunaNombre, regionNombre } de la sugerencia elegida
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
-
-  const pickSuggestion = async ({ comuna, region }) => {
-    const resolved = await resolverUbicacionPorNombre({ comuna, region });
-    setPlace(resolved.comunaId ? { comunaId: resolved.comunaId, comunaNombre: comuna, regionNombre: region || '' } : null);
-  };
-
-  const save = async () => {
-    if (!text.trim() || !place) {
-      setError('Escribe la dirección y elige una de las sugerencias para ubicar la comuna.');
-      return;
-    }
-    setSaving(true);
-    setError('');
-    try {
-      await createAddressApi(userId, {
-        comunaId: Number(place.comunaId),
-        comunaNombre: place.comunaNombre || '',
-        regionNombre: place.regionNombre || '',
-        calleYNumero: text.trim(),
-        tipoDireccion: 'PERSONAL',
-      });
-      setText('');
-      setPlace(null);
-      await onCreated();
-    } catch (err) {
-      setError(err?.message || 'No pudimos guardar la dirección.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="acv-quick-address">
-      <AddressAutocompleteInput
-        value={text}
-        onChange={(value) => { setText(value); setPlace(null); }}
-        onSelectLocation={pickSuggestion}
-        requireComuna={false}
-        placeholder="Calle y número, comuna (Ej: Av. Italia 1234, Ñuñoa)"
-      />
-      <button type="button" className="ft-btn ft-btn-primary" onClick={save} disabled={saving || !text.trim()}>
-        {saving ? 'Guardando…' : 'Guardar'}
-      </button>
-      {place && <small className="acv-address-note">Comuna: <strong>{[place.comunaNombre, place.regionNombre].filter(Boolean).join(', ')}</strong></small>}
-      {error && <small className="acv-address-error">{error}</small>}
-    </div>
-  );
-}
-
 /** Un encargo ya publicado vuelve a ser el formulario: cada repuesto conserva su nombre, categoría, mensaje y patente. */
 function itemsFromAuction(auction) {
   const list = (auction?.items || []).map((item) => ({
@@ -277,6 +222,11 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
   const [tiempoVigenciaHoras, setTiempoVigenciaHoras] = useState(() => source?.tiempoVigenciaHoras || 48);
   const [tiempoMaximoEnvio, setTiempoMaximoEnvio] = useState(() => source?.tiempoMaximoEnvio || '24 horas');
   const [tipoEnvio, setTipoEnvio] = useState(() => (source?.tipoEnvio && shippingClass(source.tipoEnvio) === 'pickup' ? 'Retiro en tienda' : 'Despacho a domicilio'));
+  // Retiro en tienda: no hay dirección de entrega (se retira en la tienda). El encargo se ubica con la dirección principal y el
+  // selector solo aparece si aún no hay ninguna con la que ubicarlo.
+  const esRetiro = /retiro/i.test(tipoEnvio);
+  const ubicacion = esRetiro ? (addresses.find((address) => address.esPrincipal) || addresses[0] || savedLocation || mainAddress) : mainAddress;
+  const pedirDireccion = !esRetiro || !ubicacion;
   const [presupuestoMaximo, setPresupuestoMaximo] = useState(() => (source?.presupuestoMaximo ? String(Math.round(source.presupuestoMaximo)) : ''));
 
   const [fotos, setFotos] = useState(() => source?.fotos || []);
@@ -345,7 +295,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!mainAddress) {
+    if (!ubicacion) {
       setError('Registra una dirección para publicar tu encargo: la usamos para ubicarlo y para que las tiendas sepan si despachan a tu comuna.');
       return;
     }
@@ -396,9 +346,9 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
       tiempoMaximoEnvio,
       tipoEnvio,
       presupuestoMaximo: presupuestoMaximo ? parseFloat(presupuestoMaximo) : undefined,
-      region: mainAddress?.regionNombre || undefined,
-      comuna: mainAddress?.comunaNombre || undefined,
-      direccionId: mainAddress?.id != null ? Number(mainAddress.id) : undefined,
+      region: ubicacion?.regionNombre || undefined,
+      comuna: ubicacion?.comunaNombre || undefined,
+      direccionId: !esRetiro && mainAddress?.id != null ? Number(mainAddress.id) : undefined,
       fotos,
     };
 
@@ -589,6 +539,8 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
           <p className="ft-hint">
             Las tiendas de tu comuna podrán ofrecerte retiro en tienda o despacho dentro de la comuna (con el costo del envío). Las de otras comunas solo podrán ofrecer despacho a domicilio por pagar (courier): el envío lo pagas aparte.
           </p>
+          {pedirDireccion ? (
+            <>
           <label className="ft-field">
             <span>Dirección de entrega <small>Obligatoria</small></span>
             <select
@@ -615,11 +567,15 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
           {addressChoice === NEW_ADDRESS && (
             <QuickAddressForm userId={userId} onCreated={loadAddresses} />
           )}
+            </>
+          ) : (
+            <p className="ft-hint">Retiras en la tienda: no necesitas indicar una dirección de entrega.</p>
+          )}
         </FormSection>
 
         {error && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}
         <div className="ft-actions">
-          <button type="submit" disabled={loading || !vehicle || !mainAddress || !hasChanges} className="ft-btn ft-btn-primary" title={!mainAddress ? 'Registra una dirección para publicar' : (!hasChanges ? 'Modifica algo para guardar los cambios' : undefined)}>
+          <button type="submit" disabled={loading || !vehicle || !ubicacion || !hasChanges} className="ft-btn ft-btn-primary" title={!ubicacion ? 'Registra una dirección para publicar' : (!hasChanges ? 'Modifica algo para guardar los cambios' : undefined)}>
             {loading ? (isEditing ? 'Guardando…' : 'Publicando…') : `${isEditing ? 'Guardar cambios' : 'Publicar encargo'} (${items.length} ${items.length === 1 ? 'repuesto' : 'repuestos'})`}
           </button>
           <button type="button" onClick={onClose} disabled={loading} className="ft-btn ft-btn-outline">Cancelar</button>
