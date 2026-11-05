@@ -110,7 +110,7 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
           <TrackingCells cells={[
             { label: 'Tu presupuesto', value: budget ? (total <= budget ? `Dentro (${formatCLP(budget)})` : `Sobre en ${formatCLP(total - budget)}`) : 'Sin tope', tone: budget ? (total <= budget ? 'ok' : 'bad') : undefined },
             { label: 'Precio', value: pricePosition < 0 ? '—' : pricePosition === 0 ? `La más baja de ${comparable.length}` : `${pricePosition + 1}ª de ${comparable.length}`, tone: pricePosition === 0 ? 'ok' : undefined },
-            { label: 'Plazo', value: fastest ? 'Entre las más rápidas' : quote.tiempoEntrega || '—', tone: fastest ? 'ok' : undefined },
+            { label: 'Despacho', value: fastest ? 'Entre las más rápidas' : quote.tiempoEntrega || '—', tone: fastest ? 'ok' : undefined },
           ]} />
           {vsCheapest > 0 && <small className="ofd-muted">{`${formatCLP(vsCheapest)} más que la oferta más baja (${cheapest?.nombreTienda}).`}</small>}
           {average > 0 && comparable.length > 1 && <small className="ofd-muted">{`Promedio de las ${comparable.length} ofertas: ${formatCLP(average)}.`}</small>}
@@ -133,8 +133,8 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
 
         <div className="ofd-card">
           <Section icon={FileText} title="Condiciones">
-            <TrackingCells cells={[{ label: 'Disponibilidad', value: availabilityLabel(quote.disponibilidadDias) || '—', tone: quote.disponibilidadDias > 0 ? 'primary' : undefined }, { label: 'Plazo de entrega', value: quote.tiempoEntrega || '—' }]} />
-            {availabilitySentence(quote.disponibilidadDias) && <p className="trk-note">{availabilitySentence(quote.disponibilidadDias)} El plazo de entrega corre desde ese momento.</p>}
+            <TrackingCells cells={[{ label: 'Disponibilidad', value: availabilityLabel(quote.disponibilidadDias) || '—', tone: quote.disponibilidadDias > 0 ? 'primary' : undefined }, { label: 'Despacho', value: quote.tiempoEntrega || '—' }]} />
+            {availabilitySentence(quote.disponibilidadDias) && <p className="trk-note">{availabilitySentence(quote.disponibilidadDias)} El despacho corre desde ese momento.</p>}
             <TrackingCells cells={[{ label: 'Método de entrega', value: quote.tipoEntrega || '—' }]} />
             <TrackingCells cells={[{ label: 'Garantía', value: quote.garantia || '—' }, { label: 'Vigencia de la oferta', value: offerValidityLabel(quote) }]} />
           </Section>

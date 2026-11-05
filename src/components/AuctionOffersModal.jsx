@@ -285,7 +285,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
               {quote.costoEnvio > 0 && <div><dt>Costo de envío</dt><dd>{money(quote.costoEnvio)}</dd></div>}
               {quote.envioPorPagar && <div><dt>Costo de envío</dt><dd>Por pagar</dd></div>}
               <div><dt>Disponibilidad</dt><dd>{availabilityLabel(quote.disponibilidadDias) || '—'}</dd></div>
-              <div><dt>Plazo</dt><dd>{quote.tiempoEntrega || '—'}</dd></div>
+              <div><dt>Despacho</dt><dd>{quote.tiempoEntrega || '—'}</dd></div>
               <div><dt>Garantía</dt><dd>{quote.garantia || 'Garantía legal'}</dd></div>
               <div><dt>Vigencia</dt><dd>{offerValidityLabel(quote)}</dd></div>
             </dl>
@@ -321,7 +321,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
             {quote.costoEnvio > 0 && <Term label="Costo del envío" value={`${money(quote.costoEnvio)} (se suma al total al pagar)`} />}
             {quote.envioPorPagar && <Term label="Costo del envío" value="Por pagar: no está incluido en el total" />}
             <Term label="Disponibilidad" value={availabilitySentence(quote.disponibilidadDias) || availabilityLabel(quote.disponibilidadDias)} />
-            <Term label="Plazo de entrega" value={quote.tiempoEntrega} />
+            <Term label="Despacho" value={quote.tiempoEntrega} />
             <Term label="Garantía" value={quote.garantia || 'Garantía legal'} />
             <Term label="Vigencia de la oferta" value={offerValidityLabel(quote)} />
           </dl>
@@ -666,7 +666,7 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
             {fullScreen && (
               <div className="ao-table-head" role="row">
                 <span>N.º</span><span>Tienda</span><span>Repuestos (cubre / faltan)</span>
-                <span className="is-right">Total</span><span>Plazo</span><span>Entrega</span><span>Garantía</span><span>Cumplimiento</span><span /><span />
+                <span className="is-right">Total</span><span>Despacho</span><span>Entrega</span><span>Garantía</span><span>Cumplimiento</span><span /><span />
               </div>
             )}
             {pageOffers.map((quote, offerIndex) => {
