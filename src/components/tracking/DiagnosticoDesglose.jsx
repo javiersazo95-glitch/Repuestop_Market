@@ -5,8 +5,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { CalendarDays, CheckCircle2, ChevronRight, Flag, Loader2, Lock, MessagesSquare, Send, Stethoscope, X, Zap } from 'lucide-react';
 import { acceptFaultDiagnosis, commentFault, getFault, priceRange, timeSince } from '../../services/faultApi';
 import { fetchMyAppointments, fetchTaller } from '../../services/talleresStorage';
+import TallerAvatar from '../TallerAvatar';
 import { profilePath, workshopPath } from '../../routes/paths';
-import { resolveMediaUrl } from '../../services/api';
 import BookingModal from '../talleres/BookingModal';
 import ContextualReportButton from '../ContextualReportButton';
 
@@ -112,7 +112,7 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
         <div className="ft-modal-head"><h2><Lock size={16} /> Diagnóstico privado</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={onClose}><X size={20} /></button></div>
 
         <div className="dsg-who">
-          <span className="dsg-avatar">{(diagnosis.autorFotoUrl || taller?.logoUrl) ? <img src={resolveMediaUrl(diagnosis.autorFotoUrl || taller?.logoUrl)} alt="" /> : (diagnosis.autor || 'T').slice(0, 1).toUpperCase()}</span>
+          <span className="dsg-avatar"><TallerAvatar src={diagnosis.autorFotoUrl || taller?.logoUrl} name={diagnosis.autor || 'T'} tallerId={taller?.tallerId} /></span>
           <div>
             <strong>{diagnosis.autor}</strong>
             <small>{['Taller', taller?.comuna].filter(Boolean).join(' · ')}</small>

@@ -155,7 +155,7 @@ export function FaultCommentsModal({ fault, vehicle, canReply, onChanged, onClos
               {visible.map((question) => (
                 <li key={question.id}>
                   <button type="button" className={`qq-item ${selected?.id === question.id ? 'is-selected' : ''}`} onClick={() => { setSelectedId(question.id); setMobileDetail(true); setText(''); setError(''); }}>
-                    <TallerAvatar className="qq-avatar" src={photoOf(question)} name={question.autor || ''} />
+                    <TallerAvatar className="qq-avatar" src={photoOf(question)} name={question.autor || ''} tallerId={question.taller?.tallerId} />
                     <span className="qq-item-main">
                       <span className="qq-item-top"><strong>{question.autor || 'Taller'}</strong><small>{formatDate(question.createdAt)}</small></span>
                       <span className="qq-item-text">{question.texto}</span>
@@ -173,7 +173,7 @@ export function FaultCommentsModal({ fault, vehicle, canReply, onChanged, onClos
             <>
               <button type="button" className="qq-back" onClick={() => setMobileDetail(false)}><ArrowLeft size={15} /> Volver a la lista</button>
               <article className="qq-question">
-                <TallerAvatar className="qq-avatar is-lg" src={photoOf(selected)} name={selected.autor || ''} />
+                <TallerAvatar className="qq-avatar is-lg" src={photoOf(selected)} name={selected.autor || ''} tallerId={selected.taller?.tallerId} />
                 <div>
                   <p className="qq-who"><strong>{selected.autor || 'Taller'}</strong> <ProfileChip taller={selected.taller} name={selected.autor} /> <small>{formatDate(selected.createdAt)}</small></p>
                   {selected.taller && <span className="fom-sub"><TallerRating rating={selected.taller.calificacion} count={selected.taller.opiniones} />{selected.taller.comuna && <span><MapPin size={12} /> {selected.taller.comuna}</span>}</span>}
@@ -269,7 +269,7 @@ export function FaultDiagnosesModal({ fault, vehicle, canAct, onChanged, onClose
             {diagnoses.map((diagnosis) => (
               <li key={diagnosis.id}>
                 <button type="button" className={`qq-item ${selected?.id === diagnosis.id ? 'is-selected' : ''}`} onClick={() => { setSelectedId(diagnosis.id); setMobileDetail(true); }}>
-                  <TallerAvatar className="qq-avatar" src={photoOf(diagnosis)} name={diagnosis.autor || ''} />
+                  <TallerAvatar className="qq-avatar" src={photoOf(diagnosis)} name={diagnosis.autor || ''} tallerId={diagnosis.taller?.tallerId} />
                   <span className="qq-item-main">
                     <span className="qq-item-top"><strong>{diagnosis.autor}</strong><small>{timeSince(diagnosis.createdAt)}</small></span>
                     <span className="qq-item-text">{priceRange(diagnosis.precioDesde, diagnosis.precioHasta) || diagnosis.texto}</span>
@@ -286,7 +286,7 @@ export function FaultDiagnosesModal({ fault, vehicle, canAct, onChanged, onClose
             <>
               <button type="button" className="qq-back" onClick={() => setMobileDetail(false)}><ArrowLeft size={15} /> Volver a la lista</button>
               <article className="qq-question">
-                <TallerAvatar className="qq-avatar is-lg" src={photoOf(selected)} name={selected.autor || ''} />
+                <TallerAvatar className="qq-avatar is-lg" src={photoOf(selected)} name={selected.autor || ''} tallerId={selected.taller?.tallerId} />
                 <div>
                   <p className="qq-who"><strong>{selected.autor}</strong> <ProfileChip taller={selected.taller} name={selected.autor} /> <small>{formatDate(selected.createdAt)}</small></p>
                   {selected.taller && <span className="fom-sub"><TallerRating rating={selected.taller.calificacion} count={selected.taller.opiniones} />{selected.taller.comuna && <span><MapPin size={12} /> {selected.taller.comuna}</span>}</span>}

@@ -125,7 +125,7 @@ export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPe
             {visible.map((question) => (
               <li key={question.id}>
                 <button type="button" className={`qq-item ${selected?.id === question.id ? 'is-selected' : ''}`} onClick={() => select(question)}>
-                  <AuctionAvatar className="qq-avatar" src={question.autorFotoUrl} name={question.autor || ''} isStore={question.autorEsTienda} />
+                  <AuctionAvatar className="qq-avatar" src={question.autorFotoUrl} name={question.autor || ''} isStore={question.autorEsTienda} storeId={commentStoreId(question, [])} />
                   <span className="qq-item-main">
                     <span className="qq-item-top"><strong>{question.autor || 'Tienda'}</strong><small>{formatDate(question.createdAt)}</small></span>
                     <span className="qq-item-text">{question.texto}</span>
@@ -144,7 +144,7 @@ export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPe
             <button type="button" className="qq-back" onClick={() => setMobileDetail(false)}><ArrowLeft size={15} /> Volver a la lista</button>
             <article className="qq-question">
               <StoreProfileLink storeId={commentStoreId(selected, [])} name={selected.autor}>
-                <AuctionAvatar className="qq-avatar is-lg" src={selected.autorFotoUrl} name={selected.autor || ''} isStore={selected.autorEsTienda} />
+                <AuctionAvatar className="qq-avatar is-lg" src={selected.autorFotoUrl} name={selected.autor || ''} isStore={selected.autorEsTienda} storeId={commentStoreId(selected, [])} />
               </StoreProfileLink>
               <div>
                 <p className="qq-who"><StoreProfileLink storeId={commentStoreId(selected, [])} name={selected.autor} showLabel><strong>{selected.autor || 'Tienda'}</strong></StoreProfileLink> pregunta <small>{formatDate(selected.createdAt)}</small></p>

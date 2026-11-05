@@ -172,7 +172,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
         <div className="ao-row" role="row">
           <span className="ao-col-n" role="cell">{index + 1}</span>
           <div className="ao-row-store" role="cell">
-            <AuctionAvatar className="ao-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+            <AuctionAvatar className="ao-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore storeId={quote.proveedorId} />
             <div>
               <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda} showLabel><strong title={quote.nombreTienda}>{quote.nombreTienda}</strong></StoreProfileLink>
               <small><Star size={11} className={quote.tiendaRating ? 'is-rated' : ''} /> {quote.tiendaRating ? Number(quote.tiendaRating).toFixed(1) : 'Sin evaluaciones'} · {formatShortDate(quote.fechaEnvio)}</small>
@@ -217,10 +217,10 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
             onKeyDown={(event) => event.stopPropagation()}
             aria-label={`Ver foto de ${quote.nombreTienda || 'la tienda'}`}
           >
-            <AuctionAvatar className="ao-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+            <AuctionAvatar className="ao-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore storeId={quote.proveedorId} />
           </button>
         ) : (
-          <AuctionAvatar className="ao-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+          <AuctionAvatar className="ao-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore storeId={quote.proveedorId} />
         )}
         <div className="ao-offer-store">
           <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda} showLabel><strong>{quote.nombreTienda}</strong></StoreProfileLink>

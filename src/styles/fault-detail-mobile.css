@@ -120,3 +120,4 @@
 .ftd-viewer-close { position: absolute; top: 12px; right: 12px; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.16); color: #fff; }
 .ftd-viewer-nav { display: flex; align-items: center; gap: 16px; color: #fff; font-size: 13px; }
 .ftd-viewer-nav button { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: rgba(255, 255, 255, 0.16); color: #fff; }
+.ftd-avatar .as-avatar-box { width: 100%; height: 100%; border-radius: 50%; font-size: inherit; }

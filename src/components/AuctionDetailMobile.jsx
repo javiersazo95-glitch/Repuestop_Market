@@ -401,7 +401,7 @@ export default function AuctionDetailMobile({
           return (
             <div key={comment.id} className="am-comment">
               <StoreProfileLink storeId={storeId} name={comment.autor}>
-                <AuctionAvatar className="am-comment-avatar" src={comment.autorFotoUrl} name={comment.autor || ''} isStore={Boolean(comment.autorEsTienda)} />
+                <AuctionAvatar className="am-comment-avatar" src={comment.autorFotoUrl || (comment.autorEsTienda ? cotizaciones.find((quote) => String(quote.proveedorId) === String(storeId))?.tiendaLogoUrl : null)} name={comment.autor || ''} isStore={Boolean(comment.autorEsTienda)} storeId={comment.autorEsTienda ? storeId : null} />
               </StoreProfileLink>
               <div>
                 <strong>
@@ -483,7 +483,7 @@ export default function AuctionDetailMobile({
                 {/* Avatar y nombre abren el perfil de la tienda (como la app); sin identificador, el avatar amplía su foto. */}
                 {quote.proveedorId ? (
                   <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda}>
-                    <AuctionAvatar className="am-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+                    <AuctionAvatar className="am-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore storeId={quote.proveedorId} />
                   </StoreProfileLink>
                 ) : quote.tiendaLogoUrl ? (
                   <button
@@ -492,10 +492,10 @@ export default function AuctionDetailMobile({
                     onClick={() => setViewer({ photos: [resolveMediaUrl(quote.tiendaLogoUrl)], index: 0, title: quote.nombreTienda })}
                     aria-label={`Ver foto de ${quote.nombreTienda || 'la tienda'}`}
                   >
-                    <AuctionAvatar className="am-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+                    <AuctionAvatar className="am-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore storeId={quote.proveedorId} />
                   </button>
                 ) : (
-                  <AuctionAvatar className="am-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+                  <AuctionAvatar className="am-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore storeId={quote.proveedorId} />
                 )}
                 <div className="am-offer-text">
                   <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda} className="am-profile-link" showLabel><strong>{quote.nombreTienda || 'Tienda verificada'}</strong></StoreProfileLink>

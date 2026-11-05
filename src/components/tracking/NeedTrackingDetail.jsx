@@ -3,6 +3,7 @@ import { availabilityLabel } from '../../utils/availability';
 import { ChevronRight, CircleHelp, Loader2, Tags, XCircle } from 'lucide-react';
 import { getAuctionComments, getAuctionDetail, postAuctionComment, rejectAuctionOffer } from '../../services/auctionApi';
 import ConfirmDialog from '../ConfirmDialog';
+import AuctionAvatar from '../AuctionAvatar';
 import StoreProfileLink, { commentStoreId } from '../StoreProfileLink';
 import OfferFullDetail, { quoteStatus } from './OfferFullDetail';
 import { TrackingCells, TrackingItem, TrackingSection, TrackingTag } from './TrackingDetail';
@@ -96,6 +97,7 @@ export default function NeedTrackingDetail({ auctionId, newOffers, onChanged }) 
           return (
             <TrackingItem key={quote.id} highlight={isNew}>
               <div className="trk-head">
+                <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda}><AuctionAvatar className="trk-store-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore storeId={quote.proveedorId} /></StoreProfileLink>
                 <StoreProfileLink storeId={quote.proveedorId} name={quote.nombreTienda} className="trk-head-name"><strong>{quote.nombreTienda}</strong></StoreProfileLink>
                 {isNew && <TrackingTag label="Nueva" tone="info" />}
                 <TrackingTag label={state.label} tone={state.tone} />
@@ -121,7 +123,7 @@ export default function NeedTrackingDetail({ auctionId, newOffers, onChanged }) 
         <TrackingSection icon={CircleHelp} title="Preguntas por responder" count={pendingQuestions.length}>
           {pendingQuestions.map((question) => (
             <TrackingItem key={question.id} highlight>
-              <div className="trk-head"><StoreProfileLink storeId={commentStoreId(question, auction.cotizaciones)} name={question.autor} className="trk-head-name"><strong>{question.autor}</strong></StoreProfileLink><time>{formatWhen(question.createdAt)}</time></div>
+              <div className="trk-head"><StoreProfileLink storeId={commentStoreId(question, auction.cotizaciones)} name={question.autor}><AuctionAvatar className="trk-store-avatar" src={question.autorFotoUrl} name={question.autor} isStore storeId={commentStoreId(question, auction.cotizaciones)} /></StoreProfileLink><StoreProfileLink storeId={commentStoreId(question, auction.cotizaciones)} name={question.autor} className="trk-head-name"><strong>{question.autor}</strong></StoreProfileLink><time>{formatWhen(question.createdAt)}</time></div>
               <p>{question.texto}</p>
               {open && (
                 <div className="trk-reply">

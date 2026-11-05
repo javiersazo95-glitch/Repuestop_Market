@@ -134,3 +134,8 @@
 .trk-head a.trk-head-name { display: flex; align-items: center; gap: 4px; }
 .trk-head a.trk-head-name strong { flex: 0 1 auto; min-width: 0; }
 .trk-head a.trk-head-name::after { content: 'Ver perfil ›'; flex: none; color: var(--ak-primary, #0066ff); font-size: 11px; font-weight: 700; }
+
+/* Foto de perfil de la tienda o del taller siempre visible (con respaldo al perfil público). */
+.trk-head .trk-store-avatar { flex: none; width: 28px; height: 28px; font-size: 12px; }
+.ofd-logo .as-avatar-box, .ofd-logo .ofd-logo-img { width: 100%; height: 100%; border-radius: inherit; }
+.dsg-avatar .as-avatar-box, .ftd-avatar .as-avatar-box { width: 100%; height: 100%; border-radius: 50%; font-size: inherit; }

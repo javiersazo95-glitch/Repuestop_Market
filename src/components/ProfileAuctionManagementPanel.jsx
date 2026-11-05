@@ -14,6 +14,7 @@ import { auctionDetailPath, profileOrderPath, ROUTES } from '../routes/paths';
 import { useAuth } from '../context/AuthContext';
 import AuctionQuoteModal from './AuctionQuoteModal';
 import AuctionAvatar from './AuctionAvatar';
+import { commentStoreId } from './StoreProfileLink';
 import { EmptyState } from './ProfileDashboard';
 import { useIsMobile } from '../hooks/useIsMobile';
 import { useTrackingSeen } from '../hooks/useTrackingSeen';
@@ -183,7 +184,7 @@ function PublicQuestions({ auctionId, isOpen }) {
         <ul className="pt-comment-list">
           {comments.filter((comment) => comment.respondeAId == null || !comments.some((c) => c.id === comment.respondeAId)).map((comment) => (
             <li key={comment.id} className={comment.autorEsComprador ? 'is-buyer' : comment.autorEsTienda ? 'is-store' : ''}>
-              <AuctionAvatar className="pt-avatar" src={comment.autorFotoUrl} name={comment.autor || ''} isStore={comment.autorEsTienda} />
+              <AuctionAvatar className="pt-avatar" src={comment.autorFotoUrl} name={comment.autor || ''} isStore={comment.autorEsTienda} storeId={commentStoreId(comment, [])} />
               <div>
                 <p><strong>{comment.autorEsComprador ? 'Comentario del comprador' : comment.autor || 'Tienda'}</strong> <small>{formatDateTime(comment.createdAt)}</small></p>
                 <p>{comment.texto}</p>

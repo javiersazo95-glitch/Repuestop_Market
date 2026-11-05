@@ -79,7 +79,7 @@ export default function FallaTrackingDetail({ faultId, vigente, newDiagnoses, on
           return (
             <TrackingItem key={diagnosis.id} highlight={index < newDiagnoses}>
               <div className="trk-diag-top">
-                <TallerAvatar className="trk-diag-avatar" src={diagnosis.autorFotoUrl || diagnosis.taller?.logoUrl} name={diagnosis.autor} />
+                <TallerAvatar className="trk-diag-avatar" src={diagnosis.autorFotoUrl || diagnosis.taller?.logoUrl} name={diagnosis.autor} tallerId={diagnosis.taller?.tallerId} />
                 <div>
                   <strong>{diagnosis.autor}</strong>
                   <small>{[diagnosis.taller?.comuna, timeSince(diagnosis.createdAt)].filter(Boolean).join(' · ')}</small>

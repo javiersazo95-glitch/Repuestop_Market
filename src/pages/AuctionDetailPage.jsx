@@ -66,7 +66,7 @@ function ratingText(rating) {
 
 /** Avatar de la tienda; si tiene foto se puede tocar para verla en grande. */
 function StoreAvatar({ quote, onViewPhoto }) {
-  const avatar = <AuctionAvatar className="av-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />;
+  const avatar = <AuctionAvatar className="av-offer-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore storeId={quote.proveedorId} />;
   if (!quote.tiendaLogoUrl) return avatar;
   return (
     <button
@@ -526,7 +526,7 @@ export default function AuctionDetailPage() {
                 {cotizaciones.length > 0 && (
                   <span className="av-offers-stack" aria-hidden="true">
                     {cotizaciones.slice(0, 4).map((quote) => (
-                      <AuctionAvatar key={quote.id} className="av-offers-stack-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore />
+                      <AuctionAvatar key={quote.id} className="av-offers-stack-avatar" src={quote.tiendaLogoUrl} name={quote.nombreTienda} isStore storeId={quote.proveedorId} />
                     ))}
                   </span>
                 )}

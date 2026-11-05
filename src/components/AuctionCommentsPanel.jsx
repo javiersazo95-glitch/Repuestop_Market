@@ -108,7 +108,7 @@ export default function AuctionCommentsPanel({ auctionId, title = '', isOpen, ca
         <ul className="as-comment-list">
           <li key={latest.id} className="as-comment">
             <StoreProfileLink storeId={commentStoreId(latest, quotes)} name={latest.autor}>
-              <AuctionAvatar className="as-comment-avatar" src={latest.autorFotoUrl} name={latest.autor} isStore={latest.autorEsTienda} />
+              <AuctionAvatar className="as-comment-avatar" src={latest.autorFotoUrl} name={latest.autor} isStore={latest.autorEsTienda} storeId={commentStoreId(latest, quotes)} />
             </StoreProfileLink>
             <div className="as-comment-body">
               <div className="as-comment-head">

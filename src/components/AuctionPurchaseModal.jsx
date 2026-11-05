@@ -82,7 +82,7 @@ export default function AuctionPurchaseModal({ isOpen, onClose, auctionId, onSee
           {stores.map((store) => (
             <article key={store.cotizacionId} className={`ap-store ${store.pagada ? 'is-paid' : ''}`}>
               <header className="ap-store-head">
-                <AuctionAvatar className="ap-store-avatar" src={store.tiendaLogoUrl} name={store.tienda} isStore />
+                <AuctionAvatar className="ap-store-avatar" src={store.tiendaLogoUrl} name={store.tienda} isStore storeId={store.proveedorId ?? store.tiendaId} />
                 <div>
                   <strong>{store.tienda}</strong>
                   <small><Truck size={12} /> {store.metodoEntrega}{store.plazoEntrega ? ` · ${store.plazoEntrega}` : ''}{store.garantia ? ` · Garantía ${store.garantia}` : ''}</small>

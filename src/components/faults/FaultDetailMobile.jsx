@@ -11,6 +11,7 @@ import CharCount from './CharCount';
 import { resolveMediaUrl } from '../../services/api';
 import { priceRange, timeSince } from '../../services/faultApi';
 import { formatDistanceKm } from '../../utils/geoDistance';
+import TallerAvatar from '../TallerAvatar';
 import { workshopPath } from '../../routes/paths';
 import '../../styles/app-kit.css';
 import '../../styles/fault-detail-mobile.css';
@@ -39,12 +40,9 @@ function InfoItem({ icon: Icon, label, children }) {
   );
 }
 
-function Avatar({ name, src }) {
-  return (
-    <span className="ftd-avatar">
-      {src ? <img src={resolveMediaUrl(src)} alt="" /> : (name || 'T').slice(0, 1).toUpperCase()}
-    </span>
-  );
+// La foto del taller siempre se ve: la del comentario o, si falta, la de su perfil público.
+function Avatar({ name, src, tallerId = null }) {
+  return <span className="ftd-avatar"><TallerAvatar src={src} name={name || 'T'} tallerId={tallerId} className="ftd-avatar-img" /></span>;
 }
 
 /**
@@ -253,7 +251,7 @@ export default function FaultDetailMobile({
             <div key={group.key} className="ftd-card">
               <div className="ftd-group-head">
                 <button type="button" className="ftd-group-toggle" aria-expanded={open} onClick={() => setOpenGroups((current) => ({ ...current, [group.key]: !current[group.key] }))}>
-                  <Avatar name={group.author} src={group.photo} />
+                  <Avatar name={group.author} src={group.photo} tallerId={group.taller?.tallerId} />
                   <span className="ftd-group-copy">
                     <strong>{group.author}</strong>
                     <small>{[group.taller ? 'Taller' : null, group.taller?.comuna, `${count} ${count === 1 ? 'comentario' : 'comentarios'}`].filter(Boolean).join(' · ')}</small>
@@ -308,7 +306,7 @@ export default function FaultDetailMobile({
                 return (
                   <div key={diagnosis.id} className="ftd-diag-wrap">
                   <button type="button" className={`ftd-diag-row ${diagnosis.aceptado ? 'is-accepted' : ''}`} onClick={() => { setListOpen(false); onOpenDiagnosis(diagnosis.id); }}>
-                    <Avatar name={diagnosis.autor} src={diagnosis.autorFotoUrl || diagnosis.taller?.logoUrl} />
+                    <Avatar name={diagnosis.autor} src={diagnosis.autorFotoUrl || diagnosis.taller?.logoUrl} tallerId={diagnosis.taller?.tallerId} />
                     <span className="ftd-group-copy">
                       <strong>{diagnosis.autor}{diagnosis.aceptado && <em>Aceptado</em>}</strong>
                       <small>{[diagnosis.taller?.comuna, timeSince(diagnosis.createdAt)].filter(Boolean).join(' · ')}</small>
