@@ -851,7 +851,7 @@ export default function TalleresDirectoryView() {
 
         <section className="ads-main-col">
           <div className="workshop-directory-banner" aria-label="Encuentra el taller ideal para tu vehículo">
-            <img src="/workshop-directory-banner.png" alt="Encuentra el taller ideal para tu vehículo: talleres verificados, variedad de servicios y atención en tu zona" />
+            <img src="/workshop-directory-banner.webp" alt="Encuentra el taller ideal para tu vehículo: talleres verificados, variedad de servicios y atención en tu zona" />
           </div>
           <div className="ads-main-head" id="talleres-results-top">
             <div className="ads-main-head-text">

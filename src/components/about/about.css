@@ -773,7 +773,7 @@
   color: #fff;
   background-image:
     linear-gradient(90deg, rgba(4, 21, 46, .93) 0%, rgba(4, 21, 46, .76) 36%, rgba(4, 21, 46, .22) 64%, rgba(4, 21, 46, .4)),
-    url('/about-reference/road-community.png');
+    url('/about-reference/road-community.webp');
   background-position: center;
   background-size: cover;
 }
@@ -837,7 +837,7 @@
   color: #fff;
   background:
     linear-gradient(90deg, #05265a 0%, #003f86 52%, rgba(0, 27, 65, .45)),
-    url('/about-reference/trust-car.png') right center / cover no-repeat;
+    url('/about-reference/trust-car.webp') right center / cover no-repeat;
 }
 .rt-trust-band .rt-shell { position: relative; }
 .rt-trust-band .rt-kicker { color: #8bc0ff !important; }
@@ -970,7 +970,7 @@
   color: #fff;
   background:
     linear-gradient(90deg, rgba(2, 21, 51, .93) 0%, rgba(2, 21, 51, .8) 40%, rgba(2, 21, 51, .12) 78%),
-    url('/about-reference/road-cta.png') center 58% / cover no-repeat;
+    url('/about-reference/road-cta.webp') center 58% / cover no-repeat;
 }
 .rt-final-cta__grid { padding-block: 24px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px; align-items: center; }
 .rt-final-cta h2 { color: #fff; font-size: clamp(1.6rem, 2.35vw, 2.1rem); }

@@ -202,12 +202,12 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
     if (badQuantity >= 0) { setError(`La cantidad del repuesto ${badQuantity + 1} debe estar entre 1 y ${MAX_QUANTITY}.`); return; }
     if (presupuesto && parseInt(presupuesto, 10) > MAX_PRICE) { setError(`El presupuesto no puede superar $${MAX_PRICE.toLocaleString('es-CL')}.`); return; }
     if (isEditing && auction?.motivoEdicionMayor
-      && editDiscardsOffers(auction, { items, patente: manualVehicle ? '' : patente, comuna: comunas.find((c) => String(c.id) === String(comunaId))?.nombre })) {
+      && editDiscardsOffers(auction, { items, patente: manualVehicle ? '' : patente, comuna: ubicacion?.comunaNombre })) {
       setError(auction.motivoEdicionMayor);
       return;
     }
     if (isEditing && !confirmedDiscard && offersAtStake > 0
-      && editDiscardsOffers(auction, { items, patente: manualVehicle ? '' : patente, comuna: comunas.find((c) => String(c.id) === String(comunaId))?.nombre })) {
+      && editDiscardsOffers(auction, { items, patente: manualVehicle ? '' : patente, comuna: ubicacion?.comunaNombre })) {
       setConfirmDiscard(true);
       return;
     }

@@ -518,7 +518,7 @@ export default function AboutRepuesTopPage({
                   <CheckList items={BUYER_POINTS} />
                   <button className="rt-btn rt-btn--primary" type="button" onClick={goCatalog}>Buscar repuestos <ArrowRight aria-hidden="true" /></button>
                 </div>
-                <img src="/about-reference/buyer.png" alt="Comprador usando RepuesTop desde su teléfono" width="1086" height="1448" loading="lazy" />
+                <img src="/about-reference/buyer.webp" alt="Comprador usando RepuesTop desde su teléfono" width="1086" height="1448" loading="lazy" />
                 <span className="rt-community-card__float"><Search aria-hidden="true" /> Repuestos al<br />mejor precio</span>
               </Reveal>
 
@@ -529,7 +529,7 @@ export default function AboutRepuesTopPage({
                   <CheckList items={SELLER_POINTS} />
                   <button className="rt-btn rt-btn--primary" type="button" onClick={onOpenSeller}>Quiero ser proveedor <ArrowRight aria-hidden="true" /></button>
                 </div>
-                <img src="/about-reference/seller.png" alt="Dueño de una casa de repuestos" width="1086" height="1448" loading="lazy" />
+                <img src="/about-reference/seller.webp" alt="Dueño de una casa de repuestos" width="1086" height="1448" loading="lazy" />
                 <span className="rt-community-card__float"><BarChart3 aria-hidden="true" /> Más clientes<br />para tu negocio</span>
               </Reveal>
             </div>
