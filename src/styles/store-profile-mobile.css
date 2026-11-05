@@ -1,0 +1,65 @@
+/* "Mi tienda y datos" en el celular: replica de `app/(seller)/mi-tienda.tsx` (portada, foto, identidad y dos grupos de filas). */
+.spm { display: flex; flex-direction: column; gap: 16px; padding-bottom: 8px; }
+
+.spm-hero { position: relative; }
+.spm-cover { position: relative; height: clamp(130px, 42vw, 240px); overflow: hidden; border: 1px solid #cbd5e1; border-radius: 16px; background: #e2e8f0; }
+.spm-cover img { width: 100%; height: 100%; object-fit: cover; }
+.spm-cover-empty { display: block; width: 100%; height: 100%; background: linear-gradient(135deg, #dbeafe, #eaf2ff); }
+.spm-icon-btn {
+  position: absolute; z-index: 2; display: grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid #cbd5e1;
+  border-radius: 50%; background: #fff; color: #0056bf; cursor: pointer; box-shadow: 0 2px 8px rgba(15, 23, 42, .15);
+}
+.spm-icon-btn.is-top { top: 6px; right: 6px; }
+.spm-icon-btn.is-bottom { right: 6px; bottom: 6px; }
+.spm-icon-btn.is-logo { right: -4px; bottom: -4px; width: 30px; height: 30px; }
+.spm-logo-wrap { position: absolute; left: 12px; bottom: -42px; z-index: 3; }
+.spm-logo {
+  display: grid; place-items: center; width: 84px; height: 84px; overflow: hidden; border: 3px solid #fff; border-radius: 50%;
+  background: #eaf2ff; color: #0056bf; box-shadow: 0 2px 8px rgba(15, 23, 42, .12);
+}
+.spm-logo img { width: 100%; height: 100%; object-fit: cover; }
+
+.spm-identity { padding-top: 34px; }
+.spm-identity h2 { margin: 0; color: #0f172a; font-size: 22px; line-height: 1.2; font-weight: 800; }
+.spm-identity p { display: flex; align-items: center; gap: 6px; margin: 4px 0 0; color: #64748b; font-size: 13px; }
+.spm-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; }
+.spm-dot.is-open { background: #16a34a; }
+.spm-dot.is-closed { background: #dc2626; }
+
+.spm-group h3 { margin: 0 0 6px; padding: 0 2px; color: #64748b; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.spm-card { overflow: hidden; border: 1px solid #cbd5e1; border-radius: 16px; background: #fff; }
+.spm-row { padding: 0 12px; }
+.spm-row + .spm-row, .spm-link + .spm-link { border-top: 1px solid #eef2f7; }
+.spm-row-main, .spm-link {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 56px; padding: 8px 0; border: 0; background: none;
+  color: inherit; text-align: left; font: inherit; cursor: pointer;
+}
+.spm-row-main.is-static { cursor: default; }
+.spm-link { padding: 8px 12px; }
+.spm-row-icon { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #eaf2ff; color: #0056bf; }
+.spm-row-icon.is-attention { background: #fef3c7; color: #b45309; }
+.spm-row-copy { display: flex; flex: 1; flex-direction: column; gap: 1px; min-width: 0; }
+.spm-row-copy strong { color: #0f172a; font-size: 14px; font-weight: 700; }
+.spm-row-copy small { overflow: hidden; color: #64748b; font-size: 12.5px; line-height: 1.35; text-overflow: ellipsis; word-break: break-word; }
+.spm-row-edit { flex: none; color: #64748b; }
+.spm-chevron { flex: none; color: #94a3b8; transition: transform .18s ease; }
+.spm-chevron.is-open { transform: rotate(90deg); }
+
+.spm-editor { display: flex; flex-direction: column; gap: 10px; margin: 0 0 12px; padding: 12px; border: 1px solid #dbeafe; border-radius: 12px; background: #f5f9ff; }
+.spm-editor label { display: flex; flex-direction: column; gap: 5px; }
+.spm-editor label span { color: #334155; font-size: 12px; font-weight: 700; }
+.spm-editor input, .spm-editor textarea, .spm-editor select {
+  width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff;
+  color: #0f172a; font: inherit; font-size: 16px;
+}
+.spm-editor textarea { resize: vertical; }
+.spm-editor input:focus, .spm-editor textarea:focus, .spm-editor select:focus { border-color: #0056bf; outline: 2px solid rgba(0, 86, 191, .2); }
+.spm-editor small { color: #64748b; font-size: 12px; }
+.spm-editor p { margin: 0; color: #b91c1c; font-size: 12.5px; font-weight: 600; }
+.spm-editor-actions { display: flex; gap: 8px; }
+.spm-editor-actions button {
+  flex: 1; min-height: 42px; border: 1px solid #0056bf; border-radius: 10px; background: #0056bf; color: #fff; font: inherit;
+  font-size: 14px; font-weight: 800; cursor: pointer;
+}
+.spm-editor-actions button.is-outline { background: #fff; color: #0056bf; }
+.spm-editor-actions button:disabled { opacity: .55; cursor: not-allowed; }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  ArrowUpDown, CalendarDays, Car, Check, ChevronRight, Clock, Cog, CreditCard, Eye, Gavel, MapPin, MessageCircle, Package, Plus, Search,
+  ArrowUpDown, CalendarDays, Car, Check, ChevronRight, Clock, Cog, CreditCard, Eye, Gavel, MapPin, Package, Plus, Search,
   SlidersHorizontal, Store, Tag, Telescope, Wallet, X,
 } from 'lucide-react';
 import SectionHero, { HeroChip } from './ui/SectionHero';
@@ -68,6 +68,12 @@ function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = nu
             </button>
           </div>
           <h3 className="am-card-title">{auction.repuestoSolicitado}</h3>
+          {/* Preview de lo que espera al comprador, como la app: pastilla ámbar con punto bajo el título. */}
+          {pendingQuestions != null && pendingSummary(offers, pendingQuestions) && (
+            <span className="am-card-pending" aria-label={pendingSummary(offers, pendingQuestions)}>
+              <i aria-hidden="true" />{pendingSummary(offers, pendingQuestions)}
+            </span>
+          )}
           <div className="am-card-info">
             {open && <p className={`am-card-timeline is-${status.key}`}><Clock size={14} /><span>{formatRemaining(status.remaining)} restantes</span></p>}
             <p><Car size={14} /><span>{vehicle}{motor ? ` · Motor ${motor}` : ''}</span></p>
@@ -82,13 +88,15 @@ function AuctionCardMobile({ auction, status, now, onOpen, pendingQuestions = nu
         <span><Wallet size={15} /> {auction.presupuestoMaximo != null ? `${formatCLP(auction.presupuestoMaximo)} máx.` : 'Sin tope'}</span>
         <span><Tag size={15} /> {offers} {offers === 1 ? 'oferta' : 'ofertas'}</span>
       </div>
-      {pendingQuestions != null && pendingSummary(offers, pendingQuestions) && (
-        <p className="am-card-pending"><MessageCircle size={14} aria-hidden="true" /> {pendingSummary(offers, pendingQuestions)}</p>
-      )}
       {toPay > 0 && (
-        <p className={`am-card-pay ${deadline?.expired ? 'is-expired' : ''}`}>
-          <CreditCard size={14} aria-hidden="true" /> {toPay} {toPay === 1 ? 'tienda aceptada' : 'tiendas aceptadas'} · pago pendiente{deadline ? ` · ${deadline.text}` : ''}
-        </p>
+        <div className={`am-card-pay ${deadline?.expired ? 'is-expired' : ''}`}>
+          <CreditCard size={18} aria-hidden="true" />
+          <span>
+            {toPay === 1 ? 'Tienes 1 oferta aceptada por pagar.' : `Tienes ${toPay} ofertas aceptadas por pagar.`}
+            {deadline && <><br />{deadline.text}</>}
+          </span>
+          <button type="button" onClick={() => onOpen(auction.id, { offers: true })}><CreditCard size={14} aria-hidden="true" /> Pagar</button>
+        </div>
       )}
       {tracking && (() => {
         const key = `need:${auction.id}`;

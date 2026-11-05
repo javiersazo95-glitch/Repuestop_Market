@@ -1,0 +1,234 @@
+/* Inicio, de "Repuestos destacados" hacia abajo: banner de Encargar repuesto, tiendas destacadas y los
+   banners de Fallas automotrices y Talleres mecanicos. */
+
+/* Todos los bloques comparten el mismo ancho para quedar alineados (como en la referencia). */
+.hb-offers, .hb-encargar, .hb-stores, .hb-duo { width: calc(100% - 40px); max-width: 1280px; margin-left: auto; margin-right: auto; }
+.hb-stores, .hb-duo { padding-left: 0; padding-right: 0; }
+
+.hb-new {
+  position: absolute; z-index: 2; top: 12px; right: 14px; padding: 3px 9px; border-radius: 999px;
+  background: #fff; color: #0b3b91; font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(8, 20, 45, .18);
+}
+
+.hb-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 20px;
+  border-radius: 10px; font-size: 14px; font-weight: 800; cursor: pointer; white-space: nowrap;
+  transition: transform .15s ease, background .15s ease, color .15s ease;
+}
+.hb-btn:hover { transform: translateY(-1px); }
+.hb-btn:focus-visible { outline: 3px solid #38bdf8; outline-offset: 2px; }
+.hb-btn-white { border: 0; background: #fff; color: #0b3b91; box-shadow: 0 8px 20px rgba(0, 0, 0, .18); }
+.hb-btn-blue { border: 0; background: #1268f3; color: #fff; box-shadow: 0 8px 18px rgba(18, 104, 243, .3); }
+.hb-btn-blue:hover { background: #0d54c7; }
+.hb-btn-outline { border: 1px solid #1268f3; background: #fff; color: #1268f3; }
+.hb-btn-outline:hover { background: #1268f3; color: #fff; }
+.hb-btn-sm { min-height: 36px; padding: 0 16px; font-size: 13px; }
+
+/* ---------- Ofertas destacadas (repuestos) ---------- */
+.hb-offers {
+  margin-top: 30px; padding: 30px 38px 32px; border: 1px solid #e1e8f1; border-radius: 20px;
+  background: #fff; box-shadow: 0 14px 35px rgba(30, 52, 85, .07);
+}
+.hb-offers-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+.hb-offers-badge {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px;
+  background: #e7f0ff; color: #0966f4; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+}
+.hb-offers-head h2 { margin: 10px 0 0; color: #0f172a; font-family: var(--font-display); font-size: 31px; line-height: 1.15; font-weight: 800; letter-spacing: -.5px; }
+.hb-offers-head h2 em { color: #1268f3; font-style: normal; }
+.hb-offers-head p { margin: 6px 0 0; color: #536887; font-size: 14px; }
+.hb-offers-state { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 30px 0; color: #64748b; font-size: 14px; }
+.hb-offers-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.hb-part {
+  display: flex; flex-direction: column; min-width: 0; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff;
+  box-shadow: 0 8px 20px rgba(27, 52, 87, .08); transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.hb-part:hover { transform: translateY(-2px); border-color: #8ab4ff; box-shadow: 0 14px 26px rgba(27, 81, 165, .15); }
+.hb-part-media { position: relative; display: flex; align-items: center; justify-content: center; height: 176px; overflow: hidden; background: #f3f6fb; cursor: pointer; }
+.hb-part-media img { width: 100%; height: 100%; object-fit: cover; }
+.hb-part-noimg { color: #94a3b8; }
+.hb-part-badge {
+  position: absolute; z-index: 2; top: 12px; left: 12px; padding: 4px 11px; border-radius: 999px; color: #fff;
+  font-size: 12px; font-weight: 800; box-shadow: 0 3px 8px rgba(8, 20, 45, .2);
+}
+.hb-part-badge.is-discount { background: #ef233c; }
+.hb-part-badge.is-best { background: #1268f3; }
+.hb-part-badge.is-offer { background: #f97316; }
+.hb-part-badge.is-new { background: #16a34a; }
+.hb-part-fav {
+  position: absolute; z-index: 2; top: 10px; right: 10px; display: grid; place-items: center; width: 34px; height: 34px; padding: 0;
+  border: 0; border-radius: 50%; background: rgba(255, 255, 255, .92); color: #475569; cursor: pointer; box-shadow: 0 2px 8px rgba(8, 20, 45, .15);
+}
+.hb-part-body { display: flex; flex: 1; flex-direction: column; gap: 6px; padding: 14px 15px 15px; }
+.hb-part-body h3 {
+  display: -webkit-box; margin: 0; overflow: hidden; color: #0f172a; font-size: 15px; font-weight: 800; line-height: 1.3; cursor: pointer;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.hb-part-sub { display: -webkit-box; margin: 0; overflow: hidden; color: #64748b; font-size: 12px; -webkit-line-clamp: 1; -webkit-box-orient: vertical; }
+.hb-part-store { display: flex; align-items: center; gap: 6px; min-width: 0; color: #0f172a; font-size: 12.5px; }
+.hb-part-store img, .hb-part-store-dot { flex: none; width: 18px; height: 18px; border-radius: 50%; object-fit: cover; }
+.hb-part-store-dot { display: grid; place-items: center; background: #e7f0ff; color: #1268f3; }
+.hb-part-store strong { overflow: hidden; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.hb-part-store svg:last-child { flex: none; color: #1268f3; }
+.hb-part-rating { display: flex; align-items: center; gap: 4px; color: #64748b; font-size: 12px; }
+.hb-part-rating svg { color: #f59e0b; }
+.hb-part-rating b { color: #b45309; font-weight: 800; }
+.hb-part-ship { display: flex; align-items: center; gap: 6px; color: #16a34a; font-size: 12px; font-weight: 700; }
+.hb-part-price { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-top: auto; padding-top: 6px; }
+.hb-part-price strong { color: #0f172a; font-size: 21px; font-weight: 800; letter-spacing: -.3px; }
+.hb-part-price del { color: #94a3b8; font-size: 12.5px; }
+.hb-part-price span { padding: 2px 8px; border-radius: 6px; background: #fce7f3; color: #db2777; font-size: 11.5px; font-weight: 800; }
+.hb-part-buy {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; margin-top: 6px; border: 0; border-radius: 10px;
+  background: #1268f3; color: #fff; font-size: 14px; font-weight: 800; cursor: pointer; transition: background .15s ease;
+}
+.hb-part-buy:hover { background: #0d54c7; }
+.hb-part-buy:focus-visible, .hb-part-fav:focus-visible { outline: 3px solid #38bdf8; outline-offset: 2px; }
+
+/* ---------- Banner Encargar repuesto ---------- */
+.hb-encargar {
+  position: relative; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: center; gap: 36px;
+  width: calc(100% - 40px); max-width: 1280px; min-height: 190px; margin: 18px auto 0; padding: 28px 40px; overflow: hidden; border-radius: 20px; color: #fff;
+  background:
+    linear-gradient(90deg, #071f52 0%, #0a3a8f 52%, rgba(10, 58, 143, .55) 78%, rgba(10, 58, 143, 0) 100%),
+    url('/home/encargar-banner.png') right center / auto 100% no-repeat,
+    #0a3a8f;
+  box-shadow: 0 16px 34px rgba(10, 40, 100, .22);
+}
+.hb-encargar-copy h2 { margin: 0; color: #fff; font-family: var(--font-display); font-size: 29px; line-height: 1.15; font-weight: 800; letter-spacing: -.4px; }
+.hb-encargar-copy h2 span { display: block; color: #22d3ee; }
+.hb-encargar-copy p { max-width: 440px; margin: 10px 0 16px; color: rgba(255, 255, 255, .88); font-size: 13.5px; line-height: 1.5; }
+.hb-encargar-steps {
+  display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0 0 0 36px; list-style: none;
+  border-left: 1px solid rgba(255, 255, 255, .22);
+}
+.hb-encargar-steps li { display: flex; align-items: center; gap: 14px; }
+.hb-step-icon { display: grid; flex: none; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: #1268f3; color: #fff; box-shadow: 0 0 0 4px rgba(255, 255, 255, .14); }
+.hb-encargar-steps strong { display: block; font-size: 15px; font-weight: 800; }
+.hb-encargar-steps small { display: block; margin-top: 1px; color: rgba(255, 255, 255, .8); font-size: 12.5px; }
+
+/* ---------- Tiendas destacadas ---------- */
+.hb-stores { margin-top: 30px; }
+.hb-stores-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.hb-stores-head h2 { margin: 0; color: #0f172a; font-family: var(--font-display); font-size: 27px; font-weight: 800; letter-spacing: -.4px; }
+.hb-stores-head p { margin: 4px 0 0; color: #536887; font-size: 14px; }
+.hb-stores-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.hb-store-card {
+  display: flex; align-items: flex-start; gap: 14px; min-width: 0; padding: 18px 16px 16px;
+  border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; box-shadow: 0 8px 20px rgba(30, 52, 85, .06);
+  transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.hb-store-card:hover { transform: translateY(-2px); border-color: #8ab4ff; box-shadow: 0 14px 26px rgba(27, 81, 165, .14); }
+.hb-store-info .hb-btn { align-self: flex-start; margin-top: 6px; }
+.hb-store-avatar { display: grid; flex: none; place-items: center; width: 56px; height: 56px; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 50%; color: #fff; font-size: 17px; }
+.hb-store-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.hb-store-info { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.hb-store-info strong { display: flex; align-items: center; gap: 5px; min-width: 0; color: #0f172a; font-size: 15px; font-weight: 800; }
+.hb-store-info strong svg { flex: none; color: #1268f3; }
+.hb-store-rating { display: inline-flex; align-items: center; gap: 4px; color: #b45309; font-size: 13px; font-weight: 800; }
+.hb-store-rating svg { color: #f59e0b; }
+.hb-store-rating em { color: #64748b; font-size: 12px; font-style: normal; font-weight: 600; }
+.hb-store-rating.is-new { color: #047857; font-size: 12px; }
+
+/* ---------- Banners Fallas + Talleres ---------- */
+.hb-duo { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-top: 26px; margin-bottom: 8px; }
+.hb-duo.is-single { grid-template-columns: 1fr; }
+.hb-banner {
+  position: relative; display: flex; align-items: center; min-height: 190px; padding: 26px 30px; overflow: hidden; border-radius: 20px;
+  box-shadow: 0 14px 30px rgba(10, 40, 100, .16);
+}
+.hb-banner-copy { position: relative; z-index: 1; max-width: 62%; }
+.hb-banner-head { display: flex; align-items: flex-start; gap: 14px; }
+.hb-banner-icon { display: grid; flex: none; place-items: center; width: 54px; height: 54px; border-radius: 14px; }
+.hb-banner h2 { margin: 0; font-family: var(--font-display); font-size: 22px; line-height: 1.2; font-weight: 800; letter-spacing: -.3px; }
+.hb-banner p { margin: 6px 0 0; font-size: 13px; line-height: 1.45; }
+.hb-banner ul { display: flex; flex-direction: column; gap: 6px; margin: 14px 0 16px; padding: 0; list-style: none; }
+.hb-banner li { display: flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; }
+.hb-banner-fallas {
+  color: #fff;
+  background:
+    linear-gradient(90deg, #061a45 0%, #0a2f78 46%, rgba(10, 47, 120, .5) 72%, rgba(10, 47, 120, 0) 100%),
+    url('/home/fallas-banner.png') right center / auto 100% no-repeat,
+    #0a2f78;
+}
+.hb-banner-fallas h2 { color: #fff; }
+.hb-banner-fallas p { color: rgba(255, 255, 255, .85); }
+.hb-banner-fallas .hb-banner-icon { border: 2px solid rgba(255, 255, 255, .7); color: #fff; }
+.hb-banner-fallas li svg { color: #22d3ee; }
+.hb-banner-talleres {
+  border: 1px solid #dbe5f3; color: #0f172a;
+  background:
+    linear-gradient(90deg, #f3f8ff 0%, #f3f8ff 46%, rgba(243, 248, 255, .5) 72%, rgba(243, 248, 255, 0) 100%),
+    url('/home/talleres-banner.png') right center / auto 100% no-repeat,
+    #f3f8ff;
+}
+.hb-banner-talleres h2 { color: #0b2a66; }
+.hb-banner-talleres p { color: #475569; }
+.hb-banner-talleres .hb-banner-icon { background: #e0ecff; color: #1268f3; }
+.hb-banner-talleres li svg { color: #1268f3; }
+.hb-banner-talleres .hb-new { background: #1268f3; color: #fff; }
+
+@media (max-width: 1180px) {
+  .hb-encargar { grid-template-columns: 1fr; gap: 20px; padding: 26px 28px; }
+  .hb-encargar-steps { flex-direction: row; flex-wrap: wrap; padding: 18px 0 0; border-left: 0; border-top: 1px solid rgba(255, 255, 255, .22); }
+  .hb-stores-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hb-offers-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .hb-duo { grid-template-columns: 1fr; }
+  .hb-banner-copy { max-width: 68%; }
+}
+
+/* Celular: la imagen pasa al fondo (mas suave) y las tiendas van en 2 columnas. */
+@media (max-width: 767px) {
+  .hb-offers, .hb-stores, .hb-duo { width: calc(100% - 24px); }
+  .hb-encargar { width: calc(100% - 24px); margin-top: 12px; padding: 22px 16px 18px; border-radius: 14px; }
+  .hb-encargar {
+    background:
+      linear-gradient(180deg, rgba(7, 31, 82, .94) 0%, rgba(10, 58, 143, .9) 100%),
+      url('/home/encargar-banner.png') right center / cover no-repeat,
+      #0a3a8f;
+  }
+  .hb-encargar-copy h2 { font-size: 22px; }
+  .hb-encargar-copy .hb-btn { width: 100%; }
+  .hb-encargar-steps { flex-direction: column; gap: 10px; }
+  .hb-step-icon { width: 38px; height: 38px; }
+  .hb-offers { margin-top: 18px; padding: 20px 12px 16px; border-radius: 14px; }
+  .hb-offers-head { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 14px; }
+  .hb-offers-head h2 { font-size: 22px; }
+  .hb-offers-head p { font-size: 13px; }
+  .hb-offers-head .hb-btn { width: 100%; }
+  .hb-offers-grid { gap: 10px; }
+  .hb-part-media { height: 120px; }
+  .hb-part-body { padding: 10px 10px 12px; gap: 5px; }
+  .hb-part-body h3 { font-size: 13px; }
+  .hb-part-price strong { font-size: 16px; }
+  .hb-part-buy { min-height: 38px; font-size: 12.5px; }
+  .hb-stores { margin-top: 22px; }
+  .hb-stores-head { flex-direction: column; align-items: stretch; gap: 12px; }
+  .hb-stores-head h2 { font-size: 21px; }
+  .hb-stores-head p { font-size: 13px; }
+  .hb-stores-head .hb-btn { width: 100%; }
+  .hb-stores-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .hb-store-card { flex-direction: column; align-items: center; padding: 14px 10px 12px; gap: 8px; text-align: center; }
+  .hb-store-info { align-items: center; width: 100%; }
+  .hb-store-info strong { justify-content: center; flex-wrap: wrap; font-size: 13.5px; }
+  .hb-store-info .hb-btn { align-self: stretch; }
+  .hb-duo { margin-top: 20px; gap: 12px; }
+  .hb-banner { min-height: 0; padding: 22px 16px 18px; border-radius: 14px; }
+  .hb-banner-copy { max-width: 100%; }
+  .hb-banner h2 { font-size: 19px; }
+  .hb-banner-icon { width: 44px; height: 44px; }
+  .hb-banner .hb-btn { width: 100%; }
+  .hb-banner-fallas {
+    background:
+      linear-gradient(180deg, rgba(6, 26, 69, .93) 0%, rgba(10, 47, 120, .9) 100%),
+      url('/home/fallas-banner.png') right center / cover no-repeat,
+      #0a2f78;
+  }
+  .hb-banner-talleres {
+    background:
+      linear-gradient(180deg, rgba(243, 248, 255, .96) 0%, rgba(243, 248, 255, .93) 100%),
+      url('/home/talleres-banner.png') right center / cover no-repeat,
+      #f3f8ff;
+  }
+}

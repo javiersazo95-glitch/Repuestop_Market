@@ -1583,6 +1583,14 @@ export async function getVehicleBrandsApi({ signal } = {}) {
   return fetchApi('/catalogos/inventario/marcas-vehiculo', { method: 'GET', signal });
 }
 
+/** Nombre y horario de la tienda autenticada (`PUT /proveedores/{id}/datos-tienda`, el mismo que usa la app). */
+export async function updateStoreDataApi(sellerId, body) {
+  return fetchApi(`/proveedores/${sellerId}/datos-tienda`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+}
+
 /** Reemplaza las marcas especialistas de la tienda autenticada. */
 export async function updateStoreSpecialistBrandsApi(sellerId, marcaIds) {
   return fetchApi(`/proveedores/${sellerId}/marcas-especialistas`, {

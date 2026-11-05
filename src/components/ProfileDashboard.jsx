@@ -20,6 +20,7 @@ import SuspensionPanel from './account-suspension/SuspensionPanel';
 import SuspensionBanner from './account-suspension/SuspensionBanner';
 import AccountClosureModal from './AccountClosureModal';
 import ProfileAccountDataPanel from './ProfileAccountDataPanel';
+import StoreProfileMobile from './profile/StoreProfileMobile';
 import ProfileSummaryPanel from './ProfileSummaryPanel';
 import ProfileFeedbackPanel from './ProfileFeedbackPanel';
 import ProfileOrdersPanel from './ProfileOrdersPanel';
@@ -407,6 +408,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const canGoBack = Boolean(location.key && location.key !== 'default');
   const [activeTab, setActiveTabState] = useState(initialTab);
   const [profileNavOpen, setProfileNavOpen] = useState(false);
+  // Celular + tienda: muestra bajo "Mi tienda y datos" el panel completo de ajustes.
+  const [mobileSettingsOpen, setMobileSettingsOpen] = useState(false);
   const [videoTutorialOpen, setVideoTutorialOpen] = useState(false);
 
   useEffect(() => {
@@ -1972,7 +1975,21 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
               {activeTab === 'feedback' && !isSellerBlocked && !isBuyerBlocked && <ProfileFeedbackPanel />}
 
-              {(activeTab === 'tienda_datos' || activeTab === 'datos') && (
+              {/* Celular + tienda: la pantalla "Mi tienda y datos" de la app. Los ajustes largos (marcas, redes,
+                  envios, direcciones, clave, notificaciones) quedan en el panel de siempre, bajo "Más ajustes". */}
+              {isMobileView && isSeller && (activeTab === 'tienda_datos' || activeTab === 'datos') && (
+                <StoreProfileMobile
+                  user={user}
+                  storeInfo={storeInfo}
+                  effectiveSellerId={effectiveSellerId}
+                  onOpenMediaModal={() => handleOpenMediaModal('avatar')}
+                  onOpenCoverTemplates={handleOpenCoverTemplates}
+                  settingsOpen={mobileSettingsOpen}
+                  onOpenSettings={() => setMobileSettingsOpen((open) => !open)}
+                  onOpenWithdrawals={() => setActiveTab('retiros')}
+                />
+              )}
+              {(activeTab === 'tienda_datos' || activeTab === 'datos') && (!isMobileView || !isSeller || mobileSettingsOpen) && (
                 <ProfileAccountDataPanel
                   user={user}
                   isSeller={isSeller}
