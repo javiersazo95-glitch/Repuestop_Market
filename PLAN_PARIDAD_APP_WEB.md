@@ -684,3 +684,26 @@ lanzar:**
   JWT, sesión y rol — pero no todos los compradores van a entrar con Google.
 - **Alta con Google de una cuenta nueva** (`PLAN_MONEDA_REPUESTOP.md`): necesita un correo que
   todavía no exista en RepuesTop. Es el registro, no el login.
+
+---
+
+## Homologación de la versión móvil de la intranet con la app (2026-11-05, rama `dev`)
+
+Objetivo: que el market logueado en móvil (comprador, vendedor y taller) se vea y se comporte como la app. Se comparó cada
+pantalla de la app (`mobile/app`, `mobile/components`) con su contraparte web. Casi todo ya estaba a la par (fallas, búsquedas y
+ofertas, seguimiento, favoritos, reserva de cita, ficha del taller, menú Más). Lo que se cerró:
+
+| Área | Cambio en la web | Contraparte en la app |
+|---|---|---|
+| Resumen del taller (móvil) | `workshop/WorkshopHomeSummary.jsx` | `app/(workshop)/index.tsx` |
+| Resumen del vendedor (móvil) | `seller/SellerHomeSummary.jsx` | `app/(seller)/index.tsx` |
+| Seguimiento de Mis fallas | enlace «Abrir la falla completa» | `FallaTrackingDetail.tsx` |
+| Agenda del taller | asistente de 5 pasos en `talleres/AgendaConfigModal.jsx` | `talleres/AgendaConfigModal.tsx` |
+| Cotizaciones del comprador | filtros Solicitudes / Cotizaciones recibidas / Acuerdos, menú «⋯» (ayuda y reportar vendedor) | `app/(buyer)/messages.tsx` |
+| Cotizaciones del vendedor | filtros Sin responder / Respondidas / Cerradas | `app/(seller)/mensajes.tsx` |
+| Editar datos del perfil | confirmación «Descartar cambios» | `app/profile-edit.tsx` |
+| Detalle del pedido | línea de tiempo de 5 hitos con textos por rol e historial desplegable | `orders/OrderTimeline.tsx` |
+| Mis pedidos (comprador) | filtros de categoría y vendedor | `app/(buyer)/orders.tsx` |
+
+Pendiente de revisar con sesión real (no hay backend en el entorno de desarrollo del agente): el resumen móvil del taller y del
+vendedor con datos reales, y la diferencia de redacción menor en textos de ayuda de pedidos.
