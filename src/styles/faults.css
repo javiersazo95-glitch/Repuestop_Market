@@ -208,7 +208,7 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-index-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
 .ft-index-head h1 { margin: 0; color: var(--ft-strong); font-family: var(--font-display); font-size: 26px; line-height: 1.2; font-weight: 800; letter-spacing: -.4px; }
 .ft-index-head p { margin: 3px 0 0; color: var(--ft-muted); font-size: 13px; }
-.ft-index-value-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 2px; border: 1px solid var(--ft-primary-border); border-radius: 14px; background: var(--ft-primary-light); }
+.ft-index-value-row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 20px; border: 1px solid var(--ft-primary-border); border-radius: 14px; background: var(--ft-primary-light); }
 .ft-index-value-row article { min-width: 0; display: flex; align-items: center; gap: 12px; padding: 13px 18px; }
 .ft-index-value-row article + article { border-left: 1px solid var(--ft-primary-border); }
 .ft-index-value-icon { width: 34px; height: 34px; flex: 0 0 34px; display: grid; place-items: center; border-radius: 50%; color: #fff; background: var(--ft-primary); }
@@ -643,3 +643,6 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-fault-list.is-grid .ft-fault-card { display: flex; flex-direction: column; min-height: 0; }
 .ft-fault-list.is-grid .ft-fault-media { min-height: 170px; }
 .ft-fault-list.is-grid .ft-fault-detail { border-left: 0; border-top: 1px solid #e7ebef; padding-left: 18px; }
+
+/* Pantallas anchas: mismo tope y centrado que .container en Encargos (1560 px con 60 px de aire a cada lado). */
+@media (min-width: 1920px) { .ft-wide-shell { max-width: 1560px; margin-inline: auto; box-sizing: border-box; } }
