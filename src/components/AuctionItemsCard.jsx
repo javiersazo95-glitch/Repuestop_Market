@@ -21,6 +21,8 @@ export default function AuctionItemsCard({ items = [], isOpen, vehicle = {}, can
   const preview = items.slice(0, PREVIEW_COUNT);
   const hidden = items.length - preview.length;
   const units = items.reduce((sum, item) => sum + item.cantidad, 0);
+  // Si todos los repuestos siguen en el mismo estado se dice una sola vez arriba; por fila solo cuando hay mezcla (por ejemplo, uno adjudicado).
+  const allPending = items.length > 0 && items.every((item) => item.pendiente);
 
   return (
     <section className="as-card av-items" aria-label="Repuestos solicitados">
@@ -31,7 +33,12 @@ export default function AuctionItemsCard({ items = [], isOpen, vehicle = {}, can
             Una tienda puede ofrecer solo los repuestos que tenga. Si el comprador acepta una oferta parcial, los repuestos que queden pendientes siguen disponibles para que otras tiendas ofrezcan solo lo que falta. ¿Dudas? Deja un comentario y el comprador te responderá.
           </AuctionInfoTip>
         </span>
-        <small>{items.length} {items.length === 1 ? 'repuesto' : 'repuestos'} · {units} {units === 1 ? 'unidad' : 'unidades'}</small>
+        <small>
+          {items.length} {items.length === 1 ? 'repuesto' : 'repuestos'} · {units} {units === 1 ? 'unidad' : 'unidades'}
+          {allPending && (
+            <span className="av-items-state">{isOpen ? (items.length === 1 ? 'Disponible' : 'Disponibles') : 'Sin adjudicar'}</span>
+          )}
+        </small>
         {items.length > 0 && (
           <button type="button" className="av-items-all" onClick={() => openModal()} aria-label="Ver todos los repuestos solicitados" title="Ver todos los repuestos">
             <ListTree size={16} />
@@ -48,7 +55,7 @@ export default function AuctionItemsCard({ items = [], isOpen, vehicle = {}, can
                 <strong>{item.repuesto}</strong>
                 <span className="av-item-qty">× {item.cantidad}</span>
               </div>
-              {item.pendiente ? (
+              {allPending ? null : item.pendiente ? (
                 <span className="av-item-status is-open"><Clock size={12} /> {isOpen ? 'Disponible' : 'Sin adjudicar'}</span>
               ) : (
                 <span className="av-item-status is-awarded"><CheckCircle2 size={12} /> Adjudicado</span>
