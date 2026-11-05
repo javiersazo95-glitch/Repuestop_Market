@@ -577,6 +577,9 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  // Corregir una oferta vigente (aun sin abrir por el comprador) o enviar una nueva (rechazada, vencida o primera vez).
+  const isModify = Boolean(myQuote?.editable);
 
   const changeLine = (itemId, patch) => setLines((current) => ({ ...current, [itemId]: { ...current[itemId], ...patch } }));
 
@@ -622,12 +625,18 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
   if (uncovered.length === 0 && covered.some((entry) => !(entry.unit > 0))) missing.push('fija el precio de cada repuesto');
   if (covered.some((entry) => entry.unit > MAX_PRICE)) missing.push(`deja cada precio en $${MAX_PRICE.toLocaleString('es-CL')} o menos`);
 
-  const handleSubmit = async (event) => {
+  // Enviar pasa primero por la previsualizacion: lo que la tienda confirma es lo que el comprador vera.
+  const handleSubmit = (event) => {
     event.preventDefault();
     if (missing.length > 0) {
       setError(`Para enviar tu oferta, ${missing.join(' y ')}.`);
       return;
     }
+    setError('');
+    setReviewing(true);
+  };
+
+  const confirmSend = async () => {
     setSubmitting(true);
     setError('');
     try {
@@ -646,6 +655,7 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
       setSent(true);
     } catch (err) {
       setError(err?.message || 'No pudimos enviar tu oferta. Inténtalo de nuevo.');
+      setReviewing(false);
     } finally {
       setSubmitting(false);
     }
@@ -661,8 +671,8 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
       <div className="aq-overlay" role="presentation">
         <div className="aq-modal aq-sent" role="dialog" aria-modal="true" aria-label="Oferta enviada">
           <span className="aq-sent-icon"><CheckCircle2 size={40} /></span>
-          <h2>{myQuote ? '¡Oferta actualizada!' : '¡Oferta enviada!'}</h2>
-          <p>El comprador la verá junto a las demás ofertas. Te avisaremos si te elige.</p>
+          <h2>{isModify ? '¡Oferta actualizada!' : '¡Oferta enviada!'}</h2>
+          <p>El comprador la verá junto a las demás ofertas. Podrás corregirla hasta que el comprador la abra. Te avisaremos si te elige.</p>
           <dl>
             <div><dt>Repuestos que ofreces</dt><dd>{enabledItems.length} de {pendingItems.length}</dd></div>
             <div><dt>Total ofertado</dt><dd>{money(total)}</dd></div>
@@ -675,13 +685,59 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
     );
   }
 
+  if (reviewing) {
+    return (
+      <div className="aq-overlay" role="presentation">
+        <div className="aq-modal aq-review" role="dialog" aria-modal="true" aria-label="Revisa tu oferta">
+          <header className="aq-head">
+            <div>
+              <span className="aq-eyebrow"><Gavel size={14} /> Revisa tu oferta</span>
+              <h2>{auction?.repuestoSolicitado}</h2>
+              <p>Esto es lo que verá el comprador. Confírmalo para enviarlo.</p>
+            </div>
+          </header>
+          <div className="aq-review-body">
+            <ul className="aq-review-lines">
+              {covered.map(({ item, line, unit, total: lineTotal }) => (
+                <li key={item.id}>
+                  <span><strong>{item.repuesto}</strong><small>{line.part?.nombrePublicado || line.part?.repuestoNombre || 'Repuesto de tu inventario'} · {item.cantidad} {item.cantidad === 1 ? 'unidad' : 'unidades'} × {money(unit)}</small></span>
+                  <b>{money(lineTotal)}</b>
+                </li>
+              ))}
+            </ul>
+            <div className="aq-review-total"><span>Total de tu oferta</span><strong>{money(total)}</strong></div>
+            <dl className="aq-review-facts">
+              <div><dt>Disponibilidad</dt><dd>{availabilityLabel(availability)}</dd></div>
+              <div><dt>Plazo de entrega</dt><dd>{deliveryTime}</dd></div>
+              <div><dt>Método de entrega</dt><dd>{deliveryType}</dd></div>
+              <div><dt>Garantía</dt><dd>{warranty || 'Sin indicar'}</dd></div>
+              <div><dt>Tu oferta vence</dt><dd>{validity} después de enviarla</dd></div>
+              {remainingMs !== null && <div><dt>Tiempo restante del encargo</dt><dd>{remainingMs <= 0 ? 'Finalizado' : formatRemaining(remainingMs)}</dd></div>}
+              {notes.trim() && <div><dt>Observaciones</dt><dd>{notes.trim()}</dd></div>}
+            </dl>
+            <p className="aq-review-warn"><AlertCircle size={15} /> Podrás corregirla solo mientras el comprador no la abra. Después quedará fija: si la rechaza o vence, podrás enviar una nueva.</p>
+          </div>
+          <footer className="aq-foot">
+            {error && <p className="aq-notice is-bad" role="alert"><AlertCircle size={16} /> {error}</p>}
+            <div className="aq-foot-actions">
+              <button type="button" className="aq-btn-outline" onClick={() => setReviewing(false)} disabled={submitting}>Volver a editar</button>
+              <button type="button" className="aq-btn-primary" onClick={confirmSend} disabled={submitting}>
+                {submitting ? <><Loader2 size={16} className="aq-spin" /> Enviando…</> : <><Gavel size={16} /> Confirmar y enviar</>}
+              </button>
+            </div>
+          </footer>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="aq-overlay" role="presentation">
       <div className="aq-modal" role="dialog" aria-modal="true" aria-label="Enviar oferta">
         <header className="aq-head">
           <span className="aq-head-icon" aria-hidden="true"><Gavel size={22} /></span>
           <div className="aq-head-text">
-            <span className="aq-eyebrow"><Gavel size={14} /> {myQuote ? 'Modificar mi oferta' : 'Enviar oferta'}</span>
+            <span className="aq-eyebrow"><Gavel size={14} /> {isModify ? 'Modificar mi oferta' : 'Enviar oferta'}</span>
             <h2>{auction?.repuestoSolicitado}</h2>
             <p>
               {vehicle || 'Vehículo'}
@@ -815,7 +871,7 @@ function AuctionQuoteModalContent({ onClose, auction, myQuote, sellerId, onSucce
             <div className="aq-foot-actions">
               <button type="button" className="aq-btn-outline" onClick={onClose} disabled={submitting}>Cancelar</button>
               <button type="submit" className="aq-btn-primary" disabled={submitting || missing.length > 0}>
-                {submitting ? <><Loader2 size={16} className="aq-spin" /> Enviando…</> : <><Gavel size={16} /> {myQuote ? 'Actualizar oferta' : 'Enviar oferta'}</>}
+                {submitting ? <><Loader2 size={16} className="aq-spin" /> Enviando…</> : <><Gavel size={16} /> Revisar oferta</>}
               </button>
             </div>
           </footer>

@@ -3,7 +3,7 @@ import { availabilityLabel } from '../utils/availability';
 import { Link } from 'react-router-dom';
 import { helpCategoryPath } from '../routes/paths';
 import {
-  ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Bus, CalendarDays, Car, ChevronRight, Clock, Gavel, Info, ListChecks, Lock, MapPin,
+  ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Bus, CalendarDays, Car, ChevronRight, Clock, Eye, Gavel, Info, ListChecks, Lock, MapPin,
   Hash, MessageCircle, Package, PackageCheck, Pencil, RotateCcw, Send, XCircle, ShoppingCart, Star, Tag, Trophy, User, Wallet, X,
 } from 'lucide-react';
 import { auctionTrackingCode, getAuctionBuyerProfile, getAuctionComments, postAuctionComment } from '../services/auctionApi';
@@ -145,7 +145,7 @@ export default function AuctionDetailMobile({
 
   const {
     id, patenteAnonimizada, patente, marca, modelo, anio, version, motor, chasis, repuestoSolicitado, cantidad,
-    tiempoMaximoEnvio, tipoEnvio, presupuestoMaximo, region, comuna, estado, fechaLimite, createdAt, categoria,
+    tiempoMaximoEnvio, tipoEnvio, presupuestoMaximo, region, comuna, estado, fechaLimite, createdAt, editadaAt, categoria,
     fotos = [], cotizaciones = [], esCreador, miCotizacion, items = [],
   } = auction;
 
@@ -266,6 +266,7 @@ export default function AuctionDetailMobile({
             <h2>{repuestoSolicitado}</h2>
             {esCreador && <p className="am-meta am-tracking"><Hash size={14} /><span>Código: <strong>{auctionTrackingCode(id)}</strong></span></p>}
             {createdAt && <p className="am-meta"><CalendarDays size={14} /><span>Publicado {formatPublished(createdAt)}</span></p>}
+            {editadaAt && <p className="am-meta"><Pencil size={14} /><span>Actualizado {formatPublished(editadaAt)}</span></p>}
             {location && <p className="am-meta"><MapPin size={14} /><span>{location}</span></p>}
           </div>
         </div>
@@ -382,11 +383,14 @@ export default function AuctionDetailMobile({
       {/* Acciones */}
       {canQuote && (
         <button type="button" className="am-btn" onClick={onOffer}>
-          {miCotizacion ? <Pencil size={18} /> : <Gavel size={18} />} {miCotizacion ? 'Modificar mi oferta' : 'Ofertar ahora'}
+          {miCotizacion ? <Pencil size={18} /> : <Gavel size={18} />} {miCotizacion?.editable ? 'Modificar mi oferta' : miCotizacion ? 'Enviar nueva oferta' : 'Ofertar ahora'}
         </button>
       )}
       {esCreador && cotizaciones.length > 0 && (
         <button type="button" className="am-btn" onClick={onCompare}><Gavel size={18} /> Ver ofertas</button>
+      )}
+      {isSeller && !esCreador && miCotizacion && miCotizacion.estado === 'ENVIADA' && !miCotizacion.vencida && !miCotizacion.aceptada && !miCotizacion.editable && (
+        <p className="am-note"><Eye size={16} /> El comprador ya revisó tu oferta: ya no se puede modificar. Si la rechaza o vence, podrás enviar una nueva.</p>
       )}
       {isSeller && !esCreador && miCotizacion?.aceptada && (
         <p className="am-note"><PackageCheck size={16} /> El comprador aceptó tu oferta. Recibirás el pedido cuando pague.</p>

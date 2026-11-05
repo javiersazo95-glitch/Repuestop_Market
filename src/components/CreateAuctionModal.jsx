@@ -20,6 +20,7 @@ import '../styles/faults.css';
 import { MAX_PRICE, MAX_QUANTITY, onlyDigits } from '../utils/inputLimits';
 import '../styles/auction-vehicle.css';
 import ConfirmDialog from './ConfirmDialog';
+import { activeOffersCount, discardOffersMessage, editDiscardsOffers } from '../utils/auctionEditImpact';
 
 const MAX_ITEMS = 20;
 let itemSeq = 0;
@@ -264,6 +265,9 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
     tiempoVigenciaHoras, tiempoMaximoEnvio, tipoEnvio, presupuestoMaximo, fotos, addressChoice,
   ]);
   const baselineSignature = useRef(null);
+  // Editar con ofertas recibidas: si cambian repuestos o comuna, esas ofertas quedan sin efecto; se pide confirmar antes de guardar.
+  const offersAtStake = isEditing ? activeOffersCount(auction) : 0;
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   if (isEditing && addressesLoaded && baselineSignature.current === null) baselineSignature.current = formSignature;
   const hasChanges = !isEditing || (baselineSignature.current !== null && baselineSignature.current !== formSignature);
 
@@ -293,7 +297,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, confirmedDiscard = false) => {
     e.preventDefault();
     if (!ubicacion) {
       setError('Registra una dirección para publicar tu encargo: la usamos para ubicarlo y para que las tiendas sepan si despachan a tu comuna.');
@@ -319,6 +323,17 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
     }
     if (presupuestoMaximo && parseInt(presupuestoMaximo, 10) > MAX_PRICE) {
       setError(`El presupuesto no puede superar $${MAX_PRICE.toLocaleString('es-CL')}.`);
+      return;
+    }
+
+    if (isEditing && auction?.motivoEdicionMayor
+      && editDiscardsOffers(auction, { items, patente: manualVehicle ? '' : patente, comuna: mainAddress?.comunaNombre })) {
+      setError(auction.motivoEdicionMayor);
+      return;
+    }
+    if (isEditing && !confirmedDiscard && offersAtStake > 0
+      && editDiscardsOffers(auction, { items, patente: manualVehicle ? '' : patente, comuna: mainAddress?.comunaNombre })) {
+      setConfirmDiscard(true);
       return;
     }
 
@@ -373,6 +388,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
           <button type="button" className="ft-icon-btn" onClick={onClose} aria-label="Cerrar"><X size={20} /></button>
         </div>
         <p className="ft-sub">Cuéntanos qué repuestos necesitas. Las tiendas te enviarán sus ofertas y tú eliges con cuál comprar.</p>
+        {isEditing && auction?.motivoEdicionMayor && <p className="ft-lock-note"><AlertCircle size={15} /> {auction.motivoEdicionMayor}</p>}
 
         <FormSection number={1} title="Vehículo del encargo" hint={vehicle ? 'Verifica que los datos de tu vehículo estén correctos.' : 'Indícalo con la patente o ingrésalo a mano.'}>
           {manualVehicle ? (
@@ -581,6 +597,16 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
           <button type="button" onClick={onClose} disabled={loading} className="ft-btn ft-btn-outline">Cancelar</button>
         </div>
       </form>
+      <ConfirmDialog
+        isOpen={confirmDiscard}
+        tone="warning"
+        title="¿Guardar y dejar sin efecto las ofertas?"
+        message={discardOffersMessage(offersAtStake)}
+        confirmLabel="Sí, guardar cambios"
+        cancelLabel="No, seguir editando"
+        onConfirm={() => { setConfirmDiscard(false); handleSubmit({ preventDefault() {} }, true); }}
+        onCancel={() => setConfirmDiscard(false)}
+      />
       <ConfirmDialog
         isOpen={removeKey !== null}
         title={`¿Quitar el repuesto ${removeIndex + 1}?`}

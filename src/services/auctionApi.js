@@ -133,8 +133,10 @@ export async function getAuctionSuggestedParts(auctionId, { texto, soloCompatibl
 }
 
 /** El comprador acepta una oferta (completa o parcial): sus repuestos aún pendientes quedan adjudicados. */
-export async function acceptAuctionOffer(auctionId, offerId) {
-  return fetchApi(`/necesidades-compra/${encodeURIComponent(String(auctionId))}/cotizaciones/${encodeURIComponent(String(offerId))}/aceptar`, {
+export async function acceptAuctionOffer(auctionId, offerId, expectedTotal) {
+  // `expectedTotal`: el total que el comprador tenia a la vista; si la tienda la corrigio, el servidor no la acepta.
+  const query = expectedTotal != null && Number.isFinite(Number(expectedTotal)) ? `?totalEsperado=${encodeURIComponent(String(expectedTotal))}` : '';
+  return fetchApi(`/necesidades-compra/${encodeURIComponent(String(auctionId))}/cotizaciones/${encodeURIComponent(String(offerId))}/aceptar${query}`, {
     method: 'POST',
   });
 }

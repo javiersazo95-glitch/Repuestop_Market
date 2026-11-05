@@ -3,7 +3,7 @@ import { availabilityLabel } from '../utils/availability';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import StoreProfileLink from '../components/StoreProfileLink';
 import {
-  AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, Gavel,
+  AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, Eye, Gavel,
   Bookmark, BookmarkCheck, ChevronDown, Star, HelpCircle, Pencil, RotateCcw, XCircle, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
 } from 'lucide-react';
 import { auctionTrackingCode, getAuctionDetail, setAuctionSaved } from '../services/auctionApi';
@@ -259,7 +259,7 @@ export default function AuctionDetailPage() {
   const {
     patenteAnonimizada, marca, modelo, anio, version, motor, chasis, repuestoSolicitado, cantidad,
     tiempoMaximoEnvio, tipoEnvio, presupuestoMaximo, region, comuna, estado, fechaLimite,
-    createdAt, categoria, pedidoId, fotos = [], cotizaciones = [], esCreador, miCotizacion, items = [], itemsPendientes = 0,
+    createdAt, editadaAt, categoria, pedidoId, fotos = [], cotizaciones = [], esCreador, miCotizacion, items = [], itemsPendientes = 0,
   } = auction;
 
   const remainingMs = new Date(fechaLimite).getTime() - now;
@@ -273,7 +273,11 @@ export default function AuctionDetailPage() {
   const photos = fotos.map((url) => resolveMediaUrl(url));
   const currentPhoto = photos[activePhotoIndex] || null;
   const location = [comuna, region].filter(Boolean).join(', ');
-  const canQuote = isSeller && !esCreador && isOpen && itemsPendientes > 0 && !miCotizacion?.aceptada;
+  // La oferta de la tienda solo se corrige mientras el comprador no la abra; despues queda fija hasta que la rechace o venza.
+  const quoteLocked = Boolean(miCotizacion && miCotizacion.estado === 'ENVIADA' && !miCotizacion.vencida && !miCotizacion.aceptada && !miCotizacion.editable);
+  const canQuote = isSeller && !esCreador && isOpen && itemsPendientes > 0 && !miCotizacion?.aceptada && !quoteLocked;
+  const quoteLabel = miCotizacion?.editable ? 'Modificar oferta' : miCotizacion ? 'Enviar nueva oferta' : 'Enviar oferta';
+  const QuoteIcon = miCotizacion?.editable ? Pencil : Gavel;
   const acceptedCount = cotizaciones.filter((quote) => quote.aceptada).length;
   const paidOffers = auction?.ofertasPagadas ?? 0;
   const latestQuote = [...cotizaciones].sort((a, b) => new Date(b.fechaEnvio).getTime() - new Date(a.fechaEnvio).getTime())[0];
@@ -398,6 +402,9 @@ export default function AuctionDetailPage() {
                     {createdAt && (
                       <span className="av-meta-item"><CalendarDays size={22} /><span><small>Publicado</small><strong>{formatDate(createdAt)}</strong></span></span>
                     )}
+                    {editadaAt && (
+                      <span className="av-meta-item"><Pencil size={22} /><span><small>Actualizado</small><strong>{formatDate(editadaAt)}</strong></span></span>
+                    )}
                     <span className="av-meta-item"><MapPin size={22} /><strong>{location || 'Ubicación no indicada'}</strong></span>
                   </div>
 
@@ -406,7 +413,7 @@ export default function AuctionDetailPage() {
                     <div className="av-title-side">
                       {canQuote && (
                         <button type="button" className="av-send-offer-btn" onClick={() => setIsQuoteModalOpen(true)}>
-                          {miCotizacion ? <Pencil size={16} /> : <Gavel size={16} />} {miCotizacion ? 'Modificar oferta' : 'Enviar oferta'}
+                          <QuoteIcon size={16} /> {quoteLabel}
                         </button>
                       )}
                       {esCreador && <p className="av-code">Código: <strong>{auctionTrackingCode(auction.id)}</strong></p>}
@@ -512,10 +519,10 @@ export default function AuctionDetailPage() {
                     type="button"
                     className="av-offers-expand is-edit"
                     onClick={() => setIsQuoteModalOpen(true)}
-                    aria-label={miCotizacion ? 'Modificar mi oferta' : 'Enviar oferta'}
-                    title={miCotizacion ? 'Modificar mi oferta' : 'Enviar oferta'}
+                    aria-label={quoteLabel}
+                    title={quoteLabel}
                   >
-                    {miCotizacion ? <Pencil size={16} /> : <Gavel size={16} />}
+                    <QuoteIcon size={16} />
                   </button>
                 )}
                 {cotizaciones.length > 1 && (
@@ -578,6 +585,13 @@ export default function AuctionDetailPage() {
                 </button>
               )}
 
+              {isSeller && !esCreador && quoteLocked && isOpen && (
+                <div className="av-offers-cta">
+                  <span className="av-offers-cta-icon"><Eye size={22} /></span>
+                  <p><strong>El comprador ya revisó tu oferta</strong><small>Ya no se puede modificar. Si la rechaza o vence, podrás enviar una nueva.</small></p>
+                </div>
+              )}
+
               {isSeller && !esCreador && miCotizacion?.aceptada && (
                 <div className="av-offers-cta">
                   <span className="av-offers-cta-icon"><Trophy size={22} /></span>
@@ -594,7 +608,7 @@ export default function AuctionDetailPage() {
         <MobileStickyBar label={isOpen ? 'Tiempo restante' : 'Encargo'} value={isOpen ? formatRemaining(remainingMs) : statusLabel} hint={`${cotizaciones.length} ${cotizaciones.length === 1 ? 'oferta' : 'ofertas'}`} ariaLabel="Acciones del encargo de repuestos">
           {canQuote && (
             <button type="button" className="mobile-sticky-bar__btn" onClick={() => setIsQuoteModalOpen(true)}>
-              {miCotizacion ? <Pencil size={17} /> : <Gavel size={17} />} {miCotizacion ? 'Modificar oferta' : 'Enviar oferta'}
+              <QuoteIcon size={17} /> {quoteLabel}
             </button>
           )}
           {esCreador && acceptedCount > 0 && (

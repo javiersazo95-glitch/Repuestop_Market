@@ -13,6 +13,7 @@ import AuctionImageViewer from './AuctionImageViewer';
 import { resolveMediaUrl } from '../services/api';
 import { evaluateOffer, shippingClass, suggestOffer } from '../utils/auctionOfferFit';
 import { usePaymentDeadline } from '../utils/paymentDeadline';
+import { offerValidityLabel } from '../utils/offerValidity';
 import '../styles/auction-offers.css';
 
 const nf = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
@@ -150,7 +151,8 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
   const hasValidLines = !quote.lineas || quote.lineas.length === 0 ? true : validLines.length > 0;
   const total = coverage ? coverage.total : (quote.precioFinal ?? quote.precio);
   const rejected = !accepted && quote.estado === 'RECHAZADA';
-  const canAccept = isOpen && !accepted && !discarded && !rejected && hasValidLines;
+  const expired = !accepted && !discarded && !rejected && Boolean(quote.vencida);
+  const canAccept = isOpen && !accepted && !discarded && !rejected && !expired && hasValidLines;
   const missing = quote.itemsFaltantes || [];
   const included = validLines.length > 0 ? validLines.map((line) => line.repuesto) : (quote.productoTitulo ? [quote.productoTitulo] : []);
   const toggle = () => setExpanded((value) => !value);
@@ -162,6 +164,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
       {isBest && !accepted && !discarded && !rejected && <span className="ao-tag is-best">Menor precio</span>}
       {discarded && <span className="ao-tag is-muted">Sin repuestos pendientes</span>}
       {rejected && <span className="ao-tag is-muted">Rechazada</span>}
+      {expired && <span className="ao-tag is-muted">Vencida</span>}
     </>
   );
   const quickActions = canAccept && !confirming && !rejecting;
@@ -236,6 +239,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
           {isBest && !accepted && !discarded && !rejected && <span className="ao-tag is-best">Menor precio</span>}
           {discarded && <span className="ao-tag is-muted">Sin repuestos pendientes</span>}
           {rejected && <span className="ao-tag is-muted">Rechazada</span>}
+      {expired && <span className="ao-tag is-muted">Vencida</span>}
         </div>
         <div className="ao-offer-total">
           <small>{coverage && coverage.coveredItems < coverage.totalItems ? 'Total de lo que cubre' : 'Total ofertado'}</small>
@@ -283,7 +287,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
               <div><dt>Disponibilidad</dt><dd>{availabilityLabel(quote.disponibilidadDias) || '—'}</dd></div>
               <div><dt>Plazo</dt><dd>{quote.tiempoEntrega || '—'}</dd></div>
               <div><dt>Garantía</dt><dd>{quote.garantia || 'Garantía legal'}</dd></div>
-              <div><dt>Vigencia</dt><dd>{quote.vigencia || '—'}</dd></div>
+              <div><dt>Vigencia</dt><dd>{offerValidityLabel(quote)}</dd></div>
             </dl>
             <h5>Cumplimiento de lo pedido</h5>
             <ul className="ao-checks">
@@ -319,7 +323,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, co
             <Term label="Disponibilidad" value={availabilitySentence(quote.disponibilidadDias) || availabilityLabel(quote.disponibilidadDias)} />
             <Term label="Plazo de entrega" value={quote.tiempoEntrega} />
             <Term label="Garantía" value={quote.garantia || 'Garantía legal'} />
-            <Term label="Vigencia de la oferta" value={quote.vigencia} />
+            <Term label="Vigencia de la oferta" value={offerValidityLabel(quote)} />
           </dl>
 
           <FitPanel fit={fit} auction={auction} />
@@ -444,7 +448,7 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
 
   const isOpenAuction = detail?.estado === 'ACTIVA' && new Date(detail.fechaLimite).getTime() > Date.now();
   const acceptedCount = offers.filter((quote) => quote.aceptada).length;
-  const competing = offers.filter((quote) => !quote.aceptada && quote.estado !== 'DESCARTADA' && quote.estado !== 'RECHAZADA');
+  const competing = offers.filter((quote) => !quote.aceptada && !quote.vencida && quote.estado !== 'DESCARTADA' && quote.estado !== 'RECHAZADA');
   const suggestion = detail && isOpenAuction && competing.length > 0 ? suggestOffer(detail, competing) : null;
   const prices = competing.map((quote) => evaluateOffer(detail, quote).total).filter((value) => value > 0);
   const bestPrice = competing.length > 1 && prices.length > 0 ? Math.min(...prices) : null;
@@ -455,7 +459,7 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
     setBusy(true);
     setError('');
     try {
-      await acceptAuctionOffer(auctionId, quote.id);
+      await acceptAuctionOffer(auctionId, quote.id, quote.precioFinal ?? quote.precio);
       setConfirmId(null);
       await load();
       onChanged?.();
@@ -485,7 +489,7 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
   const statusOf = (quote) => {
     if (quote.aceptada) return 'accepted';
     if (quote.estado === 'RECHAZADA') return 'rejected';
-    if (quote.estado === 'DESCARTADA') return 'closed';
+    if (quote.estado === 'DESCARTADA' || quote.vencida) return 'closed';
     return 'open';
   };
   const statusCounts = offers.reduce((acc, quote) => {
