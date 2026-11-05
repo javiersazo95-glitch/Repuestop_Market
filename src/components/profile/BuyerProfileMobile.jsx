@@ -174,6 +174,11 @@ export default function BuyerProfileMobile({ user, isWorkshop, onOpenMediaModal,
             </Field>
           </>
         )}
+        {isWorkshop && user?.address && (
+          <Field label="Dirección del taller" helper="Es la dirección que registraste al acreditar tu taller. Es fija y solo informativa.">
+            <input value={[user.address, user.comuna || user.city, user.region].filter(Boolean).join(', ')} readOnly className="is-locked" />
+          </Field>
+        )}
       </section>
 
       {isBuyer && (
@@ -213,7 +218,7 @@ export default function BuyerProfileMobile({ user, isWorkshop, onOpenMediaModal,
           <h3>Configuración</h3>
           <div className="spm-card">
             {isWorkshop && <MenuRow icon={ShieldCheck} label="Acreditación del taller" onClick={() => onOpenTab('mi_taller')} />}
-            <MenuRow icon={MapPin} label="Mis direcciones" onClick={() => onOpenTab('mis_direcciones')} />
+            {!isWorkshop && <MenuRow icon={MapPin} label="Mis direcciones" onClick={() => onOpenTab('mis_direcciones')} />}
             {isWorkshop && <MenuRow icon={Bell} label="Notificaciones" onClick={() => onOpenTab('notificaciones')} />}
             <MenuRow icon={Lock} label="Cambiar contraseña" onClick={() => onOpenTab('cambiar_clave')} />
           </div>

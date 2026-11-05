@@ -448,7 +448,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
             <div className="ft-m-only ft-m-controls">
               {isLoggedIn && (
                 <div className="ft-m-tabs" role="tablist">
-                  {(lists[isWorkshop ? 'COMMENTED' : 'MINE'].length > 0 ? ['MINE', 'OPEN'] : ['OPEN', 'MINE']).map((tabKey) => (tabKey === 'OPEN' ? (
+                  {(!isWorkshop && lists.MINE.length > 0 ? ['MINE', 'OPEN'] : ['OPEN', 'MINE']).map((tabKey) => (tabKey === 'OPEN' ? (
                     <button key="OPEN" type="button" role="tab" aria-selected={view === 'OPEN'} className={view === 'OPEN' ? 'is-active' : ''} onClick={() => setView('OPEN')}>Mural público ({lists.OPEN.length})</button>
                   ) : (
                     <button key="MINE" type="button" role="tab" aria-selected={view !== 'OPEN'} className={view !== 'OPEN' ? 'is-active' : ''} onClick={() => setView(isWorkshop ? 'COMMENTED' : 'MINE')}>Mis fallas ({lists[isWorkshop ? 'COMMENTED' : 'MINE'].length})</button>
