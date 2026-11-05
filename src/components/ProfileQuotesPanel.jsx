@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Clock, Inbox, MessageSquare, ReceiptText, Search, Send, Sliders, X } from 'lucide-react';
+import { Clock, Inbox, ReceiptText, Search, Send, Sliders, X } from 'lucide-react';
 import QuoteCard from './QuoteCard';
 import usePagedList from '../hooks/usePagedList';
 import ListPager from './ListPager';
@@ -21,6 +21,14 @@ const buyerThreadState = (conversation) => {
   return conversation.cotizacion ? 'quotes' : 'requests';
 };
 
+// Vista del vendedor (igual que `mobile/app/(seller)/mensajes.tsx`): sin responder (también con modificación pendiente),
+// respondidas (cotización enviada vigente) y cerradas.
+const SELLER_FILTERS = [['all', 'Todas'], ['pending', 'Sin responder'], ['sent', 'Respondidas'], ['closed', 'Cerradas']];
+const sellerThreadState = (conversation) => {
+  if (conversation.estado === 'CERRADA') return 'closed';
+  return !conversation.cotizacion || isConversationPaused(conversation) ? 'pending' : 'sent';
+};
+
 export default function ProfileQuotesPanel({
   quotesAsBuyer,
   quoteSummary,
@@ -40,8 +48,7 @@ export default function ProfileQuotesPanel({
       .filter((conversation) => {
         // Una modificación pendiente vuelve a dejar la conversación "sin responder".
         if (quotesAsBuyer && ['requests', 'quotes', 'agreements'].includes(quoteFilter)) return buyerThreadState(conversation) === quoteFilter;
-        if (quoteFilter === 'pending') return !conversation.cotizacion || isConversationPaused(conversation);
-        if (quoteFilter === 'sent') return Boolean(conversation.cotizacion) && !isConversationPaused(conversation);
+        if (['pending', 'sent', 'closed'].includes(quoteFilter)) return sellerThreadState(conversation) === quoteFilter;
         if (quoteFilter === 'unread') return Number(conversation.mensajesNoLeidos || 0) > 0;
         return true;
       })
@@ -56,6 +63,10 @@ export default function ProfileQuotesPanel({
         return quoteSort === 'newest' ? rightTime - leftTime : leftTime - rightTime;
       });
   }, [activeQuoteSource, quoteFilter, quoteSearch, quoteSort, quotesAsBuyer]);
+  const sellerCounts = useMemo(() => {
+    const quoteOnly = (activeQuoteSource || []).filter((conversation) => !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion');
+    return SELLER_FILTERS.reduce((counts, [value]) => ({ ...counts, [value]: value === 'all' ? quoteOnly.length : quoteOnly.filter((conversation) => sellerThreadState(conversation) === value).length }), {});
+  }, [activeQuoteSource]);
   const buyerCounts = useMemo(() => {
     const quoteOnly = (activeQuoteSource || []).filter((conversation) => !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion');
     return BUYER_FILTERS.reduce((counts, [value]) => ({ ...counts, [value]: value === 'all' ? quoteOnly.length : quoteOnly.filter((conversation) => buyerThreadState(conversation) === value).length }), {});
@@ -79,17 +90,16 @@ export default function ProfileQuotesPanel({
       </div>
 
       {!quotesAsBuyer && <div className="seller-quotes-summary">
-        <article><MessageSquare size={18} /><span><strong>{quoteSummary.total}</strong>Total</span></article>
-        <article className="is-pending"><Clock size={18} /><span><strong>{quoteSummary.pending}</strong>Por responder</span></article>
-        <article className="is-sent"><Send size={18} /><span><strong>{quoteSummary.sent}</strong>Ofertas enviadas</span></article>
-        <article className="is-unread"><Inbox size={18} /><span><strong>{quoteSummary.unread}</strong>Mensajes sin leer</span></article>
+        <article className={quoteFilter === 'pending' ? 'is-pending' : ''}><Clock size={18} /><span><strong>{sellerCounts.pending}</strong>Sin responder</span></article>
+        <article className="is-sent"><Send size={18} /><span><strong>{sellerCounts.sent}</strong>Respondidas</span></article>
+        <article><Inbox size={18} /><span><strong>{sellerCounts.closed}</strong>Cerradas</span></article>
       </div>}
 
       <div className="seller-quotes-toolbar">
         <label className="seller-quotes-search"><Search size={15} /><input value={quoteSearch} onChange={(event) => setQuoteSearch(event.target.value)} placeholder={quotesAsBuyer ? 'Buscar vendedor, repuesto o SKU' : 'Buscar comprador, producto o cotización...'} />{quoteSearch && <button type="button" onClick={() => setQuoteSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
         <div className="seller-quotes-filters" role="group" aria-label="Filtrar cotizaciones">
-          {(quotesAsBuyer ? BUYER_FILTERS : [['all', 'Todas'], ['pending', 'Sin responder'], ['sent', 'Enviadas'], ['unread', 'Sin leer']]).map(([value, label]) => (
-            <button key={value} type="button" className={quoteFilter === value ? 'active' : ''} onClick={() => setQuoteFilter(value)}>{label}{quotesAsBuyer ? ` (${buyerCounts[value] ?? 0})` : ''}</button>
+          {(quotesAsBuyer ? BUYER_FILTERS : SELLER_FILTERS).map(([value, label]) => (
+            <button key={value} type="button" className={quoteFilter === value ? 'active' : ''} onClick={() => setQuoteFilter(value)}>{label} ({(quotesAsBuyer ? buyerCounts : sellerCounts)[value] ?? 0})</button>
           ))}
         </div>
       </div>
