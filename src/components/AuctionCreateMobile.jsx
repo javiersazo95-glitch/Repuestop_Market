@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, Camera, Car, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Camera, Car, Info, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { normalizePlate } from '../utils/vehicleLookup';
 import AuctionManualVehicle from './AuctionManualVehicle';
 import { PlateBenefitHint, RecommendedBadge } from './PlateRecommended';
@@ -12,6 +12,7 @@ import { resolveMediaUrl } from '../services/api';
 import { MAX_PRICE, MAX_QUANTITY, onlyDigits } from '../utils/inputLimits';
 import '../styles/auction-app-mobile.css';
 import ConfirmDialog from './ConfirmDialog';
+import { activeOffersCount, discardOffersMessage, editDiscardsOffers } from '../utils/auctionEditImpact';
 
 // Mismas opciones que la app y el formulario de escritorio.
 const PLAZO_OPTIONS = ['Mismo día / Inmediato', '24 horas', '48 horas', '3 a 5 días hábiles', 'A convenir'];
@@ -143,6 +144,8 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
   const changeItem = (key, patch) => setItems((current) => current.map((item) => (item.key === key ? { ...item, ...patch } : item)));
   const removeItem = (key) => setItems((current) => current.filter((item) => item.key !== key));
   const [removeKey, setRemoveKey] = useState(null);
+  const offersAtStake = isEditing ? activeOffersCount(auction) : 0;
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
   const removeIndex = items.findIndex((item) => item.key === removeKey);
   const removeItemName = removeIndex >= 0 ? String(items[removeIndex].nombre || '').trim() : '';
   const confirmRemove = () => { if (removeKey !== null) removeItem(removeKey); setRemoveKey(null); };
@@ -185,7 +188,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
     }
   };
 
-  const submit = async (event) => {
+  const submit = async (event, confirmedDiscard = false) => {
     event.preventDefault();
     if (!ubicacion) { setError('Registra una dirección para publicar tu encargo: la usamos para ubicarlo y para que las tiendas sepan si despachan a tu comuna.'); return; }
     if (!manualVehicle && !vehicle?.chasis) { setError('Ingresa la patente de tu vehículo o usa la búsqueda manual.'); return; }
@@ -198,6 +201,16 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
     const badQuantity = items.findIndex((item) => { const value = parseInt(item.cantidad, 10); return !(value >= 1 && value <= MAX_QUANTITY); });
     if (badQuantity >= 0) { setError(`La cantidad del repuesto ${badQuantity + 1} debe estar entre 1 y ${MAX_QUANTITY}.`); return; }
     if (presupuesto && parseInt(presupuesto, 10) > MAX_PRICE) { setError(`El presupuesto no puede superar $${MAX_PRICE.toLocaleString('es-CL')}.`); return; }
+    if (isEditing && auction?.motivoEdicionMayor
+      && editDiscardsOffers(auction, { items, patente: manualVehicle ? '' : patente, comuna: comunas.find((c) => String(c.id) === String(comunaId))?.nombre })) {
+      setError(auction.motivoEdicionMayor);
+      return;
+    }
+    if (isEditing && !confirmedDiscard && offersAtStake > 0
+      && editDiscardsOffers(auction, { items, patente: manualVehicle ? '' : patente, comuna: comunas.find((c) => String(c.id) === String(comunaId))?.nombre })) {
+      setConfirmDiscard(true);
+      return;
+    }
     setLoading(true);
     setError('');
     try {
@@ -242,6 +255,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
         <button type="button" className="am-back" onClick={onClose}><ArrowLeft size={16} /> Volver</button>
         {(isEditing || template) && <h1 className="am-form-heading">{isEditing ? 'Editar encargo de repuestos' : 'Publicar de nuevo tu encargo'}</h1>}
 
+        {isEditing && auction?.motivoEdicionMayor && <p className="am-warn-note"><Info size={16} /> {auction.motivoEdicionMayor}</p>}
         <section className="am-card">
           <h3 className="am-form-title">1. Datos del vehículo</h3>
           {manualVehicle ? (
@@ -400,6 +414,16 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
           {loading ? <Loader2 size={18} className="am-spin" /> : null} {isEditing ? 'Guardar cambios' : 'Publicar encargo de repuestos'}
         </button>
       </form>
+      <ConfirmDialog
+        isOpen={confirmDiscard}
+        tone="warning"
+        title="¿Guardar y dejar sin efecto las ofertas?"
+        message={discardOffersMessage(offersAtStake)}
+        confirmLabel="Sí, guardar cambios"
+        cancelLabel="No, seguir editando"
+        onConfirm={() => { setConfirmDiscard(false); submit({ preventDefault() {} }, true); }}
+        onCancel={() => setConfirmDiscard(false)}
+      />
       <ConfirmDialog
         isOpen={removeKey !== null}
         title={`¿Quitar el repuesto ${removeIndex + 1}?`}

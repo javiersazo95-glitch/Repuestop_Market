@@ -346,3 +346,5 @@
 .am-card-pay button { display: inline-flex; align-items: center; gap: 4px; min-height: 34px; padding: 0 14px; border: 0; border-radius: 8px; background: #0056bf; color: #fff; font: inherit; font-size: 13px; font-weight: 700; }
 .am-card-pay.is-expired { background: #fff7e6; color: #9a5a00; }
 .am-card-state.is-por-pagar { background: #eaf2ff; color: #0052cc; }
+
+.am-page .am-warn-note { display: flex; align-items: flex-start; gap: 8px; padding: 12px; border-radius: 12px; background: var(--am-warn-bg); color: var(--am-warn); font-size: 13px; }

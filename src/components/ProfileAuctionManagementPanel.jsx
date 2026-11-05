@@ -324,7 +324,7 @@ function DetailPanel({ item, busy, onEdit, onOpen, onOrder }) {
         {oferta.pedidoId && <button type="button" className="pt-btn is-primary" onClick={() => onOrder(oferta.pedidoId)}><PackageCheck size={14} /> Ver pedido</button>}
         {oferta.editable && (
           <button type="button" className="pt-btn" onClick={() => onEdit(necesidad.id)} disabled={busy}>
-            {busy ? <Loader2 size={14} className="pg-spin" /> : <Pencil size={14} />} Editar oferta
+            {busy ? <Loader2 size={14} className="pg-spin" /> : <Pencil size={14} />} {oferta.estado === 'ENVIADA' || oferta.estado === 'REVISADA' ? 'Editar oferta' : 'Enviar nueva oferta'}
           </button>
         )}
       </footer>
@@ -431,7 +431,7 @@ function OfferCardMobile({ item, seenSignature, onSeen, busy, onEdit, onOpen, on
           <PublicQuestions auctionId={necesidad.id} isOpen={open} />
           {oferta.editable && (
             <button type="button" className="otm-btn is-wide" onClick={() => onEdit(necesidad.id)} disabled={busy}>
-              {busy ? <Loader2 size={14} className="pg-spin" /> : <Pencil size={14} />} Editar oferta
+              {busy ? <Loader2 size={14} className="pg-spin" /> : <Pencil size={14} />} {oferta.estado === 'ENVIADA' || oferta.estado === 'REVISADA' ? 'Editar oferta' : 'Enviar nueva oferta'}
             </button>
           )}
         </div>

@@ -7,6 +7,7 @@ import { acceptAuctionOffer, markAuctionOfferSeen, rejectAuctionOffer } from '..
 import { resolveMediaUrl } from '../../services/api';
 import { auctionCheckoutPath } from '../../routes/paths';
 import ConfirmDialog from '../ConfirmDialog';
+import { offerValidityLabel } from '../../utils/offerValidity';
 import StoreProfileLink from '../StoreProfileLink';
 import AuctionAvatar from '../AuctionAvatar';
 import { TrackingCells, TrackingTag } from './TrackingDetail';
@@ -24,6 +25,7 @@ export function quoteStatus(auction, quote) {
   if (quote.estado === 'ACEPTADA' || quote.estado === 'PAGO_PENDIENTE') return { label: 'Aceptada', tone: 'ok', actionable: false };
   if (quote.estado === 'PAGADA') return { label: 'Pagada', tone: 'ok', actionable: false };
   if (auction.estado !== 'ACTIVA') return { label: 'Cerrada', tone: 'lost', actionable: false };
+  if (quote.vencida) return { label: 'Vencida', tone: 'lost', actionable: false };
   return { label: 'Por revisar', tone: 'warn', actionable: Boolean(auction.esCreador) && !quote.esPrivada };
 }
 
@@ -71,7 +73,7 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
     setBusy(true);
     setError('');
     try {
-      const updated = kind === 'accept' ? await acceptAuctionOffer(auction.id, quote.id) : await rejectAuctionOffer(auction.id, quote.id);
+      const updated = kind === 'accept' ? await acceptAuctionOffer(auction.id, quote.id, quote.precioFinal ?? quote.precio) : await rejectAuctionOffer(auction.id, quote.id);
       onChanged?.(updated);
       setConfirm(null);
       if (kind === 'accept') setAccepted(true); else onClose();
@@ -134,7 +136,7 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
             <TrackingCells cells={[{ label: 'Disponibilidad', value: availabilityLabel(quote.disponibilidadDias) || '—', tone: quote.disponibilidadDias > 0 ? 'primary' : undefined }, { label: 'Plazo de entrega', value: quote.tiempoEntrega || '—' }]} />
             {availabilitySentence(quote.disponibilidadDias) && <p className="trk-note">{availabilitySentence(quote.disponibilidadDias)} El plazo de entrega corre desde ese momento.</p>}
             <TrackingCells cells={[{ label: 'Método de entrega', value: quote.tipoEntrega || '—' }]} />
-            <TrackingCells cells={[{ label: 'Garantía', value: quote.garantia || '—' }, { label: 'Vigencia de la oferta', value: quote.vigencia || '—' }]} />
+            <TrackingCells cells={[{ label: 'Garantía', value: quote.garantia || '—' }, { label: 'Vigencia de la oferta', value: offerValidityLabel(quote) }]} />
           </Section>
         </div>
 
