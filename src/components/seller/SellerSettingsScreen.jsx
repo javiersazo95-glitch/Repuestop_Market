@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -9,6 +9,7 @@ import SocialIcon, { SOCIAL_COLORS } from '../SocialIcon';
 import ShippingMethodsPicker from '../ShippingMethodsPicker';
 import SpecialistBrandsManager from '../SpecialistBrandsManager';
 import SellerVerificationCard from '../SellerVerificationCard';
+import StoreDocumentsList, { SellerVerificationSummary } from './StoreDocumentsList';
 import CertificadoCumplimientoCard from '../CertificadoCumplimientoCard';
 import ChangePasswordCard from '../ChangePasswordCard';
 import BuyerAddressBook from '../BuyerAddressBook';
@@ -271,6 +272,28 @@ function BankSection({ sellerId, email }) {
 // El mismo icono de cada acceso del menú Más (cabecera de `SellerSectionScreen.tsx` de la app).
 const SECTION_ICONS = { mis_direcciones: MapPin, notificaciones: Bell, tienda_redes: Share2, tienda_documentos: FolderOpen, tienda_envios: Truck, tienda_bancarios: CreditCard, tienda_marcas: CarFront, cambiar_clave: Lock };
 
+/** Igual que `app/(seller)/tienda-documentos.tsx`: verificación, documentos cargados con vista previa y certificado del SII. */
+function DocumentsSection({ sellerId }) {
+  const [status, setStatus] = useState('');
+  const onStatus = useCallback((value) => setStatus(value), []);
+  // Para corregir o apelar se necesita el formulario completo de la verificación (en la app se hace desde Ayuda).
+  const needsAction = status === 'NEEDS_CORRECTION' || status === 'REJECTED';
+  return (
+    <>
+      <SellerVerificationSummary sellerId={sellerId} onStatus={onStatus} />
+      {needsAction && <SellerVerificationCard sellerId={sellerId} />}
+      <section className="sdl-section">
+        <div className="sdl-title"><span>Documentos cargados</span><small>En el orden en que se piden. Toca el ojo para ver cada uno.</small></div>
+        <StoreDocumentsList sellerId={sellerId} />
+      </section>
+      <section className="sdl-section">
+        <div className="sdl-title"><span>Certificado de cumplimiento tributario</span><small>Se renueva dos veces al año, aparte de tus documentos.</small></div>
+        <CertificadoCumplimientoCard sellerId={sellerId} />
+      </section>
+    </>
+  );
+}
+
 export default function SellerSettingsScreen({ section, user, storeInfo, sellerId }) {
   const queryClient = useQueryClient();
   const meta = SELLER_SETTINGS[section];
@@ -295,16 +318,7 @@ export default function SellerSettingsScreen({ section, user, storeInfo, sellerI
           <SpecialistBrandsManager sellerId={sellerId} initialBrands={storeInfo?.marcasEspecialistas || []} onBrandsChange={refreshStore} />
         </div>
       )}
-      {section === 'tienda_documentos' && (
-        <>
-          <SellerVerificationCard sellerId={sellerId} />
-          <section className="spm-group sst-doc-group">
-            <h3>Certificado de cumplimiento tributario</h3>
-            <small className="sst-help">Se renueva dos veces al año, aparte de tus documentos.</small>
-            <CertificadoCumplimientoCard sellerId={sellerId} />
-          </section>
-        </>
-      )}
+      {section === 'tienda_documentos' && <DocumentsSection sellerId={sellerId} />}
       {section === 'cambiar_clave' && <ChangePasswordCard user={{ ...user, taxId: storeInfo?.taxId || user?.taxId }} isSeller={Boolean(user?.sellerId)} />}
       {section === 'mis_direcciones' && <div className="sst-card"><BuyerAddressBook usuarioId={user?.userId} /></div>}
       {section === 'notificaciones' && <div className="sst-card"><NotificationPreferencesPanel /></div>}

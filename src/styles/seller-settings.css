@@ -19,7 +19,7 @@
 .sst-doc-group { display: grid; gap: 8px; }
 
 /* Cabecera con el icono de la sección (como `SellerSectionScreen.tsx`). */
-.sst-head { grid-template-columns: auto 1fr; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--ak-primary-border, #bfd6f7); border-radius: 16px; background: #fff; box-shadow: var(--ak-shadow-card); }
+.sst-head { grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--ak-primary-border, #bfd6f7); border-radius: 16px; background: #fff; box-shadow: var(--ak-shadow-card); }
 .sst-head-icon { width: 48px; height: 48px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary, #0066ff); }
 .sst-head-copy { display: grid; gap: 2px; min-width: 0; }
 .sst-title { margin: 0; font-size: 20px; font-weight: 800; color: var(--ak-ink, #0f172a); }
@@ -73,3 +73,64 @@
 .sst-field input { min-height: 46px; padding: 0 12px; border: 1px solid var(--ak-border, #d9e0e7); border-radius: 10px; font: inherit; font-size: 15px; }
 .sst-field-error { color: var(--ak-error-text, #b42318); font-size: 12.5px; }
 .sst-modal-actions { display: grid; gap: 10px; }
+
+/* Documentos (como `tienda-documentos.tsx`, `SellerVerificationSummary.tsx` y `StoreDocumentsList.tsx`). */
+.sdl-section { display: grid; gap: 6px; }
+.sdl-title { display: grid; gap: 1px; padding: 0 2px; }
+.sdl-title span { color: var(--ak-text-muted, #5a6b7a); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.sdl-title small { color: var(--ak-text-muted, #5a6b7a); font-size: 12.5px; }
+.sdl-verify { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--ak-border, #d9e0e7); border-radius: 16px; background: #fff; }
+.sdl-verify-head { display: flex; align-items: center; gap: 8px; color: var(--ak-primary, #0066ff); }
+.sdl-verify-head strong { color: var(--ak-ink, #0f172a); font-size: 15px; }
+.sdl-status { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: 12px; }
+.sdl-status span { display: grid; gap: 2px; min-width: 0; }
+.sdl-status small { color: var(--ak-text-muted, #5a6b7a); font-size: 12.5px; }
+.sdl-status.is-ok { background: var(--ak-success-bg, #eafbf1); color: var(--ak-success-text, #0e7038); }
+.sdl-status.is-warn { background: var(--ak-warning-bg, #fff7e6); color: var(--ak-warning-text, #9a5a00); }
+.sdl-status.is-bad { background: #fef2f2; color: var(--ak-error-text, #b42318); }
+.sdl-card { overflow: hidden; border: 1px solid var(--ak-border, #d9e0e7); border-radius: 16px; background: #fff; }
+.sdl-pad { padding: 14px; }
+.sdl-center { display: grid; place-items: center; color: var(--ak-primary, #0066ff); }
+.sdl-row { display: flex; align-items: center; gap: 10px; min-height: 76px; padding: 10px 12px; }
+.sdl-row + .sdl-row { border-top: 1px solid #eef2f7; }
+.sdl-order { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: var(--ak-primary, #0066ff); color: #fff; font-size: 11px; font-weight: 800; }
+.sdl-icon { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 12px; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary, #0066ff); }
+.sdl-row.is-pending .sdl-order { background: var(--ak-surface-muted, #f3f5f7); color: var(--ak-text-muted, #5a6b7a); }
+.sdl-row.is-pending .sdl-icon { background: var(--ak-surface-muted, #f3f5f7); color: var(--ak-text-subtle, #8a97a5); }
+.sdl-copy { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.sdl-copy strong { font-size: 14.5px; overflow-wrap: anywhere; }
+.sdl-copy small { color: var(--ak-text-muted, #5a6b7a); font-size: 12.5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.sdl-copy em { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; font-style: normal; font-size: 12.5px; color: var(--ak-success-text, #0e7038); }
+.sdl-row.is-pending .sdl-copy em { color: var(--ak-text-muted, #5a6b7a); }
+.sdl-eye { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary, #0066ff); cursor: pointer; }
+.sdl-eye:disabled { opacity: .6; }
+.sdl-error { margin: 0; color: var(--ak-error-text, #b42318); font-size: 13px; }
+.sdl-muted { margin: 0; color: var(--ak-text-muted, #5a6b7a); font-size: 13px; }
+.sdl-retry { justify-self: start; margin-top: 8px; padding: 0; border: 0; background: none; color: var(--ak-primary, #0066ff); font: inherit; font-weight: 700; cursor: pointer; }
+
+/* Celular: la pantalla va sin la tarjeta del panel (como la app, con el fondo de la pantalla) y nada se corta. */
+@media (max-width: 768px) {
+  .profile-dashboard .profile-panel.sst { padding: 0; border: 0; background: transparent; box-shadow: none; overflow: visible; }
+  .sst, .sst * { box-sizing: border-box; }
+  .sst { min-width: 0; max-width: 100%; padding-bottom: 12px; }
+  .sst-channels { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; padding: 0; }
+  .sst-channels a { min-width: 0; }
+  .sst-channels a > span { width: 48px; height: 48px; }
+  .sst-channels small { font-size: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sst-share-actions button { min-width: 0; }
+  .sst-modal-backdrop { align-items: flex-end; padding: 0; }
+  .sst-modal { max-width: none; max-height: 92dvh; border-radius: 18px 18px 0 0; padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px)); }
+}
+@media (max-width: 360px) {
+  .sst-channels a > span { width: 42px; height: 42px; }
+  .sst-head { padding: 12px; }
+  .sst-head-icon { width: 40px; height: 40px; }
+}
+
+/* Las cuadrículas no crecen por un texto largo sin saltos (enlace de la tienda o de una red): se recorta con «…». */
+.sst, .sst-social, .sst-share, .sst-card, .sdl-section { grid-template-columns: minmax(0, 1fr); min-width: 0; }
+.sst-share-head, .sst-share-pill, .sst-network, .sst-network-main { min-width: 0; }
+.sst-share-head > span:last-child { min-width: 0; }
+.sst-share-head small { overflow-wrap: anywhere; }
+.sst-share-pill span { flex: 1; min-width: 0; }
+.sst-head-copy p { overflow-wrap: anywhere; }

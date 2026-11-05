@@ -2242,6 +2242,20 @@ export async function getSellerAdhesionPreviewApi(proveedorId, { signal } = {}) 
 }
 
 /**
+ * Documentos cargados de la tienda, ya en el orden en que se muestran (los del registro y, al final, el contrato firmado).
+ * Mismo endpoint que `utils/store-documents.ts` de la app.
+ */
+export async function getStoreDocumentsApi(proveedorId, { signal } = {}) {
+  const data = await fetchApi(`/proveedores/${encodeURIComponent(proveedorId)}/documentos`, { method: 'GET', signal });
+  return Array.isArray(data) ? data : [];
+}
+
+/** Enlace de un solo uso (5 minutos) para ver un documento privado de la tienda. */
+export async function getStoreDocumentUrlApi(proveedorId, tipo) {
+  return fetchApi(`/proveedores/${encodeURIComponent(proveedorId)}/documentos/${encodeURIComponent(tipo)}/url`, { method: 'GET' });
+}
+
+/**
  * Consulta el estado de verificación y revisión documental del proveedor.
  */
 export async function getSellerVerificationStatusApi(proveedorId, { signal } = {}) {

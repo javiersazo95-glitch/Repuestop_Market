@@ -709,6 +709,8 @@ ofertas, seguimiento, favoritos, reserva de cita, ficha del taller, menú Más).
 | Redes sociales / Mi tienda y datos | «Comparte tu tienda» con enlace, Copiar/Compartir y canales (WhatsApp, Facebook, Messenger, Telegram, Correo); «Redes de tu tienda» con Agregar/Abrir y ventana de edición con interruptor; portada por defecto e insignia Fundador; sin el grupo Configuración (cada ajuste tiene su pantalla) | `seller/SocialLinksManager.tsx`, `app/(seller)/mi-tienda.tsx` |
 | Mis datos y perfil (comprador / taller, móvil) | `profile/BuyerProfileMobile.jsx`: Datos personales en tarjetas bloqueadas hasta «Editar datos», factura (comprador), Cerrar cuenta y menú Configuración (Acreditación, Mis direcciones, Notificaciones, Cambiar contraseña) con subpantallas propias | `app/profile-edit.tsx` |
 | Resumen móvil (vendedor / taller) | sin portada; tarjeta de identidad con logo, estado del agendamiento (taller) e insignia Fundador (vendedor) | `app/(seller)/index.tsx`, `app/(workshop)/index.tsx` |
+| Encargos (tienda) | pestañas «Mural público» y «Mis ofertas en curso» con el seguimiento de propuestas y los filtros Todas / En curso / Ganadas / Cerradas / Guardadas | `app/subastas/index.tsx`, `app/subastas/seguimiento.tsx` |
+| Documentos (tienda) | «Verificación comercial», «Documentos cargados» numerados con vista previa (`GET /proveedores/{id}/documentos`) y certificado del SII | `app/(seller)/tienda-documentos.tsx` |
 | Directorio de talleres | varios servicios buscados como etiquetas («Servicios buscados») y orden por los que cubren más | `app/talleres.tsx` |
 
 Pendiente de revisar con sesión real (no hay backend en el entorno de desarrollo del agente): el resumen móvil del taller y del
