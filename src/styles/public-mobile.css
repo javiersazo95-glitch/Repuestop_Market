@@ -439,7 +439,13 @@
     line-height: 1.45;
   }
   .light-search-intro { gap: 12px; }
-  .light-search-tabs button { flex-direction: row; gap: 6px; min-height: 48px; font-size: 13px; white-space: nowrap; }
+  /* Dos pestañas a medio ancho: icono arriba, texto que puede partirse en dos líneas y la insignia debajo (antes se cortaban). */
+  .light-search-tabs[role="tablist"] { height: auto; min-height: 72px; overflow: visible; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .light-search-tabs[role="tablist"] button { flex-direction: column; flex-wrap: nowrap; gap: 3px; min-width: 0; min-height: 72px; padding: 8px 6px; font-size: 12.5px; line-height: 1.2; white-space: normal; text-align: center; }
+  .light-search-tabs button > span:not(.plate-reco) { min-width: 0; overflow-wrap: anywhere; }
+  .light-search-tabs button svg { flex: none; width: 20px; height: 20px; }
+  .light-search-tabs .plate-reco { margin: 0; padding: 1px 7px; font-size: 10px; }
+  .light-search-tabs button.active::after { left: 10px; right: 10px; }
   .light-search-form { padding: 16px 14px 14px; }
   .light-primary-search { margin: 10px 0 4px; }
   .country-selector-badge,
