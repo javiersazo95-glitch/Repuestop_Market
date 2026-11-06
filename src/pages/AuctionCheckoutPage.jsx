@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, ShieldCheck, ShoppingCart, Store, Truck } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Loader2, ShieldCheck, ShoppingCart, Truck } from 'lucide-react';
 import { getAuctionPurchase, payAuctionPurchase } from '../services/auctionApi';
-import { confirmOrderPaymentApi } from '../services/api';
+import { confirmOrderPaymentApi, resolveMediaUrl } from '../services/api';
+import AuctionAvatar from '../components/AuctionAvatar';
 import { formatRut, isValidRut } from '../services/adapters';
 import { auctionDetailPath, profilePath, ROUTES } from '../routes/paths';
 import { useAuth } from '../context/AuthContext';
@@ -151,11 +152,10 @@ export default function AuctionCheckoutPage() {
               {toPay.map((store) => (
                 <article key={store.cotizacionId} className="ap-store" style={{ marginBottom: 12 }}>
                   <header className="ap-store-head">
-                    <span className="ap-store-icon" aria-hidden="true"><Store size={18} /></span>
+                    <AuctionAvatar className="ap-store-avatar" src={store.tiendaLogoUrl} name={store.tienda} isStore storeId={store.proveedorId} />
                     <div>
                       <strong>{store.tienda}</strong>
                       <small><Truck size={12} /> {chosenMethod(store)}{store.plazoEntrega ? ` · ${store.plazoEntrega}` : ''}</small>
-                      {(store.tiendaComuna || store.tiendaRegion) && <small>Tienda en {[store.tiendaComuna, store.tiendaRegion].filter(Boolean).join(', ')}</small>}
                     </div>
                     <strong className="ap-store-total">{money(totalOf(store))}</strong>
                   </header>
@@ -163,7 +163,12 @@ export default function AuctionCheckoutPage() {
                     <tbody>
                       {store.lineas.map((line) => (
                         <tr key={line.itemId}>
-                          <td><strong>{line.repuesto}</strong><small>{line.productoTitulo}</small></td>
+                          <td>
+                            <span className="ap-line-product">
+                              {line.productoFotoUrl ? <img className="ap-line-photo" src={resolveMediaUrl(line.productoFotoUrl)} alt="" loading="lazy" /> : null}
+                              <span><strong>{line.repuesto}</strong><small>{line.productoTitulo}</small></span>
+                            </span>
+                          </td>
                           <td className="is-num">{line.cantidad} × {money(line.precioUnitario)}</td>
                           <td className="is-num">{money(line.subtotal)}</td>
                         </tr>
