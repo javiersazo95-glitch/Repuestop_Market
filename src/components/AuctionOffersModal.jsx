@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { availabilityLabel, availabilitySentence } from '../utils/availability';
 import { createPortal } from 'react-dom';
+import { useNavigate } from 'react-router-dom';
+import { auctionCheckoutPath } from '../routes/paths';
 import {
   Search,
   AlertCircle, AlertTriangle, CheckCircle2, ChevronDown, Clock, Gavel, Lightbulb, MapPin, MinusCircle, Package, PackageCheck,
@@ -365,6 +367,7 @@ function OfferCard({ quote, index, fit, auction, isSuggested, isBest, isOpen, on
  * que no se adjudica sigue disponible para otras tiendas. Lo aceptado se paga junto desde "Tu pedido".
  */
 export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChanged, onOpenPurchase, onViewOrder, fullScreen = false, focusOfferId = null }) {
+  const navigate = useNavigate();
   const [detail, setDetail] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -439,6 +442,9 @@ export default function AuctionOffersModal({ isOpen, onClose, auctionId, onChang
       setConfirmId(null);
       await load();
       onChanged?.();
+      // Cada oferta cubre todo el encargo: al aceptar no queda nada por elegir, el siguiente paso es pagar.
+      onClose();
+      navigate(auctionCheckoutPath(auctionId));
     } catch (err) {
       setError(err?.message || 'No pudimos registrar tu aceptación.');
     } finally {

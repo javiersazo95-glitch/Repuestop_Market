@@ -44,7 +44,6 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
   const [confirm, setConfirm] = useState(null); // 'accept' | 'reject'
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [accepted, setAccepted] = useState(false);
 
   useEffect(() => {
     if (quote && auction.esCreador && !quote.esPrivada) markAuctionOfferSeen(auction.id, quote.id).catch(() => {});
@@ -77,7 +76,9 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
       const updated = kind === 'accept' ? await acceptAuctionOffer(auction.id, quote.id, quote.precioFinal ?? quote.precio) : await rejectAuctionOffer(auction.id, quote.id, reason);
       onChanged?.(updated);
       setConfirm(null);
-      if (kind === 'accept') setAccepted(true); else onClose();
+      onClose();
+      // Cada oferta cubre todo el encargo: al aceptar no queda nada por elegir, el siguiente paso es pagar.
+      if (kind === 'accept') navigate(auctionCheckoutPath(auction.id));
     } catch (err) {
       setError(err?.message || (kind === 'accept' ? 'No pudimos aceptar la oferta.' : 'No pudimos rechazar la oferta.'));
     } finally {
@@ -201,16 +202,6 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
         error={error}
         onConfirm={(reason) => run(reason)}
         onCancel={() => setConfirm(null)}
-      />
-      <ConfirmDialog
-        isOpen={accepted}
-        title="Oferta aceptada"
-        message={`Avisamos a ${quote.nombreTienda}. Paga lo aceptado para que la tienda prepare tu pedido.`}
-        confirmLabel="Pagar ahora"
-        cancelLabel="Más tarde"
-        tone="success"
-        onConfirm={() => { setAccepted(false); onClose(); navigate(auctionCheckoutPath(auction.id)); }}
-        onCancel={() => { setAccepted(false); onClose(); }}
       />
     </div>,
     document.body,
