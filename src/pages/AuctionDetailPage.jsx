@@ -3,11 +3,11 @@ import { availabilityLabel } from '../utils/availability';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import StoreProfileLink from '../components/StoreProfileLink';
 import {
-  AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, Eye, Gavel,
+  AlertCircle, ArrowRight, CalendarDays, Car, ChevronRight, Clock, CreditCard, Eye, Gavel,
   Bookmark, BookmarkCheck, ChevronDown, Star, HelpCircle, Pencil, RotateCcw, XCircle, Home, ListTree, Lock, Maximize2, X, MapPin, Package, PackageCheck, ShieldCheck, ShoppingCart, Trophy,
 } from 'lucide-react';
 import { auctionTrackingCode, getAuctionDetail, setAuctionSaved } from '../services/auctionApi';
-import { ROUTES, auctionDetailPath, helpCategoryPath, profileOrderPath, profilePurchasePath } from '../routes/paths';
+import { ROUTES, auctionCheckoutPath, auctionDetailPath, helpCategoryPath, profileOrderPath, profilePurchasePath } from '../routes/paths';
 import { resolveMediaUrl } from '../services/api';
 import ContextualReportButton from '../components/ContextualReportButton';
 import AuctionQuoteModal from '../components/AuctionQuoteModal';
@@ -281,11 +281,14 @@ export default function AuctionDetailPage() {
   const QuoteIcon = miCotizacion?.editable ? Pencil : Gavel;
   const acceptedCount = cotizaciones.filter((quote) => quote.aceptada).length;
   const paidOffers = auction?.ofertasPagadas ?? 0;
+  // Oferta aceptada y sin pagar: el pago se retoma desde aquí, sin pasar por el popup de ofertas.
+  const hasPaymentPending = acceptedCount > paidOffers;
+  const goToPayment = () => navigate(auctionCheckoutPath(auction.id));
   const latestQuote = [...cotizaciones].sort((a, b) => new Date(b.fechaEnvio).getTime() - new Date(a.fechaEnvio).getTime())[0];
   const offersStatusLine = acceptedCount > 0
     ? (paidOffers >= acceptedCount
       ? 'Pedido pagado. Revisa tus ofertas y sigue tu compra desde "Ver ofertas".'
-      : `${acceptedCount} ${acceptedCount === 1 ? 'tienda aceptada' : 'tiendas aceptadas'} · pago pendiente. Págalo desde "Ver ofertas".`)
+      : `${acceptedCount} ${acceptedCount === 1 ? 'tienda aceptada' : 'tiendas aceptadas'} · pago pendiente. Págalo con el botón "Pagar".`)
     : 'Compáralas y elige la que más te convenga.';
   // Vencio o se cancelo sin aceptar ninguna oferta: ya no se edita, pero se vuelve a publicar con los mismos datos.
   const canRepublish = Boolean(esCreador) && isExpirada && acceptedCount === 0;
@@ -309,7 +312,7 @@ export default function AuctionDetailPage() {
           onBack={() => navigate(ROUTES.auctions)}
           onOffer={() => setIsQuoteModalOpen(true)}
           onCompare={() => setIsOffersOpen(true)}
-          onOpenPurchase={() => setIsPurchaseOpen(true)}
+          onOpenPurchase={goToPayment}
           saved={saved}
           saveBusy={saveBusy}
           saveNotice={saveNotice}
@@ -580,8 +583,14 @@ export default function AuctionDetailPage() {
                 <p className={`av-offers-deadline ${paymentDeadline.expired ? 'is-expired' : ''}`}><Clock size={14} /> {paymentDeadline.text}</p>
               )}
 
+              {esCreador && hasPaymentPending && (
+                <button type="button" className="as-btn-primary av-offers-compare" onClick={goToPayment}>
+                  <CreditCard size={16} /> Pagar{auction?.pagoPendienteTotal ? ` $${Math.round(Number(auction.pagoPendienteTotal)).toLocaleString('es-CL')}` : ''}
+                </button>
+              )}
+
               {esCreador && cotizaciones.length > 0 && (
-                <button type="button" className="as-btn-primary av-offers-compare" onClick={() => setIsOffersOpen(true)}>
+                <button type="button" className={hasPaymentPending ? 'as-btn-outline av-offers-compare' : 'as-btn-primary av-offers-compare'} onClick={() => setIsOffersOpen(true)}>
                   <Gavel size={16} /> Ver ofertas
                 </button>
               )}
@@ -610,6 +619,11 @@ export default function AuctionDetailPage() {
           {canQuote && (
             <button type="button" className="mobile-sticky-bar__btn" onClick={() => setIsQuoteModalOpen(true)}>
               <QuoteIcon size={17} /> {quoteLabel}
+            </button>
+          )}
+          {esCreador && hasPaymentPending && (
+            <button type="button" className="mobile-sticky-bar__btn" onClick={goToPayment}>
+              <CreditCard size={17} /> Pagar
             </button>
           )}
           {esCreador && acceptedCount > 0 && (
@@ -679,7 +693,7 @@ export default function AuctionDetailPage() {
           auctionId={auction.id}
           onClose={() => setIsOffersOpen(false)}
           onChanged={loadDetail}
-          onOpenPurchase={() => setIsPurchaseOpen(true)}
+          onOpenPurchase={goToPayment}
           onViewOrder={pedidoId ? () => navigate(String(user?.role || role || '').toUpperCase() === 'SELLER' ? profilePurchasePath(pedidoId) : profileOrderPath(pedidoId)) : undefined}
         />
       )}

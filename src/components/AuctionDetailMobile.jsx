@@ -3,7 +3,7 @@ import { availabilityLabel } from '../utils/availability';
 import { Link } from 'react-router-dom';
 import { helpCategoryPath } from '../routes/paths';
 import {
-  ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Bus, CalendarDays, Car, ChevronRight, Clock, Eye, Gavel, Info, ListChecks, Lock, MapPin,
+  ArrowLeft, ArrowRight, Bookmark, BookmarkCheck, Bus, CalendarDays, Car, ChevronRight, Clock, CreditCard, Eye, Gavel, Info, ListChecks, Lock, MapPin,
   Hash, MessageCircle, Package, PackageCheck, Pencil, RotateCcw, Send, XCircle, ShoppingCart, Star, Tag, Trophy, User, Wallet, X,
 } from 'lucide-react';
 import { auctionTrackingCode, getAuctionBuyerProfile, getAuctionComments, postAuctionComment } from '../services/auctionApi';
@@ -390,8 +390,13 @@ export default function AuctionDetailMobile({
           {miCotizacion ? <Pencil size={18} /> : <Gavel size={18} />} {miCotizacion?.editable ? 'Modificar mi oferta' : miCotizacion ? 'Enviar nueva oferta' : 'Ofertar ahora'}
         </button>
       )}
+      {esCreador && onOpenPurchase && acceptedCount > (auction?.ofertasPagadas ?? 0) && (
+        <button type="button" className="am-btn" onClick={onOpenPurchase}>
+          <CreditCard size={18} /> Pagar{auction?.pagoPendienteTotal ? ` $${Math.round(Number(auction.pagoPendienteTotal)).toLocaleString('es-CL')}` : ''}
+        </button>
+      )}
       {esCreador && cotizaciones.length > 0 && (
-        <button type="button" className="am-btn" onClick={onCompare}><Gavel size={18} /> Ver ofertas</button>
+        <button type="button" className={onOpenPurchase && acceptedCount > (auction?.ofertasPagadas ?? 0) ? 'am-btn am-btn-outline' : 'am-btn'} onClick={onCompare}><Gavel size={18} /> Ver ofertas</button>
       )}
       {isSeller && !esCreador && miCotizacion && miCotizacion.estado === 'ENVIADA' && !miCotizacion.vencida && !miCotizacion.aceptada && !miCotizacion.editable && (
         <p className="am-note"><Eye size={16} /> El comprador ya revisó tu oferta: ya no se puede modificar. Si la rechaza o vence, podrás enviar una nueva.</p>
