@@ -36,6 +36,9 @@ export default function AuctionCheckoutPage() {
   const [invoice, setInvoice] = useState({ rut: user?.facturaRut ? formatRut(user.facturaRut) : '', razonSocial: user?.facturaRazonSocial || '', giro: user?.facturaGiro || '' });
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
+  // Validacion reactiva: cada campo avisa al salir de el (o al intentar pagar) y el aviso se va solo al corregirlo.
+  const [touched, setTouched] = useState({});
+  const [attempted, setAttempted] = useState(false);
   const submittingRef = useRef(false);
 
   useEffect(() => {
@@ -69,10 +72,19 @@ export default function AuctionCheckoutPage() {
     missing.push('completa los datos de la factura (RUT, razón social y giro)');
   }
 
+  const showField = (name) => attempted || touched[name];
+  const invoiceErrors = documentType !== 'FACTURA' ? {} : {
+    rut: !invoice.rut.trim() ? (showField('rut') ? 'Ingresa el RUT.' : '') : (isValidRut(invoice.rut) ? '' : 'El RUT no es válido. Revisa el número y el dígito verificador.'),
+    giro: !invoice.giro.trim() && showField('giro') ? 'Ingresa el giro.' : '',
+    razonSocial: !invoice.razonSocial.trim() && showField('razonSocial') ? 'Ingresa la razón social.' : '',
+  };
+  // El aviso general sale solo tras intentar pagar y desaparece cuando ya no falta nada.
+  const blockedMessage = attempted && missing.length > 0 ? `Para pagar, ${missing.join(' y ')}.` : '';
+
   const pay = async () => {
     if (submittingRef.current) return;
     if (missing.length > 0) {
-      setError(`Para pagar, ${missing.join(' y ')}.`);
+      setAttempted(true);
       return;
     }
     submittingRef.current = true;
@@ -214,9 +226,9 @@ export default function AuctionCheckoutPage() {
               </div>
               {documentType === 'FACTURA' && (
                 <div className="apc-fields">
-                  <label>RUT<input value={invoice.rut} maxLength={12} onChange={(e) => setInvoice({ ...invoice, rut: formatRut(e.target.value) })} placeholder="12.345.678-9" /></label>
-                  <label>Giro<input value={invoice.giro} maxLength={150} onChange={(e) => setInvoice({ ...invoice, giro: e.target.value })} /></label>
-                  <label className="is-wide">Razón social<input value={invoice.razonSocial} maxLength={180} onChange={(e) => setInvoice({ ...invoice, razonSocial: e.target.value })} /></label>
+                  <label>RUT<input className={invoiceErrors.rut ? 'is-invalid' : ''} aria-invalid={Boolean(invoiceErrors.rut)} value={invoice.rut} maxLength={12} onChange={(e) => setInvoice({ ...invoice, rut: formatRut(e.target.value) })} onBlur={() => setTouched((t) => ({ ...t, rut: true }))} placeholder="12.345.678-9" />{invoiceErrors.rut && <small className="apc-field-error" role="alert">{invoiceErrors.rut}</small>}</label>
+                  <label>Giro<input className={invoiceErrors.giro ? 'is-invalid' : ''} aria-invalid={Boolean(invoiceErrors.giro)} value={invoice.giro} maxLength={150} onChange={(e) => setInvoice({ ...invoice, giro: e.target.value })} onBlur={() => setTouched((t) => ({ ...t, giro: true }))} />{invoiceErrors.giro && <small className="apc-field-error" role="alert">{invoiceErrors.giro}</small>}</label>
+                  <label className="is-wide">Razón social<input className={invoiceErrors.razonSocial ? 'is-invalid' : ''} aria-invalid={Boolean(invoiceErrors.razonSocial)} value={invoice.razonSocial} maxLength={180} onChange={(e) => setInvoice({ ...invoice, razonSocial: e.target.value })} onBlur={() => setTouched((t) => ({ ...t, razonSocial: true }))} />{invoiceErrors.razonSocial && <small className="apc-field-error" role="alert">{invoiceErrors.razonSocial}</small>}</label>
                 </div>
               )}
             </section>
@@ -230,11 +242,11 @@ export default function AuctionCheckoutPage() {
               <div className="is-total"><dt>Total a pagar</dt><dd>{money(totalToPay)}</dd></div>
             </dl>
             {anyCourierToPay && <p className="apc-note apc-note-warn"><AlertCircle size={14} /> No incluye el despacho fuera de la comuna: lo pagas al courier cuando recibes el pedido.</p>}
-            {error && <p className="apc-error" role="alert" style={{ marginTop: 12 }}><AlertCircle size={15} /> {error}</p>}
+            {(blockedMessage || error) && <p className="apc-error" role="alert" style={{ marginTop: 12 }}><AlertCircle size={15} /> {blockedMessage || error}</p>}
             <button type="button" className="ap-btn-primary apc-pay" onClick={pay} disabled={placing}>
               {placing ? <><Loader2 size={16} className="ap-spin" /> Generando pedido…</> : <><ShoppingCart size={16} /> Pagar {money(totalToPay)}</>}
             </button>
-            {missing.length > 0 && !error && <p className="ap-muted" style={{ marginTop: 8 }}>Falta: {missing.join(' y ')}.</p>}
+            {missing.length > 0 && !blockedMessage && !error && <p className="ap-muted" style={{ marginTop: 8 }}>Falta: {missing.join(' y ')}.</p>}
             <p className="ap-muted" style={{ marginTop: 12, display: 'flex', gap: 6 }}><ShieldCheck size={14} /> Pagas a través de la plataforma. El dinero de cada tienda queda retenido hasta tu recepción conforme.</p>
           </aside>
         </div>

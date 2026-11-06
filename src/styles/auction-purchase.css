@@ -139,3 +139,7 @@
 @media (max-width: 640px) {
   .ap-lines td:first-child { padding-left: 32px; }
 }
+
+/* Validacion reactiva de los datos de factura. */
+.apc-fields input.is-invalid { border-color: #e5484d; background: #fffafa; }
+.apc-field-error { font-size: 11.5px; font-weight: 600; color: #b42318; }
