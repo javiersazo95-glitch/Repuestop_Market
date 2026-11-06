@@ -5,7 +5,7 @@ import AuctionQuestionsPanel from './AuctionQuestionsPanel';
 import '../styles/auction-questions.css';
 
 /** Popup con todas las preguntas de las tiendas a una búsqueda, donde el comprador las responde. */
-export default function AuctionQuestionsModal({ auctionId, title, eyebrow = 'Comentarios de tu encargo', canReply, onPendingChange, onClose }) {
+export default function AuctionQuestionsModal({ auctionId, title, eyebrow = 'Comentarios de tu encargo', canReply, isCreator = true, onPendingChange, onClose }) {
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     const onKey = (event) => { if (event.key === 'Escape') onClose(); };
@@ -27,7 +27,7 @@ export default function AuctionQuestionsModal({ auctionId, title, eyebrow = 'Com
           <button type="button" onClick={onClose} aria-label="Cerrar"><X size={18} /></button>
         </header>
         <div className="qq-modal-body">
-          <AuctionQuestionsPanel auctionId={auctionId} canReply={canReply} onPendingChange={onPendingChange} />
+          <AuctionQuestionsPanel auctionId={auctionId} canReply={canReply} isCreator={isCreator} onPendingChange={onPendingChange} />
         </div>
       </div>
     </div>

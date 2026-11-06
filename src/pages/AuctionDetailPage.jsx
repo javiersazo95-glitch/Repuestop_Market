@@ -145,6 +145,7 @@ export default function AuctionDetailPage() {
   const [searchParams] = useSearchParams();
   const focusOfferId = Number(searchParams.get('oferta')) || null;
   const openOffersParam = searchParams.get('ofertas') === '1';
+  const openCommentsParam = searchParams.get('comentarios') === '1';
   const navigate = useNavigate();
   const { user, role } = useAuth();
   const isMobile = useIsMobile();
@@ -493,7 +494,7 @@ export default function AuctionDetailPage() {
 
             <div className={`av-fold av-fold-comments ${openFolds.comments ? 'is-open' : ''}`}>
               <button type="button" className="av-fold-toggle" onClick={() => toggleFold('comments')} aria-expanded={Boolean(openFolds.comments)} aria-label="Mostrar u ocultar los comentarios"><ChevronDown size={18} /></button>
-              <AuctionCommentsPanel auctionId={auction.id} title={repuestoSolicitado} isOpen={isOpen} canComment={isSeller || esCreador} isCreator={Boolean(esCreador)} quotes={cotizaciones} />
+              <AuctionCommentsPanel autoOpen={openCommentsParam} auctionId={auction.id} title={repuestoSolicitado} isOpen={isOpen} canComment={isSeller || esCreador} isCreator={Boolean(esCreador)} quotes={cotizaciones} />
             </div>
           </div>
 

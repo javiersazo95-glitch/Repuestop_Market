@@ -149,6 +149,8 @@ export function notificationTargetPath(notification, context = {}) {
     // Aviso de una oferta nueva: `oferta` abre directo el detalle de esa oferta (como en la app).
     const offerId = notification?.targetParams?.oferta;
     const base = auctionDetailPath(auctionMatch[1]);
+    // Una pregunta de una tienda o la respuesta del comprador: el encargo abre el popup de comentarios.
+    if (notification?.tipo === 'SUBASTA_COMENTARIO' || notification?.tipo === 'SUBASTA_RESPUESTA') return `${base}?comentarios=1`;
     return /^\d+$/.test(String(offerId ?? '')) ? `${base}?oferta=${offerId}` : base;
   }
   // Fallas automotrices: el aviso trae `/fallas/{id}` (nueva falla, diagnostico de un taller o respuesta del cliente).

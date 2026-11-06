@@ -282,8 +282,12 @@ export default function AuctionDetailMobile({
         <hr className="am-divider" />
         <div className="am-columns">
           <div className="am-column">
-            <FactCell Icon={Tag} label="Categoría"><strong>{categoria || itemsList.find((item) => item.categoria)?.categoria || '—'}</strong></FactCell>
-            <hr className="am-divider" />
+            {(categoria || itemsList.some((item) => item.categoria)) && (
+              <>
+                <FactCell Icon={Tag} label="Categoría"><strong>{categoria || itemsList.find((item) => item.categoria)?.categoria}</strong></FactCell>
+                <hr className="am-divider" />
+              </>
+            )}
             <FactCell Icon={Package} label="Repuestos"><strong>{itemsList.length} ({totalUnits} {totalUnits === 1 ? 'unidad' : 'unidades'})</strong></FactCell>
             <hr className="am-divider" />
             <FactCell Icon={Bus} label="Plazo máx. de envío"><strong>{tiempoMaximoEnvio || 'A convenir'}</strong></FactCell>

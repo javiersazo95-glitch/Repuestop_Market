@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { MessageCircle, Send } from 'lucide-react';
 import AuctionAvatar from './AuctionAvatar';
 import AuctionQuestionsModal from './AuctionQuestionsModal';
@@ -24,7 +24,7 @@ function timeAgo(iso) {
  * Comentarios públicos de la búsqueda: las tiendas preguntan para afinar la cotización. La tarjeta muestra solo el
  * mensaje más nuevo (igual que Ofertas recibidas muestra la última oferta); "Ver más" abre el popup con todos.
  */
-export default function AuctionCommentsPanel({ auctionId, title = '', isOpen, canComment = true, isCreator = false, quotes = [] }) {
+export default function AuctionCommentsPanel({ auctionId, autoOpen = false, title = '', isOpen, canComment = true, isCreator = false, quotes = [] }) {
   const { isLoggedIn } = useAuth();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,6 +42,15 @@ export default function AuctionCommentsPanel({ auctionId, title = '', isOpen, ca
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [auctionId]);
+
+  // Aviso de una pregunta o de su respuesta (`?comentarios=1`): al cargar, cae directo en el popup con la conversación.
+  const autoOpened = useRef(false);
+  useEffect(() => {
+    if (autoOpen && !loading && comments.length > 0 && !autoOpened.current) {
+      autoOpened.current = true;
+      setAllOpen(true);
+    }
+  }, [autoOpen, loading, comments.length]);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -137,6 +146,7 @@ export default function AuctionCommentsPanel({ auctionId, title = '', isOpen, ca
           title={title}
           eyebrow={isCreator ? 'Comentarios de tu encargo' : 'Comentarios del encargo'}
           canReply={isCreator && isOpen}
+          isCreator={isCreator}
           onClose={() => {
             setAllOpen(false);
             getAuctionComments(auctionId).then((data) => setComments(Array.isArray(data) ? data : [])).catch(() => {});

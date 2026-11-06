@@ -7,6 +7,8 @@ import '../styles/auction-questions.css';
 
 const MAX_LENGTH = 1000;
 const TABS = [['new', 'Nuevas'], ['answered', 'Respondidas'], ['all', 'Todas']];
+// Una tienda que mira el encargo no responde: sus pestañas hablan de preguntas con o sin respuesta del cliente.
+const TABS_STORE = [['new', 'Sin respuesta'], ['answered', 'Respondidas'], ['all', 'Todas']];
 
 function formatDate(iso) {
   if (!iso) return '';
@@ -18,11 +20,11 @@ function formatDate(iso) {
  * caja de respuesta a la derecha. Cada respuesta queda enlazada a su pregunta y la vista pública la muestra como
  * «Respuesta del cliente».
  */
-export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPendingChange }) {
+export default function AuctionQuestionsPanel({ auctionId, canReply = true, isCreator = true, onPendingChange }) {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [tab, setTab] = useState('new');
+  const [tab, setTab] = useState(isCreator ? 'new' : 'all');
   const [selectedId, setSelectedId] = useState(null);
   const [mobileDetail, setMobileDetail] = useState(false);
   const [text, setText] = useState('');
@@ -60,7 +62,13 @@ export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPe
     .sort((a, b) => (tab === 'answered' ? new Date(b.createdAt) - new Date(a.createdAt) : new Date(a.createdAt) - new Date(b.createdAt))),
   [questions, tab, isAnswered]);
 
-  const selected = visible.find((q) => q.id === selectedId) || visible[0] || null;
+  // Quien publicó el encargo parte por la pregunta más antigua sin responder; una tienda, por la que tiene la respuesta más reciente.
+  const latestAnswered = useMemo(() => {
+    if (isCreator) return null;
+    const newest = (q) => Math.max(...(repliesByQuestion[q.id] || []).map((r) => new Date(r.createdAt).getTime()));
+    return visible.filter(isAnswered).sort((a, b) => newest(b) - newest(a))[0] || null;
+  }, [isCreator, visible, repliesByQuestion, isAnswered]);
+  const selected = visible.find((q) => q.id === selectedId) || latestAnswered || visible[0] || null;
   const replies = selected ? repliesByQuestion[selected.id] || [] : [];
 
   const select = (question) => {
@@ -100,7 +108,7 @@ export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPe
       <div className="qq-empty">
         <MessageCircle size={30} />
         <strong>Aún no hay preguntas</strong>
-        <p>Cuando una tienda necesite aclarar algo para afinar su oferta, la pregunta aparecerá aquí y podrás responderla.</p>
+        <p>{isCreator ? 'Cuando una tienda necesite aclarar algo para afinar su oferta, la pregunta aparecerá aquí y podrás responderla.' : 'Cuando una tienda pregunte algo sobre este encargo, aparecerá aquí junto con la respuesta del cliente.'}</p>
         {error && <p className="qq-error" role="alert"><AlertCircle size={14} /> {error}</p>}
       </div>
     );
@@ -110,7 +118,7 @@ export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPe
     <div className={`qq-layout ${mobileDetail ? 'is-detail' : ''}`}>
       <aside className="qq-side" aria-label="Lista de preguntas">
         <div className="qq-tabs" role="tablist" aria-label="Filtrar preguntas">
-          {TABS.map(([key, label]) => (
+          {(isCreator ? TABS : TABS_STORE).map(([key, label]) => (
             <button key={key} type="button" role="tab" aria-selected={tab === key} className={tab === key ? 'is-active' : ''} onClick={() => setTab(key)}>
               {label} <b>{counts[key]}</b>
             </button>
@@ -118,7 +126,7 @@ export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPe
         </div>
         {visible.length === 0 ? (
           <p className="qq-side-empty">
-            {tab === 'new' ? <><CheckCircle2 size={18} /> Respondiste todas las preguntas.</> : 'No hay preguntas en este filtro.'}
+            {tab === 'new' && isCreator ? <><CheckCircle2 size={18} /> Respondiste todas las preguntas.</> : 'No hay preguntas en este filtro.'}
           </p>
         ) : (
           <ul className="qq-list">
@@ -156,7 +164,7 @@ export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPe
               <article key={reply.id} className="qq-reply">
                 <CornerDownRight size={16} />
                 <div>
-                  <p className="qq-who"><strong>Tu respuesta</strong> <small>{formatDate(reply.createdAt)}</small></p>
+                  <p className="qq-who"><strong>{isCreator ? 'Tu respuesta' : 'Respuesta del cliente'}</strong> <small>{formatDate(reply.createdAt)}</small></p>
                   <p>{reply.texto}</p>
                 </div>
               </article>
@@ -164,7 +172,7 @@ export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPe
 
             {error && <p className="qq-error" role="alert"><AlertCircle size={14} /> {error}</p>}
 
-            {canReply ? (
+            {!isCreator ? null : canReply ? (
               <form className="qq-form" onSubmit={submit}>
                 <label htmlFor="qq-reply-text">{replies.length === 0 ? 'Tu respuesta' : 'Agregar otra respuesta'}</label>
                 <textarea
@@ -192,8 +200,8 @@ export default function AuctionQuestionsPanel({ auctionId, canReply = true, onPe
         ) : (
           <div className="qq-empty">
             <CheckCircle2 size={30} />
-            <strong>{tab === 'new' ? 'Todo al día' : 'Selecciona una pregunta'}</strong>
-            <p>{tab === 'new' ? 'No tienes preguntas nuevas por responder.' : 'Elige una pregunta de la lista para verla.'}</p>
+            <strong>{tab === 'new' && isCreator ? 'Todo al día' : 'Selecciona una pregunta'}</strong>
+            <p>{tab === 'new' && isCreator ? 'No tienes preguntas nuevas por responder.' : 'Elige una pregunta de la lista para verla.'}</p>
           </div>
         )}
       </section>
