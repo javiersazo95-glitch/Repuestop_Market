@@ -131,3 +131,11 @@
 .ap-line-product { display: flex; align-items: center; gap: 10px; }
 .ap-line-product > span { display: flex; flex-direction: column; min-width: 0; }
 .ap-line-photo { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 8px; object-fit: cover; border: 1px solid #dbe6f3; background: #f8fafc; }
+
+/* La tienda manda y sus productos cuelgan de ella: cabecera con otro color y productos con sangria. */
+.ap-store-head { background: #eaf2ff; border-bottom: 1px solid #cfe0ff; }
+.ap-lines th:first-child, .ap-lines td:first-child { padding-left: 66px; }
+.ap-lines tfoot td:first-child { padding-left: 16px; }
+@media (max-width: 640px) {
+  .ap-lines td:first-child { padding-left: 32px; }
+}
