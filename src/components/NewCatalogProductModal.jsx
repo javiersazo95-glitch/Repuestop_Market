@@ -171,8 +171,41 @@ const initialForm = (product = null, prefill = null) => {
   return form;
 };
 
-function CatalogField({ label, optional, children }) {
-  return <label className="catalog-product-field"><span>{label}{optional && <small>Opcional</small>}</span>{children}</label>;
+/** Obligatorios en el orden del formulario: al registrar con algo pendiente se lleva al primero que falta. */
+const REQUIRED_FIELD_ORDER = ['name', 'sku', 'category', 'partBrand', 'price', 'stock', 'warranty'];
+const FIELD_LABELS = { name: 'nombre', sku: 'SKU', category: 'categoría', partBrand: 'marca', price: 'precio', stock: 'stock', warranty: 'garantía' };
+const FIELD_MESSAGES = {
+  name: 'Ingresa el nombre del producto.',
+  sku: 'Ingresa el SKU.',
+  category: 'Selecciona una categoría.',
+  partBrand: 'Selecciona o escribe la marca del repuesto.',
+  price: 'Ingresa el precio o elige «Solo cotizar».',
+  stock: 'Ingresa el stock disponible.',
+  warranty: 'Selecciona la garantía.',
+};
+
+function missingProductFields(form, { isEditing = false } = {}) {
+  const quoteOnly = form.pricingMode === 'QUOTE_ONLY';
+  const solved = {
+    name: Boolean(form.name.trim()),
+    sku: Boolean(form.sku.trim()),
+    category: Boolean(form.category.trim()),
+    partBrand: Boolean(form.partBrand.trim()),
+    price: quoteOnly || form.price !== '',
+    stock: form.stock !== '',
+    warranty: isEditing || Boolean(resolveWarranty(form.warranty, form.warrantyOther)),
+  };
+  return REQUIRED_FIELD_ORDER.filter((key) => !solved[key]);
+}
+
+function CatalogField({ label, optional, children, field, error }) {
+  return (
+    <label className={`catalog-product-field${error ? ' has-error' : ''}`} data-field={field}>
+      <span>{label}{optional && <small>Opcional</small>}</span>
+      {children}
+      {error && <em className="catalog-field-error" role="alert"><AlertTriangle size={13} />{error}</em>}
+    </label>
+  );
 }
 
 export default function NewCatalogProductModal({ sellerId, product = null, prefill = null, onClose, onCreated, isFounder = false }) {
@@ -285,9 +318,21 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
   const hasQuoteOnly = form.pricingMode === 'QUOTE_ONLY';
   const resolvedWarranty = resolveWarranty(form.warranty, form.warrantyOther);
   // La garantia es obligatoria al crear; un producto antiguo se puede editar sin ella.
-  const canSave = useMemo(() => form.name.trim() && form.sku.trim() && form.category.trim() && form.partBrand.trim()
-    && form.stock !== '' && (hasQuoteOnly || form.price !== '') && (isEditing || resolvedWarranty),
-  [form, hasQuoteOnly, isEditing, resolvedWarranty]);
+  const missingFields = useMemo(() => missingProductFields(form, { isEditing }), [form, isEditing]);
+  const canSave = missingFields.length === 0;
+  // Campos marcados en rojo tras tocar "Registrar" con algo pendiente. Se apagan solos al completarlos.
+  const [fieldErrors, setFieldErrors] = useState({});
+  const formRef = useRef(null);
+  useEffect(() => {
+    setFieldErrors((current) => {
+      const keys = Object.keys(current);
+      if (!keys.length) return current;
+      const still = keys.filter((key) => missingFields.includes(key));
+      return still.length === keys.length ? current : Object.fromEntries(still.map((key) => [key, current[key]]));
+    });
+    // Con todo completo, el aviso "Falta completar…" de arriba también se va.
+    if (missingFields.length === 0) setError((current) => (current?.startsWith('Falta completar') ? null : current));
+  }, [missingFields]);
 
   const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
   const changeCategory = async (category) => {
@@ -408,7 +453,14 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
   const submit = async (event) => {
     event.preventDefault();
     if (!canSave) {
-      setError('Completa los campos obligatorios antes de registrar el producto.');
+      // El botón no se bloquea: marca en rojo lo que falta y lleva al primer campo, así no hay que buscarlo.
+      setFieldErrors(Object.fromEntries(missingFields.map((key) => [key, FIELD_MESSAGES[key]])));
+      setError(`Falta completar: ${missingFields.map((key) => FIELD_LABELS[key]).join(', ')}.`);
+      const first = formRef.current?.querySelector(`[data-field="${missingFields[0]}"]`);
+      if (first) {
+        first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        first.querySelector('input:not([disabled]), textarea, button')?.focus({ preventScroll: true });
+      }
       return;
     }
     setSaving(true);
@@ -536,7 +588,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
           <span className="catalog-product-header-badge">{isEditing ? 'Edición de producto' : 'Carga individual'}</span>
           <button type="button" onClick={onClose} aria-label="Cerrar"><X size={20} /></button>
         </header>
-        <form onSubmit={submit} className="catalog-product-form">
+        <form ref={formRef} onSubmit={submit} className="catalog-product-form" noValidate>
           <nav className="catalog-product-steps" aria-label="Secciones del formulario">
             <a href="#catalog-basic"><Tag size={14} /><span>Datos</span></a>
             <a href="#catalog-pricing"><CircleDollarSign size={14} /><span>Venta</span></a>
@@ -547,11 +599,11 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
           <section className="catalog-product-section" id="catalog-basic">
             <h3><b>1</b> Información básica</h3>
             <div className="catalog-product-grid">
-              <CatalogField label="Nombre del producto"><input autoFocus value={form.name} onChange={(e) => update('name', e.target.value)} maxLength="120" placeholder="Ej. Pastillas de freno delanteras" required /></CatalogField>
-              <CatalogField label="SKU (código interno)"><input value={form.sku} onChange={(e) => update('sku', e.target.value.replace(/\s+/g, '').toUpperCase().slice(0, 30))} maxLength="30" placeholder="Ej. PFD1234" required /></CatalogField>
-              <CatalogField label="Categoría"><SearchableDropdown value={form.category} options={categories.map((item) => ({ value: item.nombre, label: item.nombre }))} placeholder="Selecciona o busca una categoría" onChange={changeCategory} allowCustom emptyText="No encontramos esa categoría." /></CatalogField>
+              <CatalogField label="Nombre del producto" field="name" error={fieldErrors.name}><input autoFocus value={form.name} onChange={(e) => update('name', e.target.value)} maxLength="120" placeholder="Ej. Pastillas de freno delanteras" required /></CatalogField>
+              <CatalogField label="SKU (código interno)" field="sku" error={fieldErrors.sku}><input value={form.sku} onChange={(e) => update('sku', e.target.value.replace(/\s+/g, '').toUpperCase().slice(0, 30))} maxLength="30" placeholder="Ej. PFD1234" required /></CatalogField>
+              <CatalogField label="Categoría" field="category" error={fieldErrors.category}><SearchableDropdown value={form.category} options={categories.map((item) => ({ value: item.nombre, label: item.nombre }))} placeholder="Selecciona o busca una categoría" onChange={changeCategory} allowCustom emptyText="No encontramos esa categoría." /></CatalogField>
               <CatalogField label="Subcategoría" optional><SearchableDropdown value={form.subcategory} options={subcategories.map((item) => ({ value: item.nombre, label: item.nombre }))} placeholder={form.category ? 'Selecciona una subcategoría' : 'Selecciona primero una categoría'} onChange={(subcategory) => update('subcategory', String(subcategory))} disabled={!form.category || !subcategories.length} emptyText="No hay subcategorías disponibles." /></CatalogField>
-              <CatalogField label="Marca del repuesto">{isCustomPartBrand ? <div className="catalog-custom-brand-entry"><input autoFocus value={form.partBrand} maxLength="80" onChange={(event) => update('partBrand', event.target.value)} placeholder="Escribe la marca del repuesto" required /><button type="button" onClick={() => { setIsCustomPartBrand(false); update('partBrand', ''); }}>Ver marcas</button></div> : <SearchableDropdown value={form.partBrand} options={partBrands.map((item) => ({ value: item.nombre, label: item.nombre }))} placeholder="Selecciona o busca una marca" onChange={(partBrand) => update('partBrand', String(partBrand))} emptyText="No encontramos esa marca." customOptionLabel="Otro: registrar una marca" onCustomOption={() => { setIsCustomPartBrand(true); update('partBrand', ''); }} />}</CatalogField>
+              <CatalogField label="Marca del repuesto" field="partBrand" error={fieldErrors.partBrand}>{isCustomPartBrand ? <div className="catalog-custom-brand-entry"><input autoFocus value={form.partBrand} maxLength="80" onChange={(event) => update('partBrand', event.target.value)} placeholder="Escribe la marca del repuesto" required /><button type="button" onClick={() => { setIsCustomPartBrand(false); update('partBrand', ''); }}>Ver marcas</button></div> : <SearchableDropdown value={form.partBrand} options={partBrands.map((item) => ({ value: item.nombre, label: item.nombre }))} placeholder="Selecciona o busca una marca" onChange={(partBrand) => update('partBrand', String(partBrand))} emptyText="No encontramos esa marca." customOptionLabel="Otro: registrar una marca" onCustomOption={() => { setIsCustomPartBrand(true); update('partBrand', ''); }} />}</CatalogField>
             </div>
           </section>
           <section className="catalog-product-section" id="catalog-pricing">
@@ -561,7 +613,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
               <button type="button" className={hasQuoteOnly ? 'active' : ''} onClick={() => update('pricingMode', 'QUOTE_ONLY')}><strong>Solo cotizar</strong><span>El comprador solicitará cotización</span></button>
             </div>
             <div className="catalog-product-grid compact">
-              <CatalogField label="Precio de venta" optional={hasQuoteOnly}>
+              <CatalogField label="Precio de venta" optional={hasQuoteOnly} field="price" error={fieldErrors.price}>
                 <input
                   type="number"
                   min="0"
@@ -577,7 +629,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
                   required={!hasQuoteOnly}
                 />
               </CatalogField>
-              <CatalogField label="Stock disponible">
+              <CatalogField label="Stock disponible" field="stock" error={fieldErrors.stock}>
                 <input
                   type="number"
                   min="0"
@@ -647,17 +699,17 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
             <CatalogField label="Descripción"><textarea rows="4" maxLength="1000" value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="Describe el producto, sus características y detalles importantes." required /><small className="catalog-char-counter">{form.description.length}/1000</small></CatalogField>
             <div className="catalog-condition-row"><span>Calidad del producto</span>{['ORIGINAL', 'ALTERNATIVO'].map((condition) => <button type="button" key={condition} className={form.condition === condition ? 'active' : ''} onClick={() => update('condition', condition)}><Check size={14} />{condition === 'ORIGINAL' ? 'Original' : 'Alternativo'}</button>)}</div>
             <div className="catalog-warranty-field">
-              <CatalogField label="Garantía">
+              <CatalogField label="Garantía" field="warranty" error={form.warranty === PRODUCT_WARRANTY_OTHER ? undefined : fieldErrors.warranty}>
                 <SearchableDropdown value={form.warranty} options={warrantyOptions} placeholder="Selecciona la garantía" onChange={(value) => setForm((previous) => ({ ...previous, warranty: value, warrantyOther: value === PRODUCT_WARRANTY_OTHER ? previous.warrantyOther : '' }))} />
               </CatalogField>
               {form.warranty === PRODUCT_WARRANTY_OTHER && (
-                <CatalogField label="Registrar garantía">
+                <CatalogField label="Registrar garantía" field="warranty" error={fieldErrors.warranty}>
                   <input value={form.warrantyOther} maxLength={PRODUCT_WARRANTY_MAX} onChange={(e) => update('warrantyOther', e.target.value)} placeholder="Ej. 18 meses o 50.000 km" required={!isEditing} autoFocus />
                 </CatalogField>
               )}
             </div>
           </section>
-          <footer className="catalog-product-footer"><button type="button" className="catalog-cancel-button" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="catalog-save-button" disabled={saving || !canSave}>{saving ? <><Loader2 size={16} className="spin-icon" /> Guardando…</> : isEditing ? <><Check size={16} /> Guardar cambios</> : <><Plus size={16} /> Registrar producto</>}</button></footer>
+          <footer className="catalog-product-footer"><button type="button" className="catalog-cancel-button" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className={`catalog-save-button${canSave ? '' : ' is-incomplete'}`} disabled={saving} title={canSave ? undefined : `Falta completar: ${missingFields.map((key) => FIELD_LABELS[key]).join(', ')}`}>{saving ? <><Loader2 size={16} className="spin-icon" /> Guardando…</> : isEditing ? <><Check size={16} /> Guardar cambios</> : <><Plus size={16} /> Registrar producto</>}</button></footer>
         </form>
         {versionsModalIndex !== null && (() => {
           const compatibility = form.compatibilities[versionsModalIndex];

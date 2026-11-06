@@ -21577,3 +21577,10 @@ input.has-success {
 .light-search-benefit { margin: 0; padding: 12px 24px 0; }
 .checkout-vehicle-benefit { margin: 0 0 10px; padding: 0 2px; }
 .ft-page .plate-benefit { margin-top: 0; }
+
+/* Registrar con datos pendientes: el botón se ve gris pero se puede tocar; marca en rojo y lleva al campo que falta. */
+.catalog-save-button.is-incomplete { border-color: #94a3b8; background: #94a3b8; box-shadow: none; }
+.catalog-product-field.has-error > span { color: #b42318; }
+.catalog-product-field.has-error input, .catalog-product-field.has-error textarea, .catalog-product-field.has-error .catalog-search-select-trigger, .catalog-product-field.has-error .catalog-custom-brand-entry input { border-color: #d92d20; box-shadow: 0 0 0 3px rgba(217, 45, 32, .12); }
+.catalog-field-error { display: flex; align-items: center; gap: 4px; color: #b42318; font-size: 11px; font-style: normal; font-weight: 700; }
+
