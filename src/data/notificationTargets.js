@@ -125,6 +125,11 @@ const TARGETS = {
   // indicador de la cabecera, asi que el aviso aterriza en el resumen del perfil.
   '/wallet': () => PROFILE('resumen'),
 
+  // Avisos de una oferta a la tienda (rechazada, revisada, superada): abren el encargo, como la app. Sin id, "Mis ofertas".
+  '/perfil/gestion_subastas': (params) => (/^\d+$/.test(String(params?.id ?? ''))
+    ? auctionDetailPath(params.id)
+    : PROFILE('gestion_subastas')),
+
   '/perfil': () => ROUTES.profile,
   '/(seller)': () => ROUTES.profile,
   '/seller': () => ROUTES.profile,
