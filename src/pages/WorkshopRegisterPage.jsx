@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { AlertCircle, ArrowLeft, Check, CheckCircle2, Eye, EyeOff, Lock, Mail, ShieldCheck, UserPlus } from 'lucide-react';
+import {
+  AlertCircle, ArrowLeft, BadgeCheck, Bike, CalendarCheck, Car, Check, CheckCircle2, CircleDot, Disc3, Eye, EyeOff, FileCheck2,
+  Gauge, Lock, Mail, MapPin, PackageSearch, PaintBucket, PenLine, Search, ShieldCheck, Stethoscope, Truck, UserPlus, UserRound,
+  Warehouse, Wrench, Zap,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AddressAutocompleteInput from '../components/AddressAutocompleteInput';
 import { checkEmailAvailabilityApi, getComunasApi, getPaisesApi, getRegionesApi } from '../services/api';
@@ -26,6 +30,21 @@ const WORKSHOP_GIROS = [
   'Mantención y reparación de motocicletas',
   'Servicio automotriz a domicilio',
   'Venta e instalación de repuestos y accesorios',
+];
+/** Ícono de cada giro: el vendedor reconoce su rubro de un vistazo. */
+const GIRO_ICONS = [Wrench, Gauge, Zap, Disc3, PaintBucket, CircleDot, Bike, Truck, PackageSearch];
+
+/** Lo que gana el taller: el panel lateral responde "¿para qué me registro?". */
+const WORKSHOP_BENEFITS = [
+  { icon: Search, title: 'Te encuentran en tu comuna', text: 'Aparece en el buscador de talleres con tus servicios, horario y opiniones.' },
+  { icon: CalendarCheck, title: 'Recibe citas en tu agenda', text: 'Los conductores reservan hora y tú confirmas desde tu panel.' },
+  { icon: Stethoscope, title: 'Diagnostica fallas', text: 'Comenta las fallas que publican los conductores y gana nuevos clientes.' },
+  { icon: Car, title: 'Compra repuestos para tus trabajos', text: 'Busca por patente y compra a casas de repuestos verificadas.' },
+];
+const WORKSHOP_STEPS = [
+  { icon: UserPlus, title: 'Crea tu cuenta', text: 'Hoy, en menos de 3 minutos.' },
+  { icon: FileCheck2, title: 'Acredita tu taller', text: 'Sube tus documentos desde tu perfil.' },
+  { icon: BadgeCheck, title: 'Recibe clientes', text: 'Quedas visible y verificado.' },
 ];
 const OTHER_GIRO = 'other';
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -159,15 +178,43 @@ export default function WorkshopRegisterPage() {
     setDone(true);
   };
 
-  const shell = (title, subtitle, body) => (
+  /** Panel lateral con identidad de taller: foto, beneficios y los pasos para quedar visible. */
+  const showcase = (
+    <aside className="taller-reg-showcase" aria-label="Beneficios de registrar tu taller">
+      <div className="taller-reg-showcase-inner">
+        <span className="taller-reg-kicker"><Wrench size={14} /> Para talleres mecánicos</span>
+        <h1>Haz crecer tu taller con RepuesTop</h1>
+        <p>Más clientes de tu zona, tu agenda en orden y los repuestos que necesitas, en un solo lugar.</p>
+        <ul className="taller-reg-benefits">
+          {WORKSHOP_BENEFITS.map(({ icon: Icon, title, text }) => (
+            <li key={title}><span className="taller-reg-benefit-icon"><Icon size={18} /></span><div><strong>{title}</strong><small>{text}</small></div></li>
+          ))}
+        </ul>
+        <ol className="taller-reg-steps">
+          {WORKSHOP_STEPS.map(({ icon: Icon, title, text }, index) => (
+            <li key={title}><span className="taller-reg-step-number">{index + 1}</span><div><strong><Icon size={14} /> {title}</strong><small>{text}</small></div></li>
+          ))}
+        </ol>
+        <p className="taller-reg-free"><ShieldCheck size={15} /> Registrarte es gratis. Tus datos están protegidos.</p>
+      </div>
+    </aside>
+  );
+
+  const shell = (title, subtitle, body, { compact = false } = {}) => (
     <div className="taller-register-page">
-      <div className="auth-modal-card" style={{ maxHeight: 'none', overflow: 'visible' }}>
-        <div className="auth-modal-header">
-          <div className="auth-brand-badge"><ShieldCheck size={14} /> PORTAL REPUESTOP ACCOUNTS</div>
-          <h2>{title}</h2>
-          <p>{subtitle}</p>
-        </div>
-        {body}
+      <div className={`taller-reg-layout${compact ? ' is-compact' : ''}`}>
+        {compact ? null : showcase}
+        <section className="taller-reg-card">
+          <header className="taller-reg-card-header">
+            <span className="taller-reg-card-icon"><Warehouse size={22} /></span>
+            <div>
+              <span className="taller-reg-card-kicker">Registro de taller</span>
+              <h2>{title}</h2>
+              <p>{subtitle}</p>
+            </div>
+          </header>
+          {body}
+        </section>
       </div>
     </div>
   );
@@ -175,11 +222,16 @@ export default function WorkshopRegisterPage() {
   const errorBox = error && <div className="auth-alert alert-error" role="alert"><AlertCircle size={16} /> <span>{error}</span></div>;
 
   if (done) {
-    return shell('Taller creado', 'Tu cuenta quedó lista. Falta acreditar tu negocio para aparecer en el buscador y comentar fallas: sube tu identidad, inicio de actividades y patente municipal.', (
+    return shell('¡Tu taller ya tiene cuenta!', 'Un último paso para aparecer en el buscador y comentar fallas: acredita tu negocio desde tu perfil.', (
       <div className="auth-modal-body">
-        <button type="button" className="btn-auth-primary" onClick={() => navigate(`${ROUTES.profile}/resumen`, { replace: true })}><CheckCircle2 size={18} /> <span>Ir a mi perfil</span></button>
+        <ol className="taller-reg-next">
+          <li className="is-done"><CheckCircle2 size={18} /><div><strong>Cuenta creada</strong><small>Ya puedes entrar con tu correo.</small></div></li>
+          <li><FileCheck2 size={18} /><div><strong>Sube tus documentos</strong><small>Identidad, inicio de actividades y patente municipal.</small></div></li>
+          <li><BadgeCheck size={18} /><div><strong>Quedas visible</strong><small>Te avisamos apenas revisemos tu acreditación.</small></div></li>
+        </ol>
+        <button type="button" className="btn-auth-primary" onClick={() => navigate(`${ROUTES.profile}/resumen`, { replace: true })}><CheckCircle2 size={18} /> <span>Ir a mi perfil y acreditar</span></button>
       </div>
-    ));
+    ), { compact: true });
   }
 
   if (pendingEmail) {
@@ -195,7 +247,7 @@ export default function WorkshopRegisterPage() {
           <button type="submit" className="btn-auth-primary" disabled={busy || code.length < 6}>{busy ? 'Verificando…' : 'Verificar código'}</button>
         </div>
       </form>
-    ));
+    ), { compact: true });
   }
 
   const touch = (key) => () => setTouched((current) => ({ ...current, [key]: true }));
@@ -248,11 +300,31 @@ export default function WorkshopRegisterPage() {
                 : !valid.region || !valid.comuna ? 'Falta la región o la comuna'
                   : !valid.address ? 'Falta la dirección con calle y número'
                     : !accepts ? 'Debes aceptar los Términos y Condiciones' : null;
+  // Avance por sección (como una orden de trabajo): cada sección se marca lista cuando sus datos son válidos.
+  const sections = [
+    { key: 'owner', label: 'Responsable', done: valid.responsibleName && valid.email && valid.phone && valid.password },
+    { key: 'shop', label: 'Taller', done: valid.workshopName && valid.taxId && valid.giro },
+    { key: 'place', label: 'Ubicación', done: valid.region && valid.comuna && valid.address },
+  ];
+  const doneSections = sections.filter((section) => section.done).length;
   const stateClass = (key) => (errors[key] ? 'has-error' : valid[key] ? 'has-success' : '');
   const strength = passwordStrength(form.password);
 
-  return shell('Crear cuenta de taller', 'Ofrece tus servicios, comenta fallas y recibe citas. Los documentos de acreditación se suben después, desde tu perfil.', (
-    <form className="auth-modal-body" onSubmit={submit}>
+  const sectionHead = (number, Icon, title, hint, done) => (
+    <div className="taller-reg-section-head">
+      <span className={`taller-reg-section-number${done ? ' is-done' : ''}`}>{done ? <Check size={14} /> : number}</span>
+      <div><h3><Icon size={16} /> {title}</h3><small>{hint}</small></div>
+    </div>
+  );
+
+  return shell('Crea la cuenta de tu taller', 'Completa tres secciones. Los documentos de acreditación se suben después, desde tu perfil.', (
+    <form className="auth-modal-body taller-reg-form" onSubmit={submit}>
+      <div className="taller-reg-progress" aria-label={`${doneSections} de ${sections.length} secciones completas`}>
+        {sections.map((section) => (
+          <span key={section.key} className={section.done ? 'is-done' : ''}>{section.done ? <Check size={12} /> : null}{section.label}</span>
+        ))}
+        <div className="taller-reg-progress-bar"><i style={{ width: `${(doneSections / sections.length) * 100}%` }} /></div>
+      </div>
       {errorBox}
       {google && (
         <div className="google-account-card">
@@ -267,7 +339,8 @@ export default function WorkshopRegisterPage() {
         </div>
       )}
 
-      <h3 className="taller-register-title">Tus datos</h3>
+      <fieldset className="taller-reg-section">
+      {sectionHead(1, UserRound, 'Responsable del taller', 'Quien administra la cuenta y recibe los avisos.', sections[0].done)}
       <div className="form-group">
         <label htmlFor="workshop-responsible">Nombre del responsable *</label>
         <input id="workshop-responsible" type="text" className={stateClass('responsibleName')} value={form.responsibleName} maxLength={80} placeholder="Ej: Juan Pérez" autoComplete="name" onChange={set('responsibleName')} onBlur={touch('responsibleName')} />
@@ -326,7 +399,10 @@ export default function WorkshopRegisterPage() {
       </div>
       )}
 
-      <h3 className="taller-register-title">Tu taller</h3>
+      </fieldset>
+
+      <fieldset className="taller-reg-section">
+      {sectionHead(2, Warehouse, 'Datos del taller', 'Así te verán los conductores en el buscador.', sections[1].done)}
       <div className="form-group">
         <label htmlFor="workshop-name">Nombre del taller *</label>
         <input id="workshop-name" type="text" className={stateClass('workshopName')} value={form.workshopName} maxLength={120} onChange={set('workshopName')} onBlur={touch('workshopName')} />
@@ -338,12 +414,34 @@ export default function WorkshopRegisterPage() {
         <FieldHint error={errors.taxId} success={valid.taxId && 'RUT válido'} />
       </div>
       <div className="form-group">
-        <label htmlFor="workshop-giro">Giro comercial *</label>
-        <select id="workshop-giro" className={form.giro === OTHER_GIRO ? '' : stateClass('giro')} value={form.giro} onBlur={touch('giro')} onChange={(e) => setForm((c) => ({ ...c, giro: e.target.value, giroOtro: e.target.value === OTHER_GIRO ? c.giroOtro : '' }))}>
-          <option value="">Selecciona el giro de tu taller</option>
-          {WORKSHOP_GIROS.map((item) => <option key={item} value={item}>{item}</option>)}
-          <option value={OTHER_GIRO}>Otro</option>
-        </select>
+        <label id="workshop-giro-label">Giro comercial *</label>
+        <div className={`taller-reg-giros ${form.giro === OTHER_GIRO ? '' : stateClass('giro')}`} role="radiogroup" aria-labelledby="workshop-giro-label">
+          {WORKSHOP_GIROS.map((item, index) => {
+            const Icon = GIRO_ICONS[index] || Wrench;
+            const selected = form.giro === item;
+            return (
+              <button
+                type="button"
+                key={item}
+                role="radio"
+                aria-checked={selected}
+                className={selected ? 'is-selected' : ''}
+                onClick={() => { setForm((c) => ({ ...c, giro: item, giroOtro: '' })); setTouched((c) => ({ ...c, giro: true })); }}
+              >
+                <Icon size={18} /><span>{item}</span>{selected ? <Check size={14} className="taller-reg-giro-check" /> : null}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            role="radio"
+            aria-checked={form.giro === OTHER_GIRO}
+            className={form.giro === OTHER_GIRO ? 'is-selected' : ''}
+            onClick={() => setForm((c) => ({ ...c, giro: OTHER_GIRO }))}
+          >
+            <PenLine size={18} /><span>Otro giro</span>{form.giro === OTHER_GIRO ? <Check size={14} className="taller-reg-giro-check" /> : null}
+          </button>
+        </div>
         {form.giro !== OTHER_GIRO && <FieldHint error={errors.giro} />}
       </div>
       {form.giro === OTHER_GIRO && (
@@ -353,6 +451,10 @@ export default function WorkshopRegisterPage() {
           <FieldHint error={errors.giro} />
         </div>
       )}
+      </fieldset>
+
+      <fieldset className="taller-reg-section">
+      {sectionHead(3, MapPin, 'Ubicación del taller', 'Te mostramos a los conductores de tu comuna y alrededores.', sections[2].done)}
       <div className="form-grid-2">
         <div className="form-group">
           <label htmlFor="workshop-region">Región *</label>
@@ -385,6 +487,7 @@ export default function WorkshopRegisterPage() {
         </div>
         <FieldHint error={errors.address} success={valid.address && comunaId && `${comunas.find((item) => String(item.id) === String(comunaId))?.nombre || ''}, ${regiones.find((item) => String(item.id) === String(regionId))?.nombre || ''}`} />
       </div>
+      </fieldset>
 
       <label className="auth-terms">
         <input type="checkbox" checked={accepts} onChange={(e) => setAccepts(e.target.checked)} />

@@ -2891,7 +2891,7 @@ input, select, textarea {
 .modal-backdrop:has(> .auth-modal-card--login) { padding-block: 8px; }
 
 /* Registro de taller: la misma tarjeta del registro de comprador, como pagina. */
-.taller-register-page { display: flex; justify-content: center; padding: 28px 16px 56px; background: var(--bg-page); }
+.taller-register-page { display: flex; justify-content: center; padding: 28px 16px 56px; background: radial-gradient(circle at 0% 0%, rgba(0, 102, 255, .07), transparent 42%), var(--bg-page); }
 select.has-error, .taller-register-address.has-error input { border-color: #ef4444 !important; background-color: #fffbfb !important; }
 select.has-success, .taller-register-address.has-success input { border-color: #86efac !important; }
 .taller-register-title { margin: 6px 0 0; font-size: 14px; font-weight: 800; color: #0f172a; }
@@ -21584,3 +21584,82 @@ input.has-success {
 .catalog-product-field.has-error input, .catalog-product-field.has-error textarea, .catalog-product-field.has-error .catalog-search-select-trigger, .catalog-product-field.has-error .catalog-custom-brand-entry input { border-color: #d92d20; box-shadow: 0 0 0 3px rgba(217, 45, 32, .12); }
 .catalog-field-error { display: flex; align-items: center; gap: 4px; color: #b42318; font-size: 11px; font-style: normal; font-weight: 700; }
 
+/* ===== Registro de taller (/taller/registro): identidad de taller ===== */
+.taller-reg-layout { width: 100%; max-width: 1120px; display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr); gap: 28px; align-items: start; }
+.taller-reg-layout.is-compact { max-width: 560px; grid-template-columns: 1fr; }
+
+.taller-reg-showcase { position: sticky; top: 92px; overflow: hidden; border-radius: 22px; color: #fff; min-height: 640px; display: flex;
+  background: linear-gradient(180deg, rgba(15, 23, 42, .55) 0%, rgba(15, 23, 42, .88) 48%, #0f172a 100%), url('/about-assets/mecanico-taller.webp') center top / cover no-repeat;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, .22); }
+/* Franja de advertencia de taller: el único acento ámbar, arriba del panel. */
+.taller-reg-showcase::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 8px;
+  background: repeating-linear-gradient(-45deg, #f59e0b 0 14px, #0f172a 14px 28px); }
+.taller-reg-showcase-inner { position: relative; display: flex; flex-direction: column; gap: 18px; padding: 150px 32px 30px; }
+.taller-reg-kicker { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border-radius: 999px; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #fde68a; background: rgba(245, 158, 11, .16); border: 1px solid rgba(245, 158, 11, .4); }
+.taller-reg-showcase h1 { margin: 0; font-family: var(--font-display); font-size: 32px; line-height: 1.12; font-weight: 800; letter-spacing: -.01em; }
+.taller-reg-showcase-inner > p { margin: 0; color: #cbd5e1; font-size: 14px; line-height: 1.55; }
+.taller-reg-benefits { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 12px; }
+.taller-reg-benefits li { display: flex; gap: 12px; align-items: flex-start; }
+.taller-reg-benefit-icon { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: #93c5fd; background: rgba(56, 189, 248, .12); border: 1px solid rgba(147, 197, 253, .25); }
+.taller-reg-benefits strong, .taller-reg-steps strong { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 750; }
+.taller-reg-benefits small, .taller-reg-steps small { display: block; margin-top: 2px; color: #94a3b8; font-size: 12.5px; line-height: 1.45; }
+.taller-reg-steps { list-style: none; margin: 6px 0 0; padding: 16px; display: grid; gap: 12px; border-radius: 14px; background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .1); }
+.taller-reg-steps li { position: relative; display: flex; gap: 12px; align-items: flex-start; }
+.taller-reg-steps li:not(:last-child)::after { content: ''; position: absolute; left: 13px; top: 30px; bottom: -10px; width: 2px; background: rgba(255, 255, 255, .14); }
+.taller-reg-step-number { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 800; color: #0f172a; background: #f59e0b; }
+.taller-reg-free { display: flex; align-items: center; gap: 7px; margin: 0; color: #a7f3d0 !important; font-size: 12.5px !important; font-weight: 600; }
+
+.taller-reg-card { background: #fff; border-radius: 22px; border: 1px solid var(--border-subtle); box-shadow: 0 18px 40px rgba(15, 23, 42, .08); overflow: hidden; }
+.taller-reg-card-header { display: flex; gap: 14px; align-items: flex-start; padding: 26px 28px 18px; border-bottom: 1px solid #eef2f7; background: linear-gradient(180deg, #f8fbff, #fff); }
+.taller-reg-card-icon { flex: 0 0 auto; width: 46px; height: 46px; border-radius: 13px; display: grid; place-items: center; color: #fff; background: linear-gradient(135deg, #0066ff, #0f172a); box-shadow: 0 8px 18px rgba(0, 102, 255, .25); }
+.taller-reg-card-kicker { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--color-brand-blue); }
+.taller-reg-card-header h2 { margin: 2px 0 4px; font-family: var(--font-display); font-size: 22px; font-weight: 800; color: var(--text-primary); }
+.taller-reg-card-header p { margin: 0; color: var(--text-muted); font-size: 13.5px; line-height: 1.5; }
+.taller-reg-card .auth-modal-body { padding: 20px 28px 28px; }
+
+.taller-reg-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 10px; margin-bottom: 4px; }
+.taller-reg-progress span { display: inline-flex; align-items: center; justify-content: center; gap: 4px; font-size: 11.5px; font-weight: 700; color: var(--text-muted); }
+.taller-reg-progress span.is-done { color: var(--color-emerald-green); }
+.taller-reg-progress-bar { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: #e9eef5; overflow: hidden; }
+.taller-reg-progress-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #0066ff, #059669); transition: width var(--transition-smooth); }
+
+.taller-reg-section { margin: 0; padding: 18px; min-width: 0; border: 1px solid #e6edf5; border-radius: 16px; background: #fbfcfe; display: grid; gap: 14px; }
+.taller-reg-section-head { display: flex; gap: 12px; align-items: flex-start; }
+.taller-reg-section-head h3 { margin: 0; display: flex; align-items: center; gap: 7px; font-size: 15px; font-weight: 800; color: var(--text-primary); }
+.taller-reg-section-head small { display: block; margin-top: 2px; color: var(--text-muted); font-size: 12.5px; }
+.taller-reg-section-number { flex: 0 0 auto; width: 28px; height: 28px; border-radius: 9px; display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #fff; background: var(--bg-navy-card); transition: background var(--transition-smooth); }
+.taller-reg-section-number.is-done { background: var(--color-emerald-green); }
+.taller-reg-section .form-group { margin-bottom: 0; }
+
+.taller-reg-giros { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.taller-reg-giros button { position: relative; display: flex; align-items: center; gap: 9px; min-height: 52px; padding: 9px 30px 9px 11px; text-align: left; border-radius: 11px; border: 1px solid #d8e1ec; background: #fff; color: var(--text-secondary); font-size: 12.5px; font-weight: 650; line-height: 1.3; cursor: pointer; transition: border-color var(--transition-smooth), box-shadow var(--transition-smooth), background var(--transition-smooth); }
+.taller-reg-giros button svg:first-child { flex: 0 0 auto; color: #64748b; }
+.taller-reg-giros button:hover { border-color: #93c5fd; }
+.taller-reg-giros button:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(0, 102, 255, .2); }
+.taller-reg-giros button.is-selected { border-color: var(--color-brand-blue); background: #eff6ff; color: #0b3b8c; box-shadow: 0 0 0 3px rgba(0, 102, 255, .12); }
+.taller-reg-giros button.is-selected svg:first-child { color: var(--color-brand-blue); }
+.taller-reg-giro-check { position: absolute; top: 8px; right: 8px; color: var(--color-brand-blue); }
+.taller-reg-giros.has-error button { border-color: #fecaca; }
+
+.taller-reg-next { list-style: none; margin: 0 0 6px; padding: 0; display: grid; gap: 10px; }
+.taller-reg-next li { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; border: 1px solid #e6edf5; background: #fbfcfe; color: var(--text-muted); }
+.taller-reg-next li.is-done { border-color: #a7f3d0; background: #ecfdf5; color: var(--color-emerald-green); }
+.taller-reg-next strong { display: block; color: var(--text-primary); font-size: 14px; }
+.taller-reg-next small { color: var(--text-muted); font-size: 12.5px; }
+
+@media (max-width: 1023px) {
+  .taller-reg-layout { grid-template-columns: 1fr; max-width: 640px; gap: 18px; }
+  .taller-reg-showcase { position: relative; top: 0; min-height: 0; }
+  .taller-reg-showcase-inner { padding: 120px 22px 22px; }
+  .taller-reg-showcase h1 { font-size: 26px; }
+  .taller-reg-steps { display: none; }
+}
+@media (max-width: 560px) {
+  .taller-register-page { padding: 16px 12px 40px; }
+  .taller-reg-benefits { grid-template-columns: 1fr; }
+  .taller-reg-benefits small { display: none; }
+  .taller-reg-card-header { padding: 20px 18px 14px; }
+  .taller-reg-card .auth-modal-body { padding: 16px 16px 22px; }
+  .taller-reg-section { padding: 14px; }
+  .taller-reg-giros { grid-template-columns: 1fr; }
+}
