@@ -108,7 +108,7 @@ export default function AppLayout() {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onSearchSubmit={submitSearch}
-        onSelectCategory={(filter) => nav.goCatalog(filter)}
+        onSelectCategory={(filter, extra) => nav.goCatalog(filter, extra)}
       />}
 
       <Outlet />

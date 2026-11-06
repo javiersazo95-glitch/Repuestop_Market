@@ -243,6 +243,10 @@ export function catalogPath(filter = null, extra = {}) {
   if (normalized.subcategory) params.set('subcategoria', normalized.subcategory);
   if (normalized.subcategoryId) params.set('subcategoriaId', String(normalized.subcategoryId));
   if (extra.q) params.set('q', extra.q);
+  // Vehículo elegido en una sugerencia "para Toyota Yaris": el catálogo lo lee como filtro avanzado.
+  if (extra.vehicleBrandName) params.set('marcaVehiculo', extra.vehicleBrandName);
+  if (extra.vehicleModel) params.set('modelo', extra.vehicleModel);
+  if (extra.vehicleYear) params.set('anio', String(extra.vehicleYear));
   if (extra.pagina && Number(extra.pagina) > 1) params.set('pagina', String(extra.pagina));
   // "Ver todos los repuestos": listado completo paginado en vez de la vitrina de entrada.
   if (extra.todos) params.set('todos', '1');

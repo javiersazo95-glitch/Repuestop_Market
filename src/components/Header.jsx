@@ -16,6 +16,7 @@ import HeaderWalletButton from './wallet/HeaderWalletButton';
 import WithdrawalFailureAlert from './WithdrawalFailureAlert';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
+import { typedYear, useVehicleSuggestions } from '../hooks/useVehicleSuggestions';
 import { getPartCategoriesApi, getPartSubcategoriesApi, getPublicProductsApi, resolveMediaUrl } from '../services/api';
 import { ROUTES, buyerProfilePath, productPath } from '../routes/paths';
 import CategoryIconTile from './CategoryIconTile';
@@ -23,7 +24,7 @@ import CategoryIconTile from './CategoryIconTile';
 // Mínimo de caracteres antes de consultar sugerencias: menos que eso trae
 // demasiado ruido del backend para un autocompletado.
 const SEARCH_SUGGEST_MIN_LENGTH = 2;
-const SEARCH_SUGGEST_DEBOUNCE_MS = 300;
+const SEARCH_SUGGEST_DEBOUNCE_MS = 120;
 
 export default function Header({
   cartCount,
@@ -277,6 +278,38 @@ export default function Header({
     };
   }, [searchQuery]);
 
+  // Sugerencias "para vehículo" (Aceite de caja para Toyota Yaris 2013-2025): llegan casi al instante y se actualizan
+  // con cada letra, porque mucha gente escribe el repuesto junto a su vehículo y casi no espera la sugerencia.
+  const vehicleSuggestions = useVehicleSuggestions(searchQuery);
+
+  const applyVehicleSuggestion = (suggestion, typedText = searchQuery) => {
+    setIsSuggestOpen(false);
+    setShowMobileNav(false);
+    setSearchQuery('');
+    const year = typedYear(typedText);
+    onSelectCategory(
+      { categoryId: suggestion.categoriaId, subcategoryId: suggestion.subcategoriaId },
+      { vehicleBrandName: suggestion.marca, vehicleModel: suggestion.modelo, vehicleYear: year },
+    );
+  };
+
+  // Al buscar sin esperar las sugerencias: si el texto trae un vehículo, se usa la mejor sugerencia (repuesto +
+  // vehículo) en vez de buscar la frase completa, que ningún repuesto lleva en su nombre y no devolvería nada.
+  const submitSearch = async () => {
+    setIsSuggestOpen(false);
+    setShowMobileNav(false);
+    const typed = normalizeSearchText(searchQuery);
+    if (typed.length >= 2) {
+      const best = (await Promise.race([vehicleSuggestions.settle(), new Promise((resolve) => setTimeout(() => resolve([]), 700))]))?.[0];
+      const typedTheVehicle = best?.marca && typed.includes(normalizeSearchText(best.marca));
+      if (best?.subcategoriaId && typedTheVehicle) {
+        applyVehicleSuggestion(best, searchQuery);
+        return;
+      }
+    }
+    onSearchSubmit();
+  };
+
   const goToSuggestion = (product) => {
     setIsSuggestOpen(false);
     setSearchQuery('');
@@ -359,7 +392,7 @@ export default function Header({
         <div ref={searchConsoleRef} className="header-search-console-wrap">
           <form
             className="header-search-console"
-            onSubmit={(event) => { event.preventDefault(); setIsSuggestOpen(false); setShowMobileNav(false); onSearchSubmit(); }}
+            onSubmit={(event) => { event.preventDefault(); void submitSearch(); }}
           >
             <div className="search-input-wrapper">
               <input
@@ -394,8 +427,16 @@ export default function Header({
 
           {isSuggestOpen && searchQuery.trim().length >= SEARCH_SUGGEST_MIN_LENGTH && (
             <ul className="header-search-suggestions" role="listbox">
-              {isSuggestLoading && <li className="header-search-suggest-status">Buscando coincidencias…</li>}
-              {!isSuggestLoading && productSuggestions.length === 0 && (
+              {vehicleSuggestions.suggestions.map((suggestion) => (
+                <li key={`veh-${suggestion.etiqueta}`}>
+                  <button type="button" className="header-search-suggest-vehicle" onMouseDown={(event) => { event.preventDefault(); applyVehicleSuggestion(suggestion); }}>
+                    <span className="header-search-suggest-name">{suggestion.etiqueta}</span>
+                    <span className="header-search-suggest-oem">Para tu vehículo</span>
+                  </button>
+                </li>
+              ))}
+              {isSuggestLoading && vehicleSuggestions.suggestions.length === 0 && <li className="header-search-suggest-status">Buscando coincidencias…</li>}
+              {!isSuggestLoading && productSuggestions.length === 0 && vehicleSuggestions.suggestions.length === 0 && (
                 <li className="header-search-suggest-status">Sin coincidencias. Presiona Enter para buscar “{searchQuery.trim()}”.</li>
               )}
               {!isSuggestLoading && productSuggestions.map((product) => (

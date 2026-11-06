@@ -1462,6 +1462,18 @@ export async function getPublicProductApi(productId, { signal } = {}) {
   return fetchApi(`/inventario/productos/${productId}`, { method: 'GET', signal });
 }
 
+/**
+ * Sugerencias del buscador "para vehículo": "Aceite de caja para Toyota Yaris 2013-2025". El servidor entiende el
+ * texto aunque venga con el vehículo ("aceite de caja toyota yaris 2015") o a medio escribir ("... toy").
+ */
+export async function getVehicleSuggestionsApi({ q, marca, modelo, anio, limite = 8, signal } = {}) {
+  const params = new URLSearchParams({ q: String(q || '').trim(), limite: String(limite) });
+  if (marca) params.set('marca', marca);
+  if (modelo) params.set('modelo', modelo);
+  if (anio) params.set('anio', String(anio));
+  return fetchApi(`/inventario/productos/sugerencias?${params.toString()}`, { method: 'GET', signal, anonymous: true });
+}
+
 export async function getPublicCategoryCountsApi() {
   return fetchApi('/inventario/productos/resumen-categorias', { method: 'GET' });
 }

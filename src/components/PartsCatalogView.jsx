@@ -25,6 +25,7 @@ import { normalizePlate, sanitizePlateInput, isValidPlate } from '../utils/vehic
 import { useAuth } from '../context/AuthContext';
 import { useFavorites } from '../hooks/useFavorites';
 import TextSearchWithSuggestions from './TextSearchWithSuggestions';
+import { typedYear, useVehicleSuggestions } from '../hooks/useVehicleSuggestions';
 import SheetSelect from './SheetSelect';
 import { useIsMobile } from '../hooks/useIsMobile';
 import PaginationBar from './PaginationBar';
@@ -1194,10 +1195,28 @@ export default function PartsCatalogView({
   const clearAppliedAdvancedFilters = () => appliedAdvancedFilters.forEach((filter) => filter.onRemove());
   const activeAdvancedCount = appliedAdvancedFilters.length + (panelVehicleLabel ? 1 : 0);
 
+  // Sugerencias "para vehículo": el vehículo ya elegido en el panel manda; si no, el del texto.
+  const vehicleSuggestions = useVehicleSuggestions(searchQuery, {
+    vehicle: usesPanelVehicle ? { marca: vehicleBrandName || undefined, modelo: vehicleModel || undefined, anio: vehicleYear || undefined } : undefined,
+  });
+  const applyVehicleSuggestion = (suggestion) => {
+    const year = typedYear(searchQuery);
+    // Se busca el repuesto por su nombre y se filtra por el vehículo de la sugerencia, no la frase completa.
+    setSearchQuery(suggestion.repuesto);
+    if (suggestion.marca && !usesPanelVehicle) {
+      setVehicleBrandId('');
+      setVehicleBrandName(suggestion.marca);
+      setVehicleModel(suggestion.modelo || '');
+      setVehicleYear(year ? String(year) : '');
+    }
+  };
+
   const renderCatalogTextSearch = (placeholder = 'Buscar repuestos') => (
       <TextSearchWithSuggestions
         value={searchQuery}
         onChange={setSearchQuery}
+        vehicleSuggestions={vehicleSuggestions.suggestions}
+        onSelectVehicleSuggestion={applyVehicleSuggestion}
         suggestions={[
           ...NAVIGATION_CATEGORIES.map((category) => ({ label: category.nombre, type: 'category' })),
           ...products.map((product) => ({ label: product.titulo, type: 'product' })),
