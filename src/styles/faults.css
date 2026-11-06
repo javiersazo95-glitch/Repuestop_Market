@@ -652,3 +652,8 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 
 /* Aviso de lo que ya no se puede cambiar al editar un encargo con ofertas (misma paleta de avisos del popup de ofertar). */
 .ft-lock-note { display: flex; gap: 8px; align-items: flex-start; margin: 0 0 12px; padding: 10px 12px; border-radius: 10px; background: #fff7e6; border: 1px solid #fde3a7; color: #9a5a00; font-size: 12.5px; }
+
+/* Vehículo, repuestos y comuna fijos al editar un encargo cuyas ofertas ya vio el comprador. */
+.ft-lockset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.ft-field input:disabled, .ft-field select:disabled, .ft-field textarea:disabled, .acv-plate-input:disabled { background: #f8fafc; color: #51677e; cursor: not-allowed; }
+.ft-lockset:disabled .ft-link, .ft-lockset:disabled .acv-plate-change, .ft-lockset:disabled .ft-tab { cursor: not-allowed; opacity: .55; }

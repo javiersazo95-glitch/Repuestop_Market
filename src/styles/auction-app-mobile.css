@@ -348,3 +348,7 @@
 .am-card-state.is-por-pagar { background: #eaf2ff; color: #0052cc; }
 
 .am-page .am-warn-note { display: flex; align-items: flex-start; gap: 8px; padding: 12px; border-radius: 12px; background: var(--am-warn-bg); color: var(--am-warn); font-size: 13px; }
+
+.am-page .am-lockset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.am-page input:disabled, .am-page select:disabled { background: #f8fafc; color: #51677e; cursor: not-allowed; }
+.am-page .am-lockset:disabled .am-link, .am-page .am-lockset:disabled [role="tab"] { cursor: not-allowed; opacity: .55; }

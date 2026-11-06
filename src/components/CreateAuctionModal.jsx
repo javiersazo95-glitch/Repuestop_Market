@@ -62,7 +62,7 @@ function VehicleSummary({ vehicle, note }) {
 }
 
 /** Un repuesto del encargo: nombre, cantidad, detalle y, si va para otro auto, su propia patente. */
-function ItemEditor({ item, index, canRemove, forLabel, onChange, onRemove, onVehicle }) {
+function ItemEditor({ item, index, canRemove, forLabel, locked = false, onChange, onRemove, onVehicle }) {
   const { vehicle, error, looking } = usePlateLookup(item.otroVehiculo ? item.patente : '', { subject: 'el encargo' });
 
   useEffect(() => { onVehicle(item.key, vehicle); }, [vehicle]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -70,7 +70,7 @@ function ItemEditor({ item, index, canRemove, forLabel, onChange, onRemove, onVe
   return (
     <fieldset className="acv-item">
       <legend><Package size={15} /> Repuesto {index + 1}</legend>
-      {canRemove && (
+      {canRemove && !locked && (
         <button type="button" className="acv-item-remove" onClick={() => onRemove(item.key)} aria-label={`Quitar el repuesto ${index + 1}`}>
           <Trash2 size={14} /> Quitar
         </button>
@@ -86,11 +86,12 @@ function ItemEditor({ item, index, canRemove, forLabel, onChange, onRemove, onVe
             onChange={(e) => onChange(item.key, { nombre: e.target.value })}
             placeholder="Ej: Bomba de agua con empaquetadura"
             required
+            disabled={locked}
           />
         </label>
         <label className="ft-field">
           <span>Cantidad *</span>
-          <input type="text" inputMode="numeric" maxLength={3} value={item.cantidad} onChange={(e) => onChange(item.key, { cantidad: onlyDigits(e.target.value, 3) })} required />
+          <input type="text" inputMode="numeric" maxLength={3} value={item.cantidad} onChange={(e) => onChange(item.key, { cantidad: onlyDigits(e.target.value, 3) })} required disabled={locked} />
         </label>
         <label className="ft-field acv-field-wide">
           <span>Detalle o falla <small>Opcional</small></span>
@@ -107,7 +108,7 @@ function ItemEditor({ item, index, canRemove, forLabel, onChange, onRemove, onVe
       <p className="acv-item-for"><Car size={14} aria-hidden="true" /> {forLabel}</p>
 
       {item.otroVehiculo && (
-        <div className="acv-item-vehicle">
+        <fieldset className="acv-item-vehicle ft-lockset" disabled={locked}>
           {vehicle ? (
             <>
               <div className="acv-plate is-confirmed">
@@ -136,7 +137,7 @@ function ItemEditor({ item, index, canRemove, forLabel, onChange, onRemove, onVe
             </div>
           )}
           {error && <p className="acv-error" role="alert"><AlertCircle size={15} /> {error}</p>}
-        </div>
+        </fieldset>
       )}
     </fieldset>
   );
@@ -161,6 +162,8 @@ function itemsFromAuction(auction) {
  */
 function CreateAuctionModalContent({ onClose, onSuccess, auction = null, template = null, initialPatente = '' }) {
   const isEditing = Boolean(auction);
+  // Con ofertas ya vistas por el comprador, vehículo, repuestos y comuna quedan fijos (el servidor lo valida igual).
+  const locked = isEditing && Boolean(auction?.motivoEdicionMayor);
   const source = auction || template;
   const { user } = useAuth();
 
@@ -391,6 +394,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
         {isEditing && auction?.motivoEdicionMayor && <p className="ft-lock-note"><AlertCircle size={15} /> {auction.motivoEdicionMayor}</p>}
 
         <FormSection number={1} title="Vehículo del encargo" hint={vehicle ? 'Verifica que los datos de tu vehículo estén correctos.' : 'Indícalo con la patente o ingrésalo a mano.'}>
+          <fieldset className="ft-lockset" disabled={locked}>
           {manualVehicle ? (
             <div className="ft-vehicle-card">
               <div className="ft-vehicle-head">
@@ -448,6 +452,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
               )}
             </>
           )}
+          </fieldset>
         </FormSection>
 
         <FormSection
@@ -464,13 +469,14 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
                 index={index}
                 canRemove={items.length > 1}
                 forLabel={forLabelFor(item)}
+                locked={locked}
                 onChange={changeItem}
                 onRemove={setRemoveKey}
                 onVehicle={registerVehicle}
               />
             ))}
           </div>
-          {items.length < MAX_ITEMS && (askingNext ? (
+          {!locked && items.length < MAX_ITEMS && (askingNext ? (
             <div className="acv-ask" role="group" aria-label="¿Es para el mismo vehículo?">
               <strong>¿Es para el mismo vehículo?</strong>
               <div className="acv-ask-actions">
@@ -562,7 +568,7 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
             <select
               value={addressChoice}
               onChange={(e) => setAddressChoice(e.target.value)}
-              disabled={!addressesLoaded}
+              disabled={!addressesLoaded || locked}
               aria-label="Dirección del encargo"
             >
               {!addressesLoaded && <option value="">Cargando tus direcciones…</option>}

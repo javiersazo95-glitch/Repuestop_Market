@@ -74,6 +74,8 @@ function ItemVehicle({ itemKey, patente, onChange, onVehicle }) {
 /** `template`: "Publicar de nuevo" una búsqueda vencida o cancelada (precarga sus datos y publica una nueva). */
 export default function AuctionCreateMobile({ onClose, onSuccess, auction = null, template = null, initialPatente = '' }) {
   const isEditing = Boolean(auction);
+  // Con ofertas ya vistas por el comprador, vehículo, repuestos y comuna quedan fijos (el servidor lo valida igual).
+  const locked = isEditing && Boolean(auction?.motivoEdicionMayor);
   const source = auction || template;
   const [patente, setPatente] = useState(() => source?.patente || initialPatente);
   const { vehicle: plateVehicle, error: plateError, looking } = usePlateLookup(patente);
@@ -258,6 +260,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
         {isEditing && auction?.motivoEdicionMayor && <p className="am-warn-note"><Info size={16} /> {auction.motivoEdicionMayor}</p>}
         <section className="am-card">
           <h3 className="am-form-title">1. Datos del vehículo</h3>
+          <fieldset className="am-lockset" disabled={locked}>
           {manualVehicle ? (
             <>
               <div className="am-two">
@@ -312,6 +315,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
               )}
             </>
           )}
+          </fieldset>
         </section>
 
         <section className="am-card">
@@ -320,18 +324,18 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
             <div key={item.key} className="am-item-card">
               <div className="am-item-card-head">
                 <strong>Repuesto {index + 1}</strong>
-                {items.length > 1 && (
+                {items.length > 1 && !locked && (
                   <button type="button" onClick={() => setRemoveKey(item.key)} aria-label={`Quitar repuesto ${index + 1}`}><Trash2 size={16} /></button>
                 )}
               </div>
               {/* Para qué vehículo es este repuesto: siempre visible, en una sola fila */}
               <p className="am-item-for" title={vehicleLabelFor(item)}><Car size={14} /><span>{vehicleLabelFor(item)}</span></p>
               <Field label="Repuesto solicitado *">
-                <input type="text" value={item.nombre} onChange={(event) => changeItem(item.key, { nombre: event.target.value })} placeholder="Ej: Bomba de agua con empaquetadura" maxLength={180} />
+                <input type="text" value={item.nombre} onChange={(event) => changeItem(item.key, { nombre: event.target.value })} placeholder="Ej: Bomba de agua con empaquetadura" maxLength={180} disabled={locked} />
               </Field>
               <div className="am-two">
                 <Field label="Cantidad *">
-                  <input type="text" inputMode="numeric" maxLength={3} value={item.cantidad} onChange={(event) => changeItem(item.key, { cantidad: onlyDigits(event.target.value, 3) })} />
+                  <input type="text" inputMode="numeric" maxLength={3} value={item.cantidad} onChange={(event) => changeItem(item.key, { cantidad: onlyDigits(event.target.value, 3) })} disabled={locked} />
                 </Field>
               </div>
               <Field label="Descripción de la falla / requerimiento">
@@ -343,7 +347,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
             </div>
           ))}
 
-          {items.length < MAX_ITEMS && (askingNext ? (
+          {!locked && items.length < MAX_ITEMS && (askingNext ? (
             <div className="am-ask" role="group" aria-label="¿Es para el mismo vehículo?">
               <strong>¿Es para el mismo vehículo?</strong>
               <div className="am-ask-actions">
@@ -392,7 +396,7 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
           {pedirDireccion ? (
             <>
               <Field label="Dirección de entrega">
-                <select value={addressChoice} disabled={!addressesLoaded} onChange={(event) => setAddressChoice(event.target.value)}>
+                <select value={addressChoice} disabled={!addressesLoaded || locked} onChange={(event) => setAddressChoice(event.target.value)}>
                   {!addressesLoaded && <option value="">Cargando tus direcciones…</option>}
                   {addresses.map((address) => (
                     <option key={address.id} value={String(address.id)}>
