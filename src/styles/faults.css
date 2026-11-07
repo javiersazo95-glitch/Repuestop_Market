@@ -612,7 +612,7 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-recent-plates { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
 
 /* Registros de diagnóstico visibles para cualquier perfil (invitado, comprador o taller): existe el registro, no su detalle. */
-.fdt-records { margin-top: 12px; display: grid; gap: 8px; }
+.fdt-records { margin: 0; padding: 12px 18px 16px; display: grid; gap: 8px; }
 .fdt-records h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 800; color: #166534; }
 .fdt-records ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .fdt-record { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid #bbf7d0; border-radius: 12px; background: #f0fdf4; color: inherit; text-decoration: none; }
@@ -657,3 +657,15 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-lockset { border: 0; padding: 0; margin: 0; min-width: 0; }
 .ft-field input:disabled, .ft-field select:disabled, .ft-field textarea:disabled, .acv-plate-input:disabled { background: #f8fafc; color: #51677e; cursor: not-allowed; }
 .ft-lockset:disabled .ft-link, .ft-lockset:disabled .acv-plate-change, .ft-lockset:disabled .ft-tab { cursor: not-allowed; opacity: .55; }
+
+/* Columnas equilibradas: celdas del resumen sin dato se omiten y la ultima impar ocupa todo el ancho. */
+.ft-detail-case-grid > div:last-child:nth-child(odd) { grid-column: 1 / -1; border-right: 0; }
+.ft-detail-add-note { margin: 0; padding: 4px 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: #6b7f99; font-size: 13px; }
+.ft-detail-add-note .ft-link-btn { font-weight: 700; }
+.ft-detail-columns { align-items: stretch; }
+.ft-detail-column:not(.is-side) > .fdt-comments { flex: 1; }
+/* Ver todos: boton bajo la lista y ventana con la lista completa. */
+.fdt-more { display: block; width: calc(100% - 36px); margin: 0 18px 16px; padding: 9px 12px; border: 1px solid #cfe0ff; border-radius: 10px; background: #f4f8ff; color: #0b4fd6; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.fdt-more:hover { background: #e8f0ff; }
+.fdt-records .fdt-more { width: 100%; margin: 0; }
+.fdt-all-modal { max-width: 720px; max-height: 86vh; overflow-y: auto; }
