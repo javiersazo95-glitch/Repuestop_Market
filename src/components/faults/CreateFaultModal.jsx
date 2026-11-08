@@ -602,16 +602,37 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             <small className="ft-hint"><MapPin size={13} aria-hidden="true" /> Ubicación actual: <strong>{comuna}{region ? `, ${region}` : ''}</strong>. Elige otra opción para cambiarla.</small>
           )}
           <div className="ft-where-options" role="radiogroup" aria-label="Dónde está el vehículo">
-            {savedAddresses.map((item, index) => {
-              const key = `addr:${item.id ?? index}`;
-              const on = locChoice === key;
+            {savedAddresses.length > 0 && (() => {
+              const keyOf = (item, index) => `addr:${item.id ?? index}`;
+              const principal = savedAddresses.find((item) => item.esPrincipal) || savedAddresses[0];
+              const shownIndex = Math.max(0, savedAddresses.findIndex((item, index) => keyOf(item, index) === locChoice));
+              const shown = locChoice.startsWith('addr:') && savedAddresses.some((item, index) => keyOf(item, index) === locChoice) ? savedAddresses[shownIndex] : principal;
+              const shownKey = keyOf(shown, savedAddresses.indexOf(shown));
+              const on = locChoice === shownKey;
               return (
-                <button key={key} type="button" role="radio" aria-checked={on} className={`ft-where-opt ${on ? 'is-on' : ''}`} onClick={() => chooseSaved(item, key)}>
-                  <Home size={17} aria-hidden="true" />
-                  <span><strong>{item.esPrincipal ? 'Mi dirección principal' : 'Dirección guardada'}</strong><small>{[item.calleYNumero, item.comunaNombre].filter(Boolean).join(', ')}</small></span>
-                </button>
+                <div className={`ft-where-opt ft-where-saved ${on ? 'is-on' : ''}`}>
+                  <button type="button" role="radio" aria-checked={on} className="ft-where-main" onClick={() => chooseSaved(shown, shownKey)}>
+                    <Home size={17} aria-hidden="true" />
+                    <span><strong>{shown.esPrincipal ? 'Mi dirección principal' : 'Dirección guardada'}</strong><small>{[shown.calleYNumero, shown.comunaNombre].filter(Boolean).join(', ')}</small></span>
+                  </button>
+                  {savedAddresses.length > 1 && (
+                    <label className="ft-where-change">
+                      <span>Cambiar de dirección</span>
+                      <select value={shownKey} onChange={(event) => {
+                        const index = savedAddresses.findIndex((item, i) => keyOf(item, i) === event.target.value);
+                        if (index >= 0) chooseSaved(savedAddresses[index], event.target.value);
+                      }}>
+                        {savedAddresses.map((item, index) => (
+                          <option key={keyOf(item, index)} value={keyOf(item, index)}>
+                            {[item.calleYNumero, item.comunaNombre].filter(Boolean).join(', ')}{item.esPrincipal ? ' (principal)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </div>
               );
-            })}
+            })()}
             <button type="button" role="radio" aria-checked={locChoice === 'gps'} className={`ft-where-opt ${locChoice === 'gps' ? 'is-on' : ''}`} onClick={useMyLocation} disabled={locating}>
               {locating ? <Loader2 size={17} className="spin-icon" aria-hidden="true" /> : <LocateFixed size={17} aria-hidden="true" />}
               <span><strong>Estoy aquí ahora</strong><small>{locChoice === 'gps' && pickupAddress ? pickupAddress : 'Usar mi ubicación actual'}</small></span>

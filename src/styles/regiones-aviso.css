@@ -24,3 +24,5 @@
 .rg-foot > span { flex: 1; min-width: 200px; }
 .ft-regions-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 @media (max-width: 520px) { .rg-body { grid-template-columns: 96px minmax(0, 1fr); } }
+/* Acciones sobre la lista: a la derecha, junto a lo que modifican. */
+.rg-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 12px; margin-bottom: 4px; }

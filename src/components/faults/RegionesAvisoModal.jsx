@@ -3,6 +3,9 @@ import { createPortal } from 'react-dom';
 import { Check, Circle, Home, MapPin, X } from 'lucide-react';
 import { REGION_MAP, REGION_MAP_VIEWBOX, regionDelMapa } from '../../data/chileRegionsMap';
 
+/** [A, B, C] -> "A, B y C". */
+const listar = (nombres) => (nombres.length <= 1 ? nombres.join('') : `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`);
+
 const ORDEN = new Map(REGION_MAP.map((item, index) => [item.key, index]));
 
 /**
@@ -51,14 +54,6 @@ export default function RegionesAvisoModal({ regions, originId, neighborIds = []
           </div>
           <button type="button" className="ft-icon-btn" onClick={onClose} aria-label="Cerrar"><X size={20} /></button>
         </div>
-        <div className="rg-tools">
-          {neighbors.length > 0 && (
-            <button type="button" className="ft-btn ft-btn-outline" onClick={() => setPicked((current) => new Set([...current, ...neighbors.map((item) => item.nombre)]))}>
-              <MapPin size={15} /> Sumar vecinas
-            </button>
-          )}
-          <button type="button" className="ft-btn ft-btn-outline" onClick={() => setPicked(new Set())}>Quitar elegidas</button>
-        </div>
         <div className="rg-body">
           <div className="rg-map">
             <svg viewBox={REGION_MAP_VIEWBOX} role="img" aria-label="Mapa de Chile por regiones">
@@ -71,6 +66,14 @@ export default function RegionesAvisoModal({ regions, originId, neighborIds = []
             </svg>
           </div>
           <div className="rg-list" role="group" aria-label="Regiones, de norte a sur">
+            <div className="rg-actions">
+              <button type="button" className="ft-link" onClick={() => setPicked(new Set())} disabled={picked.size === 0}>Quitar elegidas</button>
+              {neighbors.length > 0 && (
+                <button type="button" className="ft-btn ft-btn-outline" onClick={() => setPicked((current) => new Set([...current, ...neighbors.map((item) => item.nombre)]))}>
+                  <MapPin size={15} /> Sumar vecinas
+                </button>
+              )}
+            </div>
             {zonas.map((zona) => (
               <React.Fragment key={zona}>
                 <div className="rg-zone">{zona}</div>
@@ -90,8 +93,8 @@ export default function RegionesAvisoModal({ regions, originId, neighborIds = []
         <div className="rg-legend"><span><b className="is-origin" />Tu región</span><span><b className="is-on" />Elegida</span><span><b />Sin elegir</span></div>
         <div className="rg-foot">
           <span>{extra.length
-            ? `Avisaremos a ${extra.length + 1} regiones: ${[origin, ...extra].filter(Boolean).map((item) => item.mapa?.label || item.nombre).join(', ')}.`
-            : 'Solo tu región por ahora. Suma al menos otra para usar «Varias regiones».'}</span>
+            ? `Tu falla será visible en ${extra.length + 1} regiones: ${listar([origin, ...extra].filter(Boolean).map((item) => item.mapa?.label || item.nombre))}.`
+            : `Tu falla será visible solo en ${origin ? (origin.mapa?.label || origin.nombre) : 'tu región'}. Suma al menos otra para usar «Varias regiones».`}</span>
           <div className="ft-actions">
             <button type="button" className="ft-btn ft-btn-outline" onClick={onClose}>Cancelar</button>
             <button type="button" className="ft-btn ft-btn-primary" onClick={() => onApply(extra.map((item) => item.nombre))}>Listo</button>

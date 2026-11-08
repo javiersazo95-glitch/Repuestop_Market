@@ -682,3 +682,12 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-where-opt small { color: var(--ft-muted); font-size: 12px; overflow-wrap: anywhere; }
 .ft-where-result { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; background: #ecfdf3; color: #14532d; font-size: 12.5px; }
 .ft-where .ft-hint { display: flex; align-items: center; gap: 6px; }
+/* Tarjeta de direcciones guardadas: la principal a la vista y un selector para las demas. */
+.ft-where-saved { flex-direction: column; align-items: stretch; gap: 8px; cursor: default; }
+.ft-where-main { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 0; border: 0; background: transparent; font: inherit; text-align: left; color: inherit; cursor: pointer; }
+.ft-where-main > svg { flex-shrink: 0; margin-top: 2px; color: var(--ft-primary); }
+.ft-where-main > span { display: grid; gap: 1px; min-width: 0; }
+.ft-where-main strong { font-size: 13px; font-weight: 700; }
+.ft-where-main small { color: var(--ft-muted); font-size: 12px; overflow-wrap: anywhere; }
+.ft-where-change { display: grid; gap: 4px; padding-top: 8px; border-top: 1px solid var(--ft-border); font-size: 12px; color: var(--ft-muted); }
+.ft-where-change select { min-width: 0; max-width: 100%; padding: 8px 10px; border: 1px solid var(--ft-border); border-radius: 8px; background: #fff; font: inherit; font-size: 13px; color: var(--ft-strong); }
