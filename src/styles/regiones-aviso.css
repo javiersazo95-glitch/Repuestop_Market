@@ -1,14 +1,14 @@
 /* Ventana "A que regiones avisar": mapa a la izquierda, regiones de norte a sur a la derecha. */
-.rg-modal { width: min(680px, 100%); }
+.rg-modal { width: min(680px, 100%); overflow: hidden; }
 .rg-tools { display: flex; flex-wrap: wrap; gap: 8px; }
-.rg-body { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 16px; align-items: start; }
-.rg-map { position: sticky; top: 0; padding: 8px 6px; border-radius: 12px; background: #f4f8fd; }
-.rg-map svg { display: block; width: 100%; height: auto; }
+.rg-body { display: grid; grid-template-columns: 140px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 16px; align-items: stretch; flex: 1; min-height: 0; }
+.rg-map { align-self: stretch; min-height: 0; overflow: hidden; padding: 8px 6px; border-radius: 12px; background: #f4f8fd; }
+.rg-map svg { display: block; width: 100%; height: 100%; }
 .rg-map path { fill: #fff; stroke: #9bb0c7; stroke-width: .6; stroke-linejoin: round; cursor: pointer; transition: fill .12s; }
 .rg-map path.is-hover { stroke: var(--ft-primary); stroke-width: 1.2; }
 .rg-map path.is-on { fill: #cfe0ff; stroke: #6f9cf0; }
 .rg-map path.is-origin { fill: var(--ft-primary); stroke: #0b3fa8; cursor: default; }
-.rg-list { display: flex; flex-direction: column; gap: 4px; }
+.rg-list { display: flex; flex-direction: column; gap: 4px; min-height: 0; overflow-y: auto; padding-right: 4px; }
 .rg-zone { margin: 6px 0 2px; color: var(--ft-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
 .rg-zone:first-child { margin-top: 0; }
 .rg-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: 1px solid var(--ft-border); border-radius: 10px; background: #fff; color: var(--ft-strong); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
