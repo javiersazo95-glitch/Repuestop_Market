@@ -595,6 +595,18 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             <button type="button" className={`ft-chip is-toggle ${canMove === false ? 'is-on' : ''}`} aria-pressed={canMove === false} onClick={() => setCanMove(canMove === false ? null : false)}>No, necesita grúa</button>
           </div>
         </div>
+        {showPickup && (
+        <div className="ft-field">
+          <span>¿Necesitas que el taller recoja tu vehículo?</span>
+          <div className="ft-chips">
+            <button type="button" className={`ft-chip is-toggle ${needsPickup === true ? 'is-on' : ''}`} aria-pressed={needsPickup === true} onClick={() => setNeedsPickup(true)}>Sí, que vengan por él</button>
+            <button type="button" className={`ft-chip is-toggle ${needsPickup === false ? 'is-on' : ''}`} aria-pressed={needsPickup === false} onClick={() => setNeedsPickup(false)}>No, lo llevo yo</button>
+          </div>
+          {needsPickup && (
+            <small className="ft-hint">{pickupAddress.trim() ? `Pasarán por: ${pickupAddress.trim()}.` : 'Elige abajo la dirección exacta donde está el vehículo.'}</small>
+          )}
+        </div>
+        )}
         <div className="ft-field ft-where">
           <span>¿Dónde está el vehículo?</span>
           {isEditing && !locChoice && comuna.trim() && (
@@ -668,18 +680,6 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
           )}
           <small className="ft-hint"><Lock size={12} aria-hidden="true" /> Los talleres ven solo la comuna. La dirección exacta se muestra cuando aceptas un diagnóstico.</small>
         </div>
-        {showPickup && (
-        <div className="ft-field">
-          <span>¿Necesitas que el taller recoja tu vehículo?</span>
-          <div className="ft-chips">
-            <button type="button" className={`ft-chip is-toggle ${needsPickup === true ? 'is-on' : ''}`} aria-pressed={needsPickup === true} onClick={() => setNeedsPickup(true)}>Sí, que vengan por él</button>
-            <button type="button" className={`ft-chip is-toggle ${needsPickup === false ? 'is-on' : ''}`} aria-pressed={needsPickup === false} onClick={() => setNeedsPickup(false)}>No, lo llevo yo</button>
-          </div>
-          {needsPickup && (
-            <small className="ft-hint">{pickupAddress.trim() ? `Pasarán por: ${pickupAddress.trim()}.` : 'Elige arriba la dirección exacta donde está el vehículo.'}</small>
-          )}
-        </div>
-        )}
         {SHOW_ADVANCED_FIELDS && (
         <div className="ft-field">
           <span>Prioridad</span>
