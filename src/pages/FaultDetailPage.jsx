@@ -7,8 +7,9 @@ import {
   AlertCircle, AlertTriangle, ArrowLeft, Bookmark, CalendarPlus, Car, CheckCircle2, Clock,
   ChevronLeft, ChevronRight, Clock3, Eye, ExternalLink, FileText,
   Loader2, Lock, MapPin, MapPinned, MessageCircle, Navigation, Pencil, Share2, Star, Tag, Truck, UserRound,
-  Wrench, X, XCircle,
+  Maximize2, Wrench, X, XCircle,
 } from 'lucide-react';
+import AuctionImageViewer from '../components/AuctionImageViewer';
 import { useAuth } from '../context/AuthContext';
 import {
   acceptFaultDiagnosis, closeFault, commentFault, getDiagnosisEligibility, getFault,
@@ -78,6 +79,7 @@ export default function FaultDetailPage() {
   const [booking, setBooking] = useState(null);
   const [loadingBookingId, setLoadingBookingId] = useState(null);
   const [activePhoto, setActivePhoto] = useState(0);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const [commentFormOpen, setCommentFormOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [closeConfirm, setCloseConfirm] = useState(false);
@@ -372,9 +374,10 @@ export default function FaultDetailPage() {
         <section className="ft-detail-hero-card">
           <div className="ft-detail-gallery">
             <div className="ft-detail-main-photo">
-              {photos.length > 0 ? <img src={resolveMediaUrl(photos[activePhoto])} alt={`${vehicleTitle}, foto ${activePhoto + 1}`} /> : <span><Car size={72} /></span>}
+              {photos.length > 0 ? <img src={resolveMediaUrl(photos[activePhoto])} alt={`${vehicleTitle}, foto ${activePhoto + 1}`} className="is-zoomable" onClick={() => setViewerOpen(true)} /> : <span><Car size={72} /></span>}
               {photos.length > 1 && <><button type="button" className="is-left" onClick={() => nextPhoto(-1)} aria-label="Foto anterior"><ChevronLeft /></button><button type="button" className="is-right" onClick={() => nextPhoto(1)} aria-label="Foto siguiente"><ChevronRight /></button></>}
               {photos.length > 0 && <span className="ft-detail-photo-count"><CameraIcon /> {activePhoto + 1} / {photos.length}</span>}
+              {photos.length > 0 && <button type="button" className="ft-view-image" onClick={() => setViewerOpen(true)} aria-label="Ver imagen en grande"><Maximize2 size={15} /> Ver imagen</button>}
             </div>
             {photos.length > 1 && <div className="ft-detail-thumbs">{photos.slice(0, 5).map((photo, index) => <button type="button" key={photo} className={index === activePhoto ? 'is-active' : ''} onClick={() => setActivePhoto(index)}><img src={resolveMediaUrl(photo)} alt={`Miniatura ${index + 1}`} /></button>)}</div>}
           </div>
@@ -526,6 +529,9 @@ export default function FaultDetailPage() {
           </div>
         </div>
 
+        {viewerOpen && photos.length > 0 && (
+          <AuctionImageViewer photos={photos.map((photo) => resolveMediaUrl(photo))} startIndex={activePhoto} title={vehicleTitle} onClose={() => setViewerOpen(false)} className="is-top" />
+        )}
       </div>
       )}
 

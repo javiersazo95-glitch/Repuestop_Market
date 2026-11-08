@@ -725,4 +725,8 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 /* Opciones que no corresponden al estado del vehiculo: visibles pero en gris y sin poder elegirse. */
 .ft-where-opt.is-disabled, .ft-where-opt:disabled { background: #f3f5f7; border-color: #e1e6eb; color: #9aa6b2; cursor: not-allowed; }
 .ft-where-opt.is-disabled strong, .ft-where-opt.is-disabled small, .ft-where-opt.is-disabled svg { color: #9aa6b2; }
+/* Ver la foto completa (igual que en Encargos): la portada recorta la imagen, el visor la muestra entera. */
+.ft-detail-main-photo > img.is-zoomable { cursor: zoom-in; }
+.ft-detail-main-photo > button.ft-view-image { position: absolute; top: auto; left: auto; right: 10px; bottom: 10px; width: auto; height: auto; transform: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; background: rgba(15, 23, 42, .78); font: inherit; font-size: 12px; font-weight: 700; }
+.ft-detail-main-photo > button.ft-view-image:hover { background: rgba(15, 23, 42, .92); }
 
