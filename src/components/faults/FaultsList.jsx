@@ -83,7 +83,9 @@ function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, on
               {showStatus && <span className={`ftm-chip ${fault.vigente ? 'is-ok' : ''}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>}
               {!showStatus && <span className={`ftm-chip ${diagnosisCount > 0 ? 'is-ok' : 'is-warn'}`}>{diagnosisCount > 0 ? 'Con diagnóstico' : 'Pendiente'}</span>}
             </div>
-            {fault.requiereRecogida && <span className="ftm-chip is-warn"><Truck size={12} aria-hidden="true" /> {showClient ? 'Hay que ir a buscar el vehículo' : 'Piden recogida del vehículo'}</span>}
+            {fault.requiereRecogida && (fault.modalidadAtencion === 'DOMICILIO'
+              ? <span className="ftm-chip is-warn"><Wrench size={12} aria-hidden="true" /> Mecánico a domicilio</span>
+              : <span className="ftm-chip is-warn"><Truck size={12} aria-hidden="true" /> {showClient ? 'Hay que ir a buscar el vehículo' : 'Piden recogida del vehículo'}</span>)}
             <strong>{vehicle}</strong>
             {vehicleData.length > 0 && <span className="ftm-data">{vehicleData.join(' • ')}</span>}
           </div>
@@ -170,7 +172,9 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
       <div className="ft-fault-summary">
         <div className="ft-card-badges">
           {fault.propia && <span className="ft-badge is-mine">Mi falla</span>}
-          {fault.requiereRecogida && <span className="ft-badge is-pickup"><Truck size={13} aria-hidden="true" /> {showClient ? 'Hay que ir a buscar el vehículo' : 'Piden recogida del vehículo'}</span>}
+          {fault.requiereRecogida && (fault.modalidadAtencion === 'DOMICILIO'
+            ? <span className="ft-badge is-pickup"><Wrench size={13} aria-hidden="true" /> Mecánico a domicilio</span>
+            : <span className="ft-badge is-pickup"><Truck size={13} aria-hidden="true" /> {showClient ? 'Hay que ir a buscar el vehículo' : 'Piden recogida del vehículo'}</span>)}
           {showStatus && <span className={`ft-badge ${fault.vigente ? '' : 'is-closed'}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>}
           {fault.subcategoria && <span className="ft-badge">{fault.subcategoria}</span>}
         </div>
@@ -190,7 +194,9 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
           <div><dt><Settings size={14} /> Tipo de falla</dt><dd>{fault.sintomas?.[0] || type.label}</dd></div>
           <div><dt><FileText size={14} /> Título del anuncio</dt><dd>{fault.titulo || 'Sin título'}</dd></div>
           <div><dt><Car size={14} /> Movilidad</dt><dd>{mobility}</dd></div>
-          {fault.requiereRecogida && <div><dt><Truck size={14} /> Recogida</dt><dd>El cliente necesita que vayan por el vehículo</dd></div>}
+          {fault.requiereRecogida && (fault.modalidadAtencion === 'DOMICILIO'
+            ? <div><dt><Wrench size={14} /> Atención</dt><dd>Mecánico a domicilio</dd></div>
+            : <div><dt><Truck size={14} /> Recogida</dt><dd>El cliente necesita que vayan por el vehículo</dd></div>)}
           <div><dt><MessageCircle size={14} /> Diagnósticos</dt><dd>{diagnosisCount === 0 ? 'Sin diagnósticos aún' : `${diagnosisCount} ${diagnosisCount === 1 ? 'taller diagnosticó' : 'talleres diagnosticaron'}`}</dd></div>
         </dl>
         <div className="ft-fault-actions">

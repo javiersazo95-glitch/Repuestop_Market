@@ -172,7 +172,9 @@ export default function FaultDetailMobile({
               </InfoItem>
             ) : null}
             {place && <InfoItem icon={MapPin} label="Ubicación">{place}</InfoItem>}
-            {fault.requiereRecogida && <InfoItem icon={Truck} label="Recogida">Necesita que vengan por el vehículo</InfoItem>}
+            {fault.requiereRecogida && (fault.modalidadAtencion === 'DOMICILIO'
+              ? <InfoItem icon={Wrench} label="Atención">Mecánico a domicilio</InfoItem>
+              : <InfoItem icon={Truck} label="Recogida">Necesita que vengan por el vehículo</InfoItem>)}
             <InfoItem icon={Calendar} label="Publicación">{publishedOn(fault.createdAt)}</InfoItem>
             <div className="ftd-info-item">
               <Signal size={14} aria-hidden="true" />
@@ -204,9 +206,9 @@ export default function FaultDetailMobile({
 
         {fault.requiereRecogida && (
           <section className="ftd-section">
-            <h3><Navigation size={16} /> Recogida del vehículo</h3>
+            <h3><Navigation size={16} /> {fault.modalidadAtencion === 'DOMICILIO' ? 'Mecánico a domicilio' : 'Recogida del vehículo'}</h3>
             <div className="ftd-pickup">
-              <span className="ftd-pickup-badge"><Truck size={14} /> {fault.propia ? 'Pediste que el taller recoja tu vehículo.' : 'El cliente necesita que vengan por el vehículo.'}</span>
+              <span className="ftd-pickup-badge">{fault.modalidadAtencion === 'DOMICILIO' ? <Wrench size={14} /> : <Truck size={14} />} {fault.modalidadAtencion === 'DOMICILIO' ? (fault.propia ? 'Pediste que el mecánico vaya donde está tu vehículo.' : 'El cliente pide un mecánico a domicilio.') : fault.propia ? 'Pediste que el taller recoja tu vehículo.' : 'El cliente necesita que vengan por el vehículo.'}</span>
               {fault.direccionRecogida && <p><MapPin size={16} /> {fault.direccionRecogida}</p>}
               {!fault.propia && !fault.ubicacionExacta && <p className="ftd-pickup-note">La dirección exacta se muestra cuando el cliente acepta tu diagnóstico.</p>}
               {isWorkshop && hasPoint && (

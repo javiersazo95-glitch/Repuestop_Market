@@ -274,7 +274,7 @@ export default function FaultDetailPage() {
     id: fault.id, titulo: fault.titulo, descripcion: fault.descripcion, antesDelFallo: fault.antesDelFallo,
     marca: fault.marca, modelo: fault.modelo, anio: fault.anio, motor: fault.motor, combustible: fault.combustible,
     comuna: fault.comuna, region: fault.region, categoria: fault.categoria, subcategoria: fault.subcategoria,
-    sintomas: fault.sintomas, seMueve: fault.seMueve, requiereRecogida: fault.requiereRecogida,
+    sintomas: fault.sintomas, seMueve: fault.seMueve, requiereRecogida: fault.requiereRecogida, modalidadAtencion: fault.modalidadAtencion,
     fotoVehiculo: fault.fotoVehiculo || fault.fotoUrl, fotos: fault.fotos, cantidadDiagnosticos: diagnosisCount,
     createdAt: fault.createdAt, vigente: fault.vigente,
   });
@@ -396,9 +396,9 @@ export default function FaultDetailPage() {
               {fault.sintomas?.length > 0 && <div><dt>Síntomas informados</dt><dd>{symptomSummary}</dd></div>}
               <div><dt>Diagnósticos recibidos</dt><dd>{diagnosisCount} {diagnosisCount === 1 ? 'diagnóstico' : 'diagnósticos'}</dd></div>
             </dl>
-            <div className="ft-detail-meta"><span><MapPin size={18} /> {place}</span>{fault.requiereRecogida && <span className="ft-pickup-meta"><Truck size={18} /> Requiere recogida del vehículo</span>}<span><Clock3 size={18} /> Publicado {timeSince(fault.createdAt).toLowerCase()}</span>{fault.visitas != null && <span><Eye size={18} /> {fault.visitas} visitas</span>}</div>
+            <div className="ft-detail-meta"><span><MapPin size={18} /> {place}</span>{fault.requiereRecogida && <span className="ft-pickup-meta">{fault.modalidadAtencion === 'DOMICILIO' ? <Wrench size={18} /> : <Truck size={18} />} {fault.modalidadAtencion === 'DOMICILIO' ? 'Mecánico a domicilio' : 'Requiere recogida del vehículo'}</span>}<span><Clock3 size={18} /> Publicado {timeSince(fault.createdAt).toLowerCase()}</span>{fault.visitas != null && <span><Eye size={18} /> {fault.visitas} visitas</span>}</div>
             {fault.requiereRecogida && (
-              <p className="ft-pickup-alert" role="note"><Truck size={20} aria-hidden="true" /> {fault.propia ? 'Pediste que el taller vaya a buscar tu vehículo.' : 'Este cliente necesita que vayan a buscar el vehículo.'}</p>
+              <p className="ft-pickup-alert" role="note"><Truck size={20} aria-hidden="true" /> {fault.modalidadAtencion === 'DOMICILIO' ? (fault.propia ? 'Pediste que el mecánico vaya donde está tu vehículo.' : 'Este cliente pide un mecánico a domicilio.') : fault.propia ? 'Pediste que el taller vaya a buscar tu vehículo.' : 'Este cliente necesita que vayan a buscar el vehículo.'}</p>
             )}
             <div className="ft-detail-hero-actions">{fault.propia && fault.vigente && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setEditing(true)}><Pencil size={17} /> Editar falla</button>}{fault.propia && fault.vigente && <button type="button" className="ft-btn ft-btn-danger-outline" onClick={() => { setCloseError(''); setCloseConfirm(true); }}><XCircle size={17} /> Cerrar falla</button>}<button type="button" className="ft-detail-icon-action" onClick={share} aria-label="Compartir"><Share2 size={20} /></button>{!fault.propia && isLoggedIn && <button type="button" className={`ft-btn ft-btn-outline ${saved ? 'is-saved' : ''}`} aria-pressed={saved} onClick={toggleSaved}><Bookmark size={17} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Guardado' : 'Guardar'}</button>}{!fault.propia && <ContextualReportButton tipoObjeto="FALLA" objetoId={fault.id} objetoTitulo={fault.titulo} className="ft-btn ft-btn-outline" />}</div>
           </div>
@@ -454,7 +454,7 @@ export default function FaultDetailPage() {
                 )}
                 <div className="ft-location-content">
                   {fault.requiereRecogida && (
-                    <span className="ft-pickup-badge"><Truck size={14} aria-hidden="true" /> El cliente necesita que vengan por el vehículo</span>
+                    <span className="ft-pickup-badge">{fault.modalidadAtencion === 'DOMICILIO' ? <Wrench size={14} aria-hidden="true" /> : <Truck size={14} aria-hidden="true" />} {fault.modalidadAtencion === 'DOMICILIO' ? 'El cliente pide un mecánico a domicilio' : 'El cliente necesita que vengan por el vehículo'}</span>
                   )}
                   <small>{hasPoint && fault.ubicacionExacta ? 'Ubicación exacta' : 'Ubicación aproximada'}</small>
                   <strong>{fault.direccionRecogida || place || 'Ubicación no informada'}</strong>

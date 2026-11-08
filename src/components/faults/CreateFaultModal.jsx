@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import AuctionManualVehicle from '../AuctionManualVehicle';
 import { createPortal } from 'react-dom';
-import { AlertCircle, Camera, CheckCircle2, Home, LocateFixed, Loader2, Lock, MapPin, Pencil, Search, Trash2, X } from 'lucide-react';
+import { AlertCircle, Camera, Car, CheckCircle2, Home, LocateFixed, Loader2, Lock, MapPin, Pencil, Search, Trash2, Truck, Wrench, X } from 'lucide-react';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import RegionesAvisoModal from './RegionesAvisoModal';
 import { regionDelMapa } from '../../data/chileRegionsMap';
@@ -99,7 +99,8 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   const [neighborIds, setNeighborIds] = useState([]);
   const [communes, setCommunes] = useState([]);
   // Recogida: null = sin responder (obligatorio), true/false = elegido. Con coordenadas el mapa del taller ubica al cliente.
-  const [needsPickup, setNeedsPickup] = useState(false);
+  // Como lo atienden: LLEVO_YO, RETIRO (que lo retiren) o DOMICILIO (mecanico a domicilio). null = aun no elige.
+  const [attention, setAttention] = useState(null);
   const [pickupAddress, setPickupAddress] = useState('');
   const [pickupCoords, setPickupCoords] = useState(null);
   const [vehiclePhoto, setVehiclePhoto] = useState('');
@@ -121,7 +122,11 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     setPhotos((current) => current.filter((item) => item !== photo));
   };
   // Recogida: solo se pregunta si el vehículo no se puede mover (o si la falla que se edita ya la tenía).
-  const showPickup = SHOW_ADVANCED_FIELDS || canMove === false || (isEditing && needsPickup === true);
+  const effectiveAttention = attention ?? 'LLEVO_YO';
+  // Con retiro o domicilio hay una direccion exacta a la que ir.
+  const goesThere = effectiveAttention !== 'LLEVO_YO';
+  // Lo que se ve marcado: si el vehiculo no se mueve, el cliente debe elegir (no se marca nada por el); si se mueve, "lo llevo yo".
+  const shownAttention = attention ?? (canMove === false ? null : 'LLEVO_YO');
   // Donde esta el vehiculo: una direccion de la libreta (la principal viene marcada), la ubicacion actual u otra direccion.
   // La eleccion completa sola la comuna y la region; la direccion exacta solo viaja si se pide recogida.
   const [locChoice, setLocChoice] = useState('');
@@ -223,7 +228,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     setPriority(fault.prioridad || 'MEDIA');
     setRegion(fault.region || '');
     setComuna(fault.comuna || '');
-    setNeedsPickup(Boolean(fault.requiereRecogida));
+    setAttention(fault.modalidadAtencion || (fault.requiereRecogida ? 'RETIRO' : 'LLEVO_YO'));
     if (fault.alcance) setScope(fault.alcance);
     setExtraRegions((fault.regionesAviso || []).filter((name) => !sameRegion(name, fault.region)));
     setPickupAddress(fault.direccionRecogida || '');
@@ -382,8 +387,8 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     if (totalPhotos === 0) return setError('Agrega una foto de la falla: ayuda mucho al diagnóstico.');
     if (!comuna.trim()) return setError('Indica dónde está el vehículo: elige una dirección, tu ubicación actual u otra dirección.');
     if (scope === 'REGIONES' && extraRegions.length === 0) return setError('Elige al menos otra región, además de la del vehículo, o avisa solo a tu región.');
-    if (showPickup && needsPickup === null) return setError('Indica si necesitas que el taller recoja tu vehículo.');
-    if (showPickup && needsPickup && !pickupAddress.trim()) return setError('Indica la dirección donde el taller debe recoger tu vehículo.');
+    if (canMove === false && attention === null) return setError('Indica cómo prefieres que lo atiendan.');
+    if (goesThere && !pickupAddress.trim()) return setError(effectiveAttention === 'DOMICILIO' ? 'Indica la dirección donde debe ir el mecánico.' : 'Indica la dirección donde el taller debe recoger tu vehículo.');
     // Foto de portada y fotos extra, prioridad y recogida cuando el formulario corto no las pregunta.
     const cover = vehiclePhoto || photos[0];
     const extras = vehiclePhoto ? photos : photos.slice(1);
@@ -417,10 +422,11 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         comuna: comuna.trim(),
         fotoVehiculo: cover,
         fotos: extras,
-        requiereRecogida: showPickup && needsPickup === true,
-        direccionRecogida: showPickup && needsPickup ? pickupAddress.trim() : null,
-        latitud: showPickup && needsPickup && pickupCoords ? pickupCoords.latitud : null,
-        longitud: showPickup && needsPickup && pickupCoords ? pickupCoords.longitud : null,
+        modalidadAtencion: effectiveAttention,
+        requiereRecogida: goesThere,
+        direccionRecogida: goesThere ? pickupAddress.trim() : null,
+        latitud: goesThere && pickupCoords ? pickupCoords.latitud : null,
+        longitud: goesThere && pickupCoords ? pickupCoords.longitud : null,
         alcance: scope,
         regionesAviso: scope === 'REGIONES' ? extraRegions : null,
       };
@@ -595,18 +601,28 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             <button type="button" className={`ft-chip is-toggle ${canMove === false ? 'is-on' : ''}`} aria-pressed={canMove === false} onClick={() => setCanMove(canMove === false ? null : false)}>No, necesita grúa</button>
           </div>
         </div>
-        {showPickup && (
-        <div className="ft-field">
-          <span>¿Necesitas que el taller recoja tu vehículo?</span>
-          <div className="ft-chips">
-            <button type="button" className={`ft-chip is-toggle ${needsPickup === true ? 'is-on' : ''}`} aria-pressed={needsPickup === true} onClick={() => setNeedsPickup(true)}>Sí, que vengan por él</button>
-            <button type="button" className={`ft-chip is-toggle ${needsPickup === false ? 'is-on' : ''}`} aria-pressed={needsPickup === false} onClick={() => setNeedsPickup(false)}>No, lo llevo yo</button>
+        <div className="ft-field ft-attention">
+          <span>¿Cómo prefieres que lo atiendan?</span>
+          <div className="ft-where-options" role="radiogroup" aria-label="Cómo prefieres que lo atiendan">
+            {[
+              ['LLEVO_YO', Car, 'Lo llevo yo al taller', 'Tú lo trasladas'],
+              ['RETIRO', Truck, 'Que lo retiren', 'Grúa o recogida del taller'],
+              ['DOMICILIO', Wrench, 'Que el mecánico vaya donde está el vehículo', 'Solo te avisamos talleres con servicio a domicilio'],
+            ].map(([value, Icon, title, hint]) => (
+              <button key={value} type="button" role="radio" aria-checked={shownAttention === value}
+                className={`ft-where-opt ${shownAttention === value ? 'is-on' : ''}`}
+                onClick={() => setAttention(value)}>
+                <Icon size={17} aria-hidden="true" />
+                <span><strong>{title}</strong><small>{hint}</small></span>
+              </button>
+            ))}
           </div>
-          {needsPickup && (
-            <small className="ft-hint">{pickupAddress.trim() ? `Pasarán por: ${pickupAddress.trim()}.` : 'Elige abajo la dirección exacta donde está el vehículo.'}</small>
+          {goesThere && (
+            <small className="ft-hint">{pickupAddress.trim()
+              ? `${effectiveAttention === 'DOMICILIO' ? 'Irán a' : 'Pasarán por'}: ${pickupAddress.trim()}.`
+              : 'Elige abajo la dirección exacta donde está el vehículo.'}</small>
           )}
         </div>
-        )}
         <div className="ft-field ft-where">
           <span>¿Dónde está el vehículo?</span>
           {isEditing && !locChoice && comuna.trim() && (
