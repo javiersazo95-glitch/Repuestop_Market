@@ -2,7 +2,7 @@
 .rg-modal { width: min(680px, 100%); }
 .rg-tools { display: flex; flex-wrap: wrap; gap: 8px; }
 .rg-body { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 16px; align-items: start; }
-.rg-map { padding: 8px 6px; border-radius: 12px; background: #f4f8fd; }
+.rg-map { position: sticky; top: 0; padding: 8px 6px; border-radius: 12px; background: #f4f8fd; }
 .rg-map svg { display: block; width: 100%; height: auto; }
 .rg-map path { fill: #fff; stroke: #9bb0c7; stroke-width: .6; stroke-linejoin: round; cursor: pointer; transition: fill .12s; }
 .rg-map path.is-hover { stroke: var(--ft-primary); stroke-width: 1.2; }

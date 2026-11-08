@@ -517,7 +517,6 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         </>)}
         </FormSection>
 
-        {resolved && (<>
         <FormSection number={2} title="Qué le pasa" hint="Cuéntalo con tus palabras y suma una foto: así el diagnóstico es más preciso.">
         <label className="ft-field"><span>Título de la falla</span><input value={title} maxLength={TITLE_MAX} placeholder="Ej: Ruido metálico al frenar" onChange={(e) => setTitle(e.target.value)} /><CharCount value={title} max={TITLE_MAX} /></label>
         <label className="ft-field"><span>Qué pasó</span><textarea rows={4} value={description} maxLength={DESCRIPTION_MAX} placeholder="Describe lo que notas y cuándo ocurre" onChange={(e) => setDescription(e.target.value)} /><CharCount value={description} max={DESCRIPTION_MAX} /></label>
@@ -744,7 +743,6 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
           )}
         </div>
         </FormSection>
-        </>)}
 
         {regionPickerOpen && (
           <RegionesAvisoModal
@@ -758,7 +756,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         )}
         {error && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}
         <div className="ft-actions">
-          {resolved && <button type="submit" className="ft-btn ft-btn-primary" disabled={saving}>{saving ? (isEditing ? 'Guardando…' : 'Registrando…') : (isEditing ? 'Guardar cambios' : 'Registrar falla')}</button>}
+          <button type="submit" className="ft-btn ft-btn-primary" disabled={saving}>{saving ? (isEditing ? 'Guardando…' : 'Registrando…') : (isEditing ? 'Guardar cambios' : 'Registrar falla')}</button>
           <button type="button" className="ft-btn ft-btn-outline" onClick={onClose} disabled={saving}>Cancelar</button>
         </div>
       </form>

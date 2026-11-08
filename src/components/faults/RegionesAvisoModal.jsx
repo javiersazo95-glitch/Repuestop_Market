@@ -54,6 +54,14 @@ export default function RegionesAvisoModal({ regions, originId, neighborIds = []
           </div>
           <button type="button" className="ft-icon-btn" onClick={onClose} aria-label="Cerrar"><X size={20} /></button>
         </div>
+        <div className="rg-actions">
+          <button type="button" className="ft-link" onClick={() => setPicked(new Set())} disabled={picked.size === 0}>Quitar elegidas</button>
+          {neighbors.length > 0 && (
+            <button type="button" className="ft-btn ft-btn-outline" onClick={() => setPicked((current) => new Set([...current, ...neighbors.map((item) => item.nombre)]))}>
+              <MapPin size={15} /> Sumar vecinas
+            </button>
+          )}
+        </div>
         <div className="rg-body">
           <div className="rg-map">
             <svg viewBox={REGION_MAP_VIEWBOX} role="img" aria-label="Mapa de Chile por regiones">
@@ -66,14 +74,6 @@ export default function RegionesAvisoModal({ regions, originId, neighborIds = []
             </svg>
           </div>
           <div className="rg-list" role="group" aria-label="Regiones, de norte a sur">
-            <div className="rg-actions">
-              <button type="button" className="ft-link" onClick={() => setPicked(new Set())} disabled={picked.size === 0}>Quitar elegidas</button>
-              {neighbors.length > 0 && (
-                <button type="button" className="ft-btn ft-btn-outline" onClick={() => setPicked((current) => new Set([...current, ...neighbors.map((item) => item.nombre)]))}>
-                  <MapPin size={15} /> Sumar vecinas
-                </button>
-              )}
-            </div>
             {zonas.map((zona) => (
               <React.Fragment key={zona}>
                 <div className="rg-zone">{zona}</div>
