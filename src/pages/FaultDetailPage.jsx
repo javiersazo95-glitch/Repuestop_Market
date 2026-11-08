@@ -408,9 +408,7 @@ export default function FaultDetailPage() {
           <div className="ft-detail-column">
             <div className="ft-detail-case-group">
               <DetailPanel icon={AlertTriangle} title="¿Qué pasó?" tone="is-alert"><p>{fault.descripcion || 'El usuario no describió lo que pasó.'}</p></DetailPanel>
-              {fault.antesDelFallo
-                ? <DetailPanel icon={FileText} title="Qué pasaba antes del fallo"><p>{fault.antesDelFallo}</p></DetailPanel>
-                : fault.propia && fault.vigente && <p className="ft-detail-add-note"><FileText size={15} /> ¿Recuerdas qué pasaba antes del fallo? <button type="button" className="ft-link-btn" onClick={() => setEditing(true)}>Agregar antecedentes</button></p>}
+              {fault.antesDelFallo && <DetailPanel icon={FileText} title="Qué pasaba antes del fallo"><p>{fault.antesDelFallo}</p></DetailPanel>}
             </div>
             <section className="fdt fdt-comments" aria-label="Comentarios públicos">
               <div className="fdt-banner is-soft">
