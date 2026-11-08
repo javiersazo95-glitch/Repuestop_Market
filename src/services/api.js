@@ -891,6 +891,11 @@ export async function getRegionesApi(paisId, options = {}) {
   return fetchApi(`/geografia/paises/${encodeURIComponent(paisId)}/regiones`, { method: 'GET', ...options });
 }
 
+/** Regiones que comparten limite con la dada (para "Sumar vecinas" al elegir a que regiones avisar una falla). */
+export async function getRegionVecinasApi(regionId, options = {}) {
+  return fetchApi(`/geografia/regiones/${encodeURIComponent(regionId)}/vecinas`, { method: 'GET', ...options });
+}
+
 export async function getComunasApi(regionId, options = {}) {
   return fetchApi(`/geografia/regiones/${encodeURIComponent(regionId)}/comunas`, { method: 'GET', ...options });
 }

@@ -442,7 +442,7 @@ export default function FaultDetailPage() {
                   <div className="ft-live-map">
                     <iframe
                       title="Mapa de la ubicación del cliente"
-                      src={`https://maps.google.com/maps?q=${mapQuery}&z=${hasPoint ? 16 : 13}&output=embed`}
+                      src={`https://maps.google.com/maps?q=${mapQuery}&z=${hasPoint && fault.ubicacionExacta ? 16 : 13}&output=embed`}
                       loading="lazy"
                       referrerPolicy="no-referrer-when-downgrade"
                     />
@@ -456,9 +456,10 @@ export default function FaultDetailPage() {
                   {fault.requiereRecogida && (
                     <span className="ft-pickup-badge"><Truck size={14} aria-hidden="true" /> El cliente necesita que vengan por el vehículo</span>
                   )}
-                  <small>{hasPoint ? 'Ubicación exacta' : 'Ubicación aproximada'}</small>
+                  <small>{hasPoint && fault.ubicacionExacta ? 'Ubicación exacta' : 'Ubicación aproximada'}</small>
                   <strong>{fault.direccionRecogida || place || 'Ubicación no informada'}</strong>
                   {fault.direccionRecogida && place && <span className="ft-location-place">{place}</span>}
+                  {!fault.propia && !fault.ubicacionExacta && <small className="ft-location-note"><Lock size={12} aria-hidden="true" /> La dirección exacta se muestra cuando el cliente acepta tu diagnóstico.</small>}
                   {isWorkshop && hasPoint && (
                     distanceKm != null ? (
                       <p className="ft-distance"><Navigation size={14} aria-hidden="true" /> A <strong>{formatDistanceKm(distanceKm)}</strong> de ti, en línea recta</p>

@@ -1,10 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import AuctionManualVehicle from '../AuctionManualVehicle';
 import { createPortal } from 'react-dom';
-import { AlertCircle, Camera, CheckCircle2, Loader2, MapPin, Trash2, X } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, Home, LocateFixed, Loader2, Lock, MapPin, Search, Trash2, X } from 'lucide-react';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
+import RegionesAvisoModal from './RegionesAvisoModal';
+import { regionDelMapa } from '../../data/chileRegionsMap';
+import '../../styles/regiones-aviso.css';
 import { createFault, getFaultCategories, updateFault, uploadFaultPhoto } from '../../services/faultApi';
-import { getAddressesApi, resolveMediaUrl } from '../../services/api';
+import { getAddressesApi, getDireccionInversaApi, getRegionVecinasApi, resolveMediaUrl } from '../../services/api';
 import { addRecentPlate, getRecentPlates, isValidPlate, lookupVehicleByPlate, normalizePlate } from '../../utils/vehicleLookup';
 import { getComunasApi, getRegionesApi, searchVehicleByPatenteApi } from '../../services/api';
 import { normalizarNombreGeografico } from '../../services/geoLookup';
@@ -91,6 +94,9 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   // A qué talleres avisar (1-nov): así una falla de Temuco no le llega a un taller de Arica.
   const [scope, setScope] = useState('REGION');
   const [extraRegions, setExtraRegions] = useState([]);
+  // Ventana de "Varias regiones" y las regiones vecinas de la del vehiculo (vienen de la base de datos).
+  const [regionPickerOpen, setRegionPickerOpen] = useState(false);
+  const [neighborIds, setNeighborIds] = useState([]);
   const [communes, setCommunes] = useState([]);
   // Recogida: null = sin responder (obligatorio), true/false = elegido. Con coordenadas el mapa del taller ubica al cliente.
   const [needsPickup, setNeedsPickup] = useState(false);
@@ -116,25 +122,81 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   };
   // Recogida: solo se pregunta si el vehículo no se puede mover (o si la falla que se edita ya la tenía).
   const showPickup = SHOW_ADVANCED_FIELDS || canMove === false || (isEditing && needsPickup === true);
-  // Al pedir que recojan el vehículo se propone la dirección principal de la libreta (una vez, y solo si el campo sigue vacío).
-  const pickupPrefilled = useRef(false);
+  // Donde esta el vehiculo: una direccion de la libreta (la principal viene marcada), la ubicacion actual u otra direccion.
+  // La eleccion completa sola la comuna y la region; la direccion exacta solo viaja si se pide recogida.
+  const [locChoice, setLocChoice] = useState('');
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState('');
   const buyerId = user?.userId ?? user?.id;
   useEffect(() => {
-    if (!isOpen) pickupPrefilled.current = false;
-    if (!isOpen || !showPickup || !needsPickup || pickupPrefilled.current || !buyerId) return undefined;
-    pickupPrefilled.current = true;
+    if (!isOpen) { setLocChoice(''); setLocateError(''); return undefined; }
+    if (!buyerId) return undefined;
     let active = true;
     getAddressesApi(buyerId)
-      .then((list) => {
-        const saved = (Array.isArray(list) ? list : []).find((item) => item.esPrincipal) || list?.[0];
-        const text = [saved?.calleYNumero, saved?.comunaNombre].filter(Boolean).join(', ');
-        if (active && text) setPickupAddress((current) => (current.trim() ? current : text));
-      })
+      .then((list) => { if (active) setSavedAddresses(Array.isArray(list) ? list.filter((item) => item?.calleYNumero) : []); })
       .catch(() => {});
     return () => { active = false; };
-    // Solo reacciona a la elección: lo que se escriba después no debe cancelar la carga en curso.
+  }, [isOpen, buyerId]);
+
+  const chooseSaved = (item, key) => {
+    setLocChoice(key);
+    setLocateError('');
+    setEditLocation(false);
+    setPickupAddress(item.calleYNumero || '');
+    setPickupCoords(item.latitud != null && item.longitud != null ? { latitud: item.latitud, longitud: item.longitud } : null);
+    if (item.regionNombre) setRegion(item.regionNombre);
+    if (item.comunaNombre) setComuna(item.comunaNombre);
+  };
+
+  // Al registrar una falla nueva, la direccion principal queda elegida: el caso comun no pide ningun clic.
+  useEffect(() => {
+    if (!isOpen || isEditing || locChoice || savedAddresses.length === 0) return;
+    const principal = savedAddresses.find((item) => item.esPrincipal) || savedAddresses[0];
+    chooseSaved(principal, `addr:${principal.id ?? 0}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, showPickup, needsPickup, buyerId]);
+  }, [isOpen, isEditing, locChoice, savedAddresses]);
+
+  const chooseOther = () => {
+    setLocChoice('otra');
+    setLocateError('');
+    setPickupAddress('');
+    setPickupCoords(null);
+    setRegion(''); setRegionId(''); setComuna('');
+  };
+
+  const useMyLocation = () => {
+    if (locating) return;
+    setLocateError('');
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setLocateError('Tu navegador no permite obtener la ubicación. Elige una dirección.');
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        try {
+          const found = await getDireccionInversaApi(coords.latitude, coords.longitude);
+          if (!found?.direccion && !found?.comuna) { setLocateError('No pudimos identificar dónde estás. Elige una dirección.'); return; }
+          setLocChoice('gps');
+          setEditLocation(false);
+          setPickupAddress(found.direccion || '');
+          setPickupCoords({ latitud: coords.latitude, longitud: coords.longitude });
+          if (found.region) setRegion(found.region);
+          if (found.comuna) setComuna(found.comuna);
+        } catch {
+          setLocateError('No pudimos identificar dónde estás. Elige una dirección.');
+        } finally {
+          setLocating(false);
+        }
+      },
+      (geoError) => {
+        setLocating(false);
+        setLocateError(geoError?.code === 1 ? 'Permite el acceso a tu ubicación en el navegador o elige una dirección.' : 'No pudimos obtener tu ubicación. Elige una dirección.');
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60 * 1000 },
+    );
+  };
 
   useEffect(() => {
     if (!isOpen || !fault) return;
@@ -204,6 +266,15 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
       setRegion(match.nombre);
     }
   }, [regions, region, regionId]);
+
+  useEffect(() => {
+    if (!regionId) { setNeighborIds([]); return undefined; }
+    let active = true;
+    getRegionVecinasApi(regionId)
+      .then((list) => { if (active) setNeighborIds((Array.isArray(list) ? list : []).map((item) => String(item.id))); })
+      .catch(() => { if (active) setNeighborIds([]); });
+    return () => { active = false; };
+  }, [regionId]);
 
   useEffect(() => {
     if (!regionId) { setCommunes([]); return undefined; }
@@ -309,7 +380,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     if (!description.trim()) return setError('Cuéntanos qué le pasó a tu vehículo.');
     if (symptoms.includes(OTHER_SYMPTOM) && !customSymptom.trim()) return setError('Escribe cuál es el otro síntoma.');
     if (totalPhotos === 0) return setError('Agrega una foto de la falla: ayuda mucho al diagnóstico.');
-    if (!comuna.trim()) return setError('Elige tu región y tu comuna: los talleres cercanos son los más útiles.');
+    if (!comuna.trim()) return setError('Indica dónde está el vehículo: elige una dirección, tu ubicación actual u otra dirección.');
     if (scope === 'REGIONES' && extraRegions.length === 0) return setError('Elige al menos otra región, además de la del vehículo, o avisa solo a tu región.');
     if (showPickup && needsPickup === null) return setError('Indica si necesitas que el taller recoja tu vehículo.');
     if (showPickup && needsPickup && !pickupAddress.trim()) return setError('Indica la dirección donde el taller debe recoger tu vehículo.');
@@ -525,6 +596,58 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             <button type="button" className={`ft-chip is-toggle ${canMove === false ? 'is-on' : ''}`} aria-pressed={canMove === false} onClick={() => setCanMove(canMove === false ? null : false)}>No, necesita grúa</button>
           </div>
         </div>
+        <div className="ft-field ft-where">
+          <span>¿Dónde está el vehículo?</span>
+          {isEditing && !locChoice && comuna.trim() && (
+            <small className="ft-hint"><MapPin size={13} aria-hidden="true" /> Ubicación actual: <strong>{comuna}{region ? `, ${region}` : ''}</strong>. Elige otra opción para cambiarla.</small>
+          )}
+          <div className="ft-where-options" role="radiogroup" aria-label="Dónde está el vehículo">
+            {savedAddresses.map((item, index) => {
+              const key = `addr:${item.id ?? index}`;
+              const on = locChoice === key;
+              return (
+                <button key={key} type="button" role="radio" aria-checked={on} className={`ft-where-opt ${on ? 'is-on' : ''}`} onClick={() => chooseSaved(item, key)}>
+                  <Home size={17} aria-hidden="true" />
+                  <span><strong>{item.esPrincipal ? 'Mi dirección principal' : 'Dirección guardada'}</strong><small>{[item.calleYNumero, item.comunaNombre].filter(Boolean).join(', ')}</small></span>
+                </button>
+              );
+            })}
+            <button type="button" role="radio" aria-checked={locChoice === 'gps'} className={`ft-where-opt ${locChoice === 'gps' ? 'is-on' : ''}`} onClick={useMyLocation} disabled={locating}>
+              {locating ? <Loader2 size={17} className="spin-icon" aria-hidden="true" /> : <LocateFixed size={17} aria-hidden="true" />}
+              <span><strong>Estoy aquí ahora</strong><small>{locChoice === 'gps' && pickupAddress ? pickupAddress : 'Usar mi ubicación actual'}</small></span>
+            </button>
+            <button type="button" role="radio" aria-checked={locChoice === 'otra'} className={`ft-where-opt ${locChoice === 'otra' ? 'is-on' : ''}`} onClick={chooseOther}>
+              <Search size={17} aria-hidden="true" />
+              <span><strong>Otra dirección</strong><small>Buscar calle y número</small></span>
+            </button>
+          </div>
+          {locChoice === 'otra' && (
+            <>
+              <AddressAutocompleteInput
+                requireComuna={false}
+                value={pickupAddress}
+                maxLength={300}
+                comuna={comuna}
+                region={region}
+                placeholder="Calle y número donde está el vehículo"
+                onChange={(value) => { setPickupAddress(value); setPickupCoords(null); }}
+                onSelectLocation={({ comuna: pickedComuna, region: pickedRegion, latitud, longitud }) => {
+                  if (latitud != null && longitud != null) setPickupCoords({ latitud, longitud });
+                  if (pickedRegion) setRegion(pickedRegion);
+                  if (pickedComuna) setComuna(pickedComuna);
+                }}
+              />
+              <button type="button" className="ft-link" style={{ alignSelf: 'flex-start' }} onClick={() => setEditLocation((value) => !value)}>
+                {editLocation ? 'Ocultar región y comuna' : 'Elegir región y comuna a mano'}
+              </button>
+            </>
+          )}
+          {locateError && <small className="ft-error" role="alert"><AlertCircle size={13} aria-hidden="true" /> {locateError}</small>}
+          {comuna.trim() && locChoice && (
+            <div className="ft-where-result"><MapPin size={14} aria-hidden="true" /> <span>Se avisará desde <strong>{comuna}{region ? `, ${region}` : ''}</strong></span></div>
+          )}
+          <small className="ft-hint"><Lock size={12} aria-hidden="true" /> Los talleres ven solo la comuna. La dirección exacta se muestra cuando aceptas un diagnóstico.</small>
+        </div>
         {showPickup && (
         <div className="ft-field">
           <span>¿Necesitas que el taller recoja tu vehículo?</span>
@@ -533,25 +656,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             <button type="button" className={`ft-chip is-toggle ${needsPickup === false ? 'is-on' : ''}`} aria-pressed={needsPickup === false} onClick={() => setNeedsPickup(false)}>No, lo llevo yo</button>
           </div>
           {needsPickup && (
-            <>
-              <span>Dirección de recogida</span>
-              <AddressAutocompleteInput
-                locatable
-                requireComuna={false}
-                value={pickupAddress}
-                maxLength={300}
-                comuna={comuna}
-                region={region}
-                placeholder="Calle y número donde debe pasar el taller"
-                onChange={(value) => { setPickupAddress(value); setPickupCoords(null); }}
-                onSelectLocation={({ comuna: pickedComuna, region: pickedRegion, latitud, longitud }) => {
-                  if (latitud != null && longitud != null) setPickupCoords({ latitud, longitud });
-                  if (pickedComuna && !comuna.trim()) setComuna(pickedComuna);
-                  if (pickedRegion && !region.trim()) setRegion(pickedRegion);
-                }}
-              />
-              <small>{pickupCoords ? 'Ubicación marcada: los talleres verán a qué distancia estás.' : 'Elige una sugerencia o usa el ícono de ubicación para marcar el punto exacto. Solo la ven los talleres.'}</small>
-            </>
+            <small className="ft-hint">{pickupAddress.trim() ? `Pasarán por: ${pickupAddress.trim()}.` : 'Elige arriba la dirección exacta donde está el vehículo.'}</small>
           )}
         </div>
         )}
@@ -565,13 +670,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
           </div>
         </div>
         )}
-        {!editLocation && comuna.trim() ? (
-          <div className="ft-location-line">
-            <MapPin size={15} aria-hidden="true" />
-            <span>Tu vehículo está en <strong>{comuna}{region ? `, ${region}` : ''}</strong></span>
-            <button type="button" className="ft-link" onClick={() => setEditLocation(true)}>Cambiar</button>
-          </div>
-        ) : (<>
+        {editLocation && (<>
         <div className="ft-row">
           <label className="ft-field"><span>Región</span>
             <select value={regionId} onChange={(e) => {
@@ -600,29 +699,36 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
           <small className="ft-hint">Solo los talleres de las regiones que elijas verán tu falla y recibirán el aviso. Así no le llega a un taller que te queda lejos.</small>
           <div className="ft-chips">
             {[['COMUNA', comuna ? `Solo ${comuna}` : 'Solo mi comuna'], ['REGION', 'Toda mi región'], ['REGIONES', 'Varias regiones']].map(([value, label]) => (
-              <button key={value} type="button" className={`ft-chip is-toggle is-pick ${scope === value ? 'is-on' : ''}`} aria-pressed={scope === value} onClick={() => setScope(value)}>{label}</button>
+              <button key={value} type="button" className={`ft-chip is-toggle is-pick ${scope === value ? 'is-on' : ''}`} aria-pressed={scope === value} onClick={() => { setScope(value); if (value === 'REGIONES' && extraRegions.length === 0 && regions.length) setRegionPickerOpen(true); }}>{label}</button>
             ))}
           </div>
           {scope === 'REGIONES' && (
-            <>
-              <small className="ft-hint">{region ? `${region} va siempre. Suma las regiones cercanas que quieras:` : 'Primero elige la región del vehículo. Luego suma las regiones cercanas:'}</small>
-              <div className="ft-chips">
-                {regions.filter((item) => !sameRegion(item.nombre, region)).map((item) => {
-                  const on = extraRegions.some((name) => sameRegion(name, item.nombre));
-                  return (
-                    <button key={item.id} type="button" className={`ft-chip is-toggle is-pick ${on ? 'is-on' : ''}`} aria-pressed={on}
-                      onClick={() => setExtraRegions((current) => (on ? current.filter((name) => !sameRegion(name, item.nombre)) : [...current, item.nombre]))}>
-                      {item.nombre}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
+            <div className="ft-regions-summary">
+              {extraRegions.length === 0
+                ? <small className="ft-hint">{region ? `${region} va siempre. Elige las otras regiones donde llevarías el vehículo.` : 'Primero indica dónde está el vehículo y luego elige las regiones.'}</small>
+                : (
+                  <>
+                    {region && <span className="ft-chip is-on">{regionDelMapa(region)?.label || region}</span>}
+                    {extraRegions.map((name) => <span key={name} className="ft-chip is-on">{regionDelMapa(name)?.label || name}</span>)}
+                  </>
+                )}
+              <button type="button" className="ft-link" disabled={!regions.length} onClick={() => setRegionPickerOpen(true)}>{extraRegions.length ? 'Editar regiones' : 'Elegir regiones'}</button>
+            </div>
           )}
         </div>
         </FormSection>
         </>)}
 
+        {regionPickerOpen && (
+          <RegionesAvisoModal
+            regions={regions}
+            originId={regionId}
+            neighborIds={neighborIds}
+            selected={extraRegions}
+            onClose={() => setRegionPickerOpen(false)}
+            onApply={(names) => { setExtraRegions(names); if (names.length === 0) setScope('REGION'); setRegionPickerOpen(false); }}
+          />
+        )}
         {error && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}
         <div className="ft-actions">
           {resolved && <button type="submit" className="ft-btn ft-btn-primary" disabled={saving}>{saving ? (isEditing ? 'Guardando…' : 'Registrando…') : (isEditing ? 'Guardar cambios' : 'Registrar falla')}</button>}

@@ -1,0 +1,26 @@
+/* Ventana "A que regiones avisar": mapa a la izquierda, regiones de norte a sur a la derecha. */
+.rg-modal { width: min(680px, 100%); }
+.rg-tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.rg-body { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 16px; align-items: start; }
+.rg-map { padding: 8px 6px; border-radius: 12px; background: #f4f8fd; }
+.rg-map svg { display: block; width: 100%; height: auto; }
+.rg-map path { fill: #fff; stroke: #9bb0c7; stroke-width: .6; stroke-linejoin: round; cursor: pointer; transition: fill .12s; }
+.rg-map path.is-hover { stroke: var(--ft-primary); stroke-width: 1.2; }
+.rg-map path.is-on { fill: #cfe0ff; stroke: #6f9cf0; }
+.rg-map path.is-origin { fill: var(--ft-primary); stroke: #0b3fa8; cursor: default; }
+.rg-list { display: flex; flex-direction: column; gap: 4px; }
+.rg-zone { margin: 6px 0 2px; color: var(--ft-muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
+.rg-zone:first-child { margin-top: 0; }
+.rg-row { display: flex; align-items: center; gap: 8px; width: 100%; padding: 7px 10px; border: 1px solid var(--ft-border); border-radius: 10px; background: #fff; color: var(--ft-strong); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.rg-row:hover, .rg-row.is-hover { border-color: var(--ft-primary); }
+.rg-row.is-on { border-color: #6f9cf0; background: #e6efff; color: #0b3fa8; }
+.rg-row.is-origin { border-color: var(--ft-primary); background: var(--ft-primary); color: #fff; cursor: default; }
+.rg-row em { margin-left: auto; font-size: 11px; font-style: normal; }
+.rg-legend { display: flex; flex-wrap: wrap; gap: 14px; color: var(--ft-muted); font-size: 11.5px; }
+.rg-legend b { display: inline-block; width: 11px; height: 11px; margin-right: 5px; border: 1px solid #9bb0c7; border-radius: 3px; background: #fff; vertical-align: -1px; }
+.rg-legend b.is-on { background: #cfe0ff; border-color: #6f9cf0; }
+.rg-legend b.is-origin { background: var(--ft-primary); border-color: #0b3fa8; }
+.rg-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--ft-border); font-size: 12.5px; color: var(--ft-muted); }
+.rg-foot > span { flex: 1; min-width: 200px; }
+.ft-regions-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+@media (max-width: 520px) { .rg-body { grid-template-columns: 96px minmax(0, 1fr); } }

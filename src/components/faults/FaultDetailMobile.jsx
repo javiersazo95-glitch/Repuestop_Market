@@ -208,6 +208,7 @@ export default function FaultDetailMobile({
             <div className="ftd-pickup">
               <span className="ftd-pickup-badge"><Truck size={14} /> {fault.propia ? 'Pediste que el taller recoja tu vehículo.' : 'El cliente necesita que vengan por el vehículo.'}</span>
               {fault.direccionRecogida && <p><MapPin size={16} /> {fault.direccionRecogida}</p>}
+              {!fault.propia && !fault.ubicacionExacta && <p className="ftd-pickup-note">La dirección exacta se muestra cuando el cliente acepta tu diagnóstico.</p>}
               {isWorkshop && hasPoint && (
                 distanceKm != null
                   ? <strong className="ftd-distance">A {formatDistanceKm(distanceKm)} de ti, en línea recta</strong>

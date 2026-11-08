@@ -115,7 +115,11 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-field small { color: var(--ft-muted); font-weight: 400; }
 .ft-field input, .ft-field select, .ft-field textarea { border: 1px solid var(--ft-border); border-radius: 10px; padding: 10px 12px; font: inherit; background: #fff; }
 .ft-field input:focus, .ft-field select:focus, .ft-field textarea:focus { outline: 2px solid var(--ft-primary-border); border-color: var(--ft-primary); }
-.ft-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ft-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.ft-field { min-width: 0; }
+.ft-field select, .ft-field input { min-width: 0; max-width: 100%; }
+.ft-saved-addresses { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ft-saved-addresses .ft-chip { max-width: 100%; text-align: left; overflow-wrap: anywhere; }
 @media (max-width: 560px) { .ft-row { grid-template-columns: 1fr; } }
 .ft-progress { height: 8px; border-radius: 4px; background: var(--ft-border); overflow: hidden; }
 .ft-progress > div { height: 100%; background: var(--ft-primary); }
@@ -667,3 +671,14 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .fdt-more:hover { background: #e8f0ff; }
 .fdt-records .fdt-more { width: 100%; margin: 0; }
 .fdt-all-modal { max-width: 720px; max-height: 86vh; overflow-y: auto; }
+/* Donde esta el vehiculo: opciones tipo tarjeta. */
+.ft-where-options { display: grid; gap: 8px; }
+.ft-where-opt { display: flex; align-items: flex-start; gap: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--ft-border); border-radius: 12px; background: #fff; font: inherit; text-align: left; cursor: pointer; color: var(--ft-strong); }
+.ft-where-opt:hover { border-color: var(--ft-primary); }
+.ft-where-opt.is-on { border-color: var(--ft-primary); background: var(--ft-primary-light, #eef5ff); box-shadow: 0 0 0 1px var(--ft-primary); }
+.ft-where-opt > svg { flex-shrink: 0; margin-top: 2px; color: var(--ft-primary); }
+.ft-where-opt > span { display: grid; gap: 1px; min-width: 0; }
+.ft-where-opt strong { font-size: 13px; font-weight: 700; }
+.ft-where-opt small { color: var(--ft-muted); font-size: 12px; overflow-wrap: anywhere; }
+.ft-where-result { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; background: #ecfdf3; color: #14532d; font-size: 12.5px; }
+.ft-where .ft-hint { display: flex; align-items: center; gap: 6px; }
