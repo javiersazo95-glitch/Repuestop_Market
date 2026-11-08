@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import AuctionManualVehicle from '../AuctionManualVehicle';
 import { createPortal } from 'react-dom';
-import { AlertCircle, Camera, CheckCircle2, Home, LocateFixed, Loader2, Lock, MapPin, Search, Trash2, X } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, Home, LocateFixed, Loader2, Lock, MapPin, Pencil, Search, Trash2, X } from 'lucide-react';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import RegionesAvisoModal from './RegionesAvisoModal';
 import { regionDelMapa } from '../../data/chileRegionsMap';
@@ -724,17 +724,23 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
             ))}
           </div>
           {scope === 'REGIONES' && (
-            <div className="ft-regions-summary">
-              {extraRegions.length === 0
-                ? <small className="ft-hint">{region ? `${region} va siempre. Elige las otras regiones donde llevarías el vehículo.` : 'Primero indica dónde está el vehículo y luego elige las regiones.'}</small>
-                : (
-                  <>
-                    {region && <span className="ft-chip is-on">{regionDelMapa(region)?.label || region}</span>}
-                    {extraRegions.map((name) => <span key={name} className="ft-chip is-on">{regionDelMapa(name)?.label || name}</span>)}
-                  </>
-                )}
-              <button type="button" className="ft-link" disabled={!regions.length} onClick={() => setRegionPickerOpen(true)}>{extraRegions.length ? 'Editar regiones' : 'Elegir regiones'}</button>
-            </div>
+            <button type="button" className="ft-regions-card" disabled={!regions.length} onClick={() => setRegionPickerOpen(true)}
+              aria-label={extraRegions.length ? 'Editar regiones elegidas' : 'Elegir regiones'}>
+              <span className="ft-regions-card-body">
+                {extraRegions.length === 0
+                  ? <small className="ft-hint">{region ? `${region} va siempre. Toca para elegir las otras regiones.` : 'Primero indica dónde está el vehículo y luego elige las regiones.'}</small>
+                  : (
+                    <>
+                      <small className="ft-regions-card-label">Visible en {extraRegions.length + 1} regiones</small>
+                      <span className="ft-regions-summary">
+                        {region && <span className="ft-chip is-on">{regionDelMapa(region)?.label || region}</span>}
+                        {extraRegions.map((name) => <span key={name} className="ft-chip is-on">{regionDelMapa(name)?.label || name}</span>)}
+                      </span>
+                    </>
+                  )}
+              </span>
+              <span className="ft-regions-card-pen" aria-hidden="true"><Pencil size={15} /></span>
+            </button>
           )}
         </div>
         </FormSection>
