@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
+import AuctionManualVehicle from '../AuctionManualVehicle';
 import { createPortal } from 'react-dom';
-import { AlertCircle, Camera, CheckCircle2, CircleHelp, Loader2, MapPin, Trash2, X } from 'lucide-react';
+import { AlertCircle, Camera, CheckCircle2, Loader2, MapPin, Trash2, X } from 'lucide-react';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import { createFault, getFaultCategories, updateFault, uploadFaultPhoto } from '../../services/faultApi';
 import { getAddressesApi, resolveMediaUrl } from '../../services/api';
 import { addRecentPlate, getRecentPlates, isValidPlate, lookupVehicleByPlate, normalizePlate } from '../../utils/vehicleLookup';
-import { getComunasApi, getRegionesApi, getVehicleBrandsApi, getVehicleModelsApi, getVehicleVersionsApi, searchVehicleByPatenteApi } from '../../services/api';
+import { getComunasApi, getRegionesApi, searchVehicleByPatenteApi } from '../../services/api';
 import { normalizarNombreGeografico } from '../../services/geoLookup';
 import { useAuth } from '../../context/AuthContext';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
@@ -13,8 +14,6 @@ import { MAX_MILEAGE, MIN_VEHICLE_YEAR, maxVehicleYear } from '../../utils/input
 import CharCount from './CharCount';
 import { PlateBenefitHint, RecommendedBadge } from '../PlateRecommended';
 import { maskPlate } from '../../utils/usePlateLookup';
-import { ANIOS_DISPONIBLES } from '../../data/sampleVehicles';
-import { useCombustibles } from '../../data/vehicleOptions';
 import '../../styles/faults.css';
 
 const TITLE_MAX = 160;
@@ -25,7 +24,6 @@ const BEFORE_MAX = 1000;
  * sigue en el código, apagado, con valores por defecto, para ir sumándolos de a poco. Al editar se conservan los valores ya guardados.
  */
 const SHOW_ADVANCED_FIELDS = false;
-const nameOf = (item) => item?.nombre || item?.name || '';
 
 /** Seccion numerada del formulario: titulo y una linea que explica que se pide ahi. */
 function FormSection({ number, title, hint, children }) {
@@ -73,20 +71,6 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   const [plate, setPlate] = useState('');
   const [plateStatus, setPlateStatus] = useState('idle');
   const [resolved, setResolved] = useState(null);
-  // Busqueda manual: los mismos campos y orden que la del buscador del home (patente opcional, marca, modelo, año,
-  // version, combustible y chasis opcional).
-  const [brands, setBrands] = useState([]);
-  const [models, setModels] = useState([]);
-  const [versions, setVersions] = useState([]);
-  const [brandId, setBrandId] = useState('');
-  const [modelId, setModelId] = useState('');
-  const [manualYear, setManualYear] = useState('');
-  const [manualVersion, setManualVersion] = useState('');
-  const [manualFuel, setManualFuel] = useState('');
-  const [manualChassis, setManualChassis] = useState('');
-  const [manualPlate, setManualPlate] = useState('');
-  const [manualError, setManualError] = useState('');
-  const fuels = useCombustibles();
   const [mileage, setMileage] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -265,49 +249,13 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     return () => { active = false; clearTimeout(timer); };
   }, [plate, resolved]);
 
-  // Catalogo de marcas y modelos para la busqueda manual (se carga solo si se usa).
-  useEffect(() => {
-    if (!isOpen || mode !== 'manual' || resolved || brands.length) return undefined;
-    let active = true;
-    getVehicleBrandsApi().then((list) => { if (active) setBrands(Array.isArray(list) ? list : []); }).catch(() => {});
-    return () => { active = false; };
-  }, [isOpen, mode, resolved, brands.length]);
-
-  useEffect(() => {
-    setModels([]);
-    if (!brandId) return undefined;
-    let active = true;
-    getVehicleModelsApi(brandId).then((list) => { if (active) setModels(Array.isArray(list) ? list : []); }).catch(() => {});
-    return () => { active = false; };
-  }, [brandId]);
-
-  const brandName = nameOf(brands.find((item) => String(item.id) === brandId));
-  const modelName = nameOf(models.find((item) => String(item.id || item.nombre) === modelId));
-
-  // La version depende del modelo y del año, igual que en el buscador del home.
-  useEffect(() => {
-    setVersions([]);
-    if (!brandName || !modelName || !manualYear) return undefined;
-    let active = true;
-    getVehicleVersionsApi({ marca: brandName, modelo: modelName, anioDesde: manualYear, anioHasta: manualYear })
-      .then((list) => { if (active) setVersions(Array.isArray(list) ? list : []); }).catch(() => {});
-    return () => { active = false; };
-  }, [brandName, modelName, manualYear]);
-
   if (!isOpen) return null;
 
-  const useManualVehicle = () => {
-    if (!brandName) return setManualError('Por favor selecciona la marca del vehículo.');
-    if (!modelName) return setManualError('Por favor selecciona el modelo del vehículo.');
-    if (!manualYear) return setManualError('Por favor selecciona el año del vehículo.');
-    const manualPlateNormalized = normalizePlate(manualPlate);
-    if (manualPlateNormalized && !isValidPlate(manualPlateNormalized)) return setManualError('Patente no válida. Formato: ABCD12 o BB-CL-12');
-    setManualError('');
-    return setResolved({
-      patente: manualPlateNormalized, marca: brandName, modelo: modelName, anio: manualYear, version: manualVersion, motor: '',
-      combustible: manualFuel, chasis: manualChassis.trim(),
-    });
-  };
+  // La busqueda manual es la misma de los encargos y del carrito: marca, modelo, año, version y motor obligatorios, chasis opcional.
+  const useManualVehicle = (vehicle) => setResolved({
+    patente: '', marca: vehicle.marca, modelo: vehicle.modelo, anio: String(vehicle.anio), version: vehicle.version, motor: vehicle.motor,
+    combustible: '', chasis: vehicle.chasis || '',
+  });
 
   const changeVehicle = () => {
     setTechReview(null);
@@ -432,7 +380,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
               <button type="button" className="ft-link" onClick={changeVehicle}>{resolved.patente ? 'Cambiar patente' : 'Cambiar vehículo'}</button>
             </div>
             <dl>
-              {[['Patente', maskPlate(resolved.patente)], ['Marca', resolved.marca], ['Modelo', resolved.modelo], ['Año', resolved.anio], ...(SHOW_ADVANCED_FIELDS ? [['Versión', resolved.version], ['Combustible', resolved.combustible], ['Chasis', resolved.chasis]] : [])]
+              {[['Patente', maskPlate(resolved.patente)], ['Marca', resolved.marca], ['Modelo', resolved.modelo], ['Año', resolved.anio], ['Versión', resolved.version], ['Motor', resolved.motor], ...(SHOW_ADVANCED_FIELDS ? [['Combustible', resolved.combustible]] : []), ['Chasis', resolved.chasis]]
                 .filter(([, value]) => value).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
             </dl>
           </div>
@@ -463,81 +411,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
                 {(plateStatus === 'idle') && <small>¿No la tienes a mano? <button type="button" className="ft-link" onClick={() => setMode('manual')}>Ingresa el vehículo a mano</button>.</small>}
               </label>
             ) : (
-              <div className="hero-manual-form">
-                <div className="hero-manual-grid">
-                  {SHOW_ADVANCED_FIELDS && (
-                  <div className="hero-manual-field">
-                    <div className="field-label-with-tooltip">
-                      <label>Patente (opcional)</label>
-                      <span className="field-tooltip-trigger" tabIndex={0} aria-label="Información sobre patente opcional">
-                        <CircleHelp size={13} />
-                        <span className="field-tooltip-box">Si la ingresas, los talleres la usan para identificar tu vehículo. Nunca se muestra a otros usuarios.</span>
-                      </span>
-                    </div>
-                    <div className="plate-input-with-counter">
-                      <input type="text" className="hero-manual-input" placeholder="Ej: ABCD-12" value={manualPlate} maxLength={8}
-                        onChange={(e) => setManualPlate(e.target.value.toUpperCase().replace(/[^A-Z0-9-\s]/g, ''))} />
-                      <span className="plate-char-counter">{manualPlate.length}/8</span>
-                    </div>
-                  </div>
-                  )}
-                  <div className="hero-manual-field">
-                    <label>Marca</label>
-                    <select className="hero-manual-select" value={brandId}
-                      onChange={(e) => { setBrandId(e.target.value); setModelId(''); setManualVersion(''); }}>
-                      <option value="">{brands.length ? 'Seleccionar' : 'Cargando...'}</option>
-                      {brands.map((item) => <option key={item.id} value={item.id}>{nameOf(item)}</option>)}
-                    </select>
-                  </div>
-                  <div className="hero-manual-field">
-                    <label>Modelo</label>
-                    <select className="hero-manual-select" value={modelId} disabled={!brandId}
-                      onChange={(e) => { setModelId(e.target.value); setManualVersion(''); }}>
-                      <option value="">Seleccionar</option>
-                      {models.map((item, index) => <option key={item.id || `${item.nombre}-${index}`} value={item.id || item.nombre}>{nameOf(item)}</option>)}
-                    </select>
-                  </div>
-                  <div className="hero-manual-field">
-                    <label>Año</label>
-                    <select className="hero-manual-select" value={manualYear} disabled={!modelId} onChange={(e) => { setManualYear(e.target.value); setManualVersion(''); }}>
-                      <option value="">Seleccionar</option>
-                      {ANIOS_DISPONIBLES.map((year) => <option key={year} value={year}>{year}</option>)}
-                    </select>
-                  </div>
-                  {SHOW_ADVANCED_FIELDS && (<>
-                  <div className="hero-manual-field">
-                    <label>Versión</label>
-                    <select className="hero-manual-select" value={manualVersion} disabled={!modelName || !manualYear} onChange={(e) => setManualVersion(e.target.value)}>
-                      <option value="">Seleccionar</option>
-                      {versions.map((item, index) => <option key={item.id || index} value={nameOf(item)}>{nameOf(item)}</option>)}
-                    </select>
-                  </div>
-                  <div className="hero-manual-field">
-                    <label>Combustible</label>
-                    <select className="hero-manual-select" value={manualFuel} onChange={(e) => setManualFuel(e.target.value)}>
-                      <option value="">Seleccionar</option>
-                      {fuels.map((fuel) => <option key={fuel} value={fuel}>{fuel}</option>)}
-                    </select>
-                  </div>
-                  <div className="hero-manual-field full-width">
-                    <div className="field-label-with-tooltip">
-                      <label>Nro Chasis (opcional)</label>
-                      <span className="field-tooltip-trigger" tabIndex={0} aria-label="Información sobre número de chasis">
-                        <CircleHelp size={13} />
-                        <span className="field-tooltip-box">Con este dato los talleres pueden validar con mayor precisión la compatibilidad exacta de tu vehículo.</span>
-                      </span>
-                    </div>
-                    <input type="text" className="hero-manual-input" placeholder="Ej: Número de chasis (VIN)" value={manualChassis} maxLength={30}
-                      onChange={(e) => setManualChassis(e.target.value.toUpperCase())} />
-                    <span className="field-help-text">Permite a los talleres confirmar la compatibilidad técnica exacta del vehículo.</span>
-                  </div>
-                  </>)}
-                </div>
-                {manualError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {manualError}</p>}
-                <button type="button" className="btn-hero-manual-submit" disabled={!brandName || !modelName || !manualYear} onClick={useManualVehicle}>
-                  <CheckCircle2 size={18} /><span>Usar este vehículo</span>
-                </button>
-              </div>
+              <AuctionManualVehicle onUse={useManualVehicle} />
             )}
           </div>
         )}
