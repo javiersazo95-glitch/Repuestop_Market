@@ -7,7 +7,7 @@ import {
   AlertCircle, AlertTriangle, ArrowLeft, Bookmark, CalendarPlus, Car, CheckCircle2, Clock,
   ChevronLeft, ChevronRight, Clock3, Eye, ExternalLink, FileText,
   Loader2, Lock, MapPin, MapPinned, MessageCircle, Navigation, Pencil, Share2, Star, Tag, Truck, UserRound,
-  Wrench, X,
+  Wrench, X, XCircle,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import {
@@ -400,7 +400,7 @@ export default function FaultDetailPage() {
             {fault.requiereRecogida && (
               <p className="ft-pickup-alert" role="note"><Truck size={20} aria-hidden="true" /> {fault.propia ? 'Pediste que el taller vaya a buscar tu vehículo.' : 'Este cliente necesita que vayan a buscar el vehículo.'}</p>
             )}
-            <div className="ft-detail-hero-actions">{fault.propia && fault.vigente && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setEditing(true)}><Pencil size={17} /> Editar falla</button>}<button type="button" className="ft-detail-icon-action" onClick={share} aria-label="Compartir"><Share2 size={20} /></button>{!fault.propia && isLoggedIn && <button type="button" className={`ft-btn ft-btn-outline ${saved ? 'is-saved' : ''}`} aria-pressed={saved} onClick={toggleSaved}><Bookmark size={17} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Guardado' : 'Guardar'}</button>}{!fault.propia && <ContextualReportButton tipoObjeto="FALLA" objetoId={fault.id} objetoTitulo={fault.titulo} className="ft-btn ft-btn-outline" />}</div>
+            <div className="ft-detail-hero-actions">{fault.propia && fault.vigente && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setEditing(true)}><Pencil size={17} /> Editar falla</button>}{fault.propia && fault.vigente && <button type="button" className="ft-btn ft-btn-danger-outline" onClick={() => { setCloseError(''); setCloseConfirm(true); }}><XCircle size={17} /> Cerrar falla</button>}<button type="button" className="ft-detail-icon-action" onClick={share} aria-label="Compartir"><Share2 size={20} /></button>{!fault.propia && isLoggedIn && <button type="button" className={`ft-btn ft-btn-outline ${saved ? 'is-saved' : ''}`} aria-pressed={saved} onClick={toggleSaved}><Bookmark size={17} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Guardado' : 'Guardar'}</button>}{!fault.propia && <ContextualReportButton tipoObjeto="FALLA" objetoId={fault.id} objetoTitulo={fault.titulo} className="ft-btn ft-btn-outline" />}</div>
           </div>
         </section>
 
@@ -433,10 +433,10 @@ export default function FaultDetailPage() {
           </div>
 
           <div className="ft-detail-column is-side">
-            <DetailPanel icon={Car} title="Información del vehículo"><dl className="ft-detail-table"><div><dt>Marca</dt><dd>{fault.marca || '—'}</dd></div><div><dt>Modelo</dt><dd>{fault.modelo || '—'}</dd></div><div><dt>Año</dt><dd>{fault.anio || '—'}</dd></div><div><dt>Combustible</dt><dd>{fault.combustible || '—'}</dd></div>{fault.motor && <div><dt>Motor</dt><dd>{fault.motor}</dd></div>}<div><dt>Kilometraje</dt><dd>{fault.kilometraje != null ? `${fault.kilometraje.toLocaleString('es-CL')} km` : '—'}</dd></div><div><dt>Chasis</dt><dd>{fault.chasis || fault.vin || '—'}</dd></div>{showPlate && fault.propia && <div><dt>Patente</dt><dd>{maskPlate(fault.patente) || '—'}</dd></div>}</dl></DetailPanel>
+            <DetailPanel icon={Car} title="Información del vehículo" tone="is-vehicle"><dl className="ft-detail-table"><div><dt>Marca</dt><dd>{fault.marca || '—'}</dd></div><div><dt>Modelo</dt><dd>{fault.modelo || '—'}</dd></div><div><dt>Año</dt><dd>{fault.anio || '—'}</dd></div><div><dt>Combustible</dt><dd>{fault.combustible || '—'}</dd></div>{fault.motor && <div><dt>Motor</dt><dd>{fault.motor}</dd></div>}<div><dt>Kilometraje</dt><dd>{fault.kilometraje != null ? `${fault.kilometraje.toLocaleString('es-CL')} km` : '—'}</dd></div><div><dt>Chasis</dt><dd>{fault.chasis || fault.vin || '—'}</dd></div>{showPlate && fault.propia && <div><dt>Patente</dt><dd>{maskPlate(fault.patente) || '—'}</dd></div>}</dl></DetailPanel>
             {/* El mapa solo aparece si el cliente pidió que vayan por el vehículo: es hasta donde debe llegar el taller. */}
             {fault.requiereRecogida && (
-            <DetailPanel icon={MapPinned} title="Ubicación del cliente">
+            <DetailPanel icon={MapPinned} title="Ubicación del cliente" tone="is-location">
               <div className={`ft-location-card ${mapQuery ? 'is-live' : ''}`}>
                 {mapQuery ? (
                   <div className="ft-live-map">
@@ -477,7 +477,7 @@ export default function FaultDetailPage() {
               </div>
             </DetailPanel>
             )}
-            <section className="fdt fdt-diag" aria-label="Diagnósticos de talleres">
+            <section className={`fdt fdt-diag ${fault.requiereRecogida ? '' : 'is-wide'}`} aria-label="Diagnósticos de talleres">
               <div className="fdt-banner">
                 <span className="fdt-count">{diagnosisCount}</span>
                 <div className="fdt-banner-text">
@@ -526,7 +526,6 @@ export default function FaultDetailPage() {
           </div>
         </div>
 
-        {fault.propia && fault.vigente && <div className="ft-detail-owner-actions"><button type="button" className="ft-btn ft-btn-danger" onClick={() => { setCloseError(''); setCloseConfirm(true); }}>Cerrar falla</button></div>}
       </div>
       )}
 

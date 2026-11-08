@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import {
   AlertCircle, ArrowLeft, BadgeCheck, Bike, CalendarCheck, Car, Check, CheckCircle2, CircleDot, Disc3, Eye, EyeOff, FileCheck2,
-  Gauge, Lock, Mail, MapPin, PackageSearch, PaintBucket, PenLine, Search, ShieldCheck, Stethoscope, Truck, UserPlus, UserRound,
+  Gauge, Lock, Mail, MapPin, PackageSearch, PaintBucket, PenLine, Search, ShieldCheck, Truck, UserPlus, UserRound,
   Warehouse, Wrench, Zap,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -38,7 +38,7 @@ const GIRO_ICONS = [Wrench, Gauge, Zap, Disc3, PaintBucket, CircleDot, Bike, Tru
 const WORKSHOP_BENEFITS = [
   { icon: Search, title: 'Te encuentran en tu comuna', text: 'Aparece en el buscador de talleres con tus servicios, horario y opiniones.' },
   { icon: CalendarCheck, title: 'Recibe citas en tu agenda', text: 'Los conductores reservan hora y tú confirmas desde tu panel.' },
-  { icon: Stethoscope, title: 'Diagnostica fallas', text: 'Comenta las fallas que publican los conductores y gana nuevos clientes.' },
+  { icon: Wrench, title: 'Diagnostica fallas', text: 'Comenta las fallas que publican los conductores y gana nuevos clientes.' },
   { icon: Car, title: 'Compra repuestos para tus trabajos', text: 'Busca por patente y compra a casas de repuestos verificadas.' },
 ];
 const WORKSHOP_STEPS = [

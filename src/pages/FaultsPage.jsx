@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ClipboardList, Plus, Stethoscope, Wrench } from 'lucide-react';
+import { ClipboardList, Plus, PlusCircle, Wrench } from 'lucide-react';
 import { getFaultMetrics } from '../services/faultApi';
 import FaultsHero from '../components/faults/FaultsHero';
 import { useIsMobile } from '../hooks/useIsMobile';
@@ -61,7 +61,7 @@ export default function FaultsPage() {
             <span><strong>{daily ? formatMetric(daily.fallasAbiertas) : metricValue(metrics.faults)}</strong><small>fallas abiertas</small></span>
           </article>
           <article>
-            <span className="ft-index-value-icon"><Stethoscope size={19} /></span>
+            <span className="ft-index-value-icon"><PlusCircle size={19} /></span>
             <span><strong>{daily ? formatMetric(daily.registradasHoy) : '—'}</strong><small>nuevas hoy</small></span>
           </article>
           <article>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ClipboardList, Loader2, Lock, MessageCircle, Pencil } from 'lucide-react';
+import { ArrowRight, Loader2, Lock, MessageCircle, Pencil, Wrench } from 'lucide-react';
 import { faultDetailPath } from '../../routes/paths';
 import { getFault } from '../../services/faultApi';
 import { FaultCommentsModal, FaultDiagnosesModal } from './FaultOwnerModals';
@@ -54,7 +54,7 @@ export default function MyFaultActions({ fault, diagnosisCount = 0, onChanged })
           Ver detalle <ArrowRight size={14} />
         </Link>
         <button type="button" className="pa-btn-secondary" onClick={() => setPanel('diagnoses')} aria-label={`Ver diagnósticos (${diagnosisCount})`}>
-          <ClipboardList size={15} /> Diagnósticos ({diagnosisCount})
+          <Wrench size={15} /> Diagnósticos ({diagnosisCount})
         </button>
         <button
           type="button"

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import {
-  AlertCircle, ArrowLeft, CheckCircle2, ChevronRight, ClipboardList, CornerDownRight, Loader2, MapPin, MessageCircle, Send, Tag, X,
+  AlertCircle, ArrowLeft, CheckCircle2, ChevronRight, CornerDownRight, Loader2, MapPin, MessageCircle, Send, Tag, Wrench, X,
 } from 'lucide-react';
 import TallerAvatar from '../TallerAvatar';
 import TallerRating from '../talleres/TallerRating';
@@ -252,7 +252,7 @@ export function FaultDiagnosesModal({ fault, vehicle, canAct, onChanged, onClose
   } else if (diagnoses.length === 0) {
     body = (
       <div className="qq-empty">
-        <ClipboardList size={30} />
+        <Wrench size={30} />
         <strong>Aún no hay diagnósticos</strong>
         <p>Cuando un taller diagnostique tu falla, lo verás aquí para compararlo, aceptarlo y agendar.</p>
         {loadError && <p className="qq-error" role="alert"><AlertCircle size={14} /> {loadError}</p>}
@@ -299,7 +299,7 @@ export function FaultDiagnosesModal({ fault, vehicle, canAct, onChanged, onClose
                 <div><small>Estado</small><strong className={selected.aceptado ? 'is-ok' : ''}>{selected.aceptado ? 'Aceptado' : 'Sin aceptar'}</strong></div>
               </div>
               <div className="fom-cta">
-                <button type="button" onClick={() => setOpenId(selected.id)}><ClipboardList size={15} /> Ver diagnóstico completo</button>
+                <button type="button" onClick={() => setOpenId(selected.id)}><Wrench size={15} /> Ver diagnóstico completo</button>
                 <p className="qq-note">{canAct ? 'Desde ahí puedes aceptarlo, responder al taller y agendar tu cita.' : 'La falla está cerrada: puedes revisarlo, pero ya no aceptar ni agendar.'}</p>
               </div>
             </>
@@ -311,7 +311,7 @@ export function FaultDiagnosesModal({ fault, vehicle, canAct, onChanged, onClose
 
   return (
     <>
-      <Shell icon={ClipboardList} label="Diagnósticos de los talleres" title={vehicle} onClose={onClose}>{body}</Shell>
+      <Shell icon={Wrench} label="Diagnósticos de los talleres" title={vehicle} onClose={onClose}>{body}</Shell>
       {openId != null && diagnoses.some((item) => item.id === openId) && (
         <DiagnosticoDesglose
           key={openId}

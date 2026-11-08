@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle, Bookmark, CalendarDays, Camera, Car, ChevronRight, FileText, Filter, Loader2,
-  ArrowUpDown, ClipboardList, Stethoscope, CheckCircle2, MapPin, MessageCircle, Plus, RotateCcw, Search, Settings, SlidersHorizontal, Truck, Wrench, X,
+  ArrowUpDown, ClipboardList, CheckCircle2, MapPin, MessageCircle, Plus, RotateCcw, Search, Settings, SlidersHorizontal, Truck, Wrench, X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getCommentedFaults, getMyFaults, getOpenFaults, timeSince } from '../../services/faultApi';
@@ -193,15 +193,17 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
           {fault.requiereRecogida && <div><dt><Truck size={14} /> Recogida</dt><dd>El cliente necesita que vayan por el vehículo</dd></div>}
           <div><dt><MessageCircle size={14} /> Diagnósticos</dt><dd>{diagnosisCount === 0 ? 'Sin diagnósticos aún' : `${diagnosisCount} ${diagnosisCount === 1 ? 'taller diagnosticó' : 'talleres diagnosticaron'}`}</dd></div>
         </dl>
-        <Link to={faultDetailPath(fault)} state={{ fromMural }} className="ft-btn ft-btn-primary ft-detail-button" aria-label={`Ver detalle de ${vehicle}`}>
-          Ver detalle <ChevronRight size={16} />
-        </Link>
-        {ownerActions && <MyFaultActions fault={fault} diagnosisCount={diagnosisCount} onChanged={ownerActions.onChanged} />}
-        {onToggleSaved && (
-          <button type="button" className={`ft-btn ft-btn-outline ${isSaved ? 'is-saved' : ''}`} aria-pressed={isSaved} onClick={() => onToggleSaved(fault)}>
-            <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} /> {isSaved ? 'Guardada' : 'Guardar'}
-          </button>
-        )}
+        <div className="ft-fault-actions">
+          <Link to={faultDetailPath(fault)} state={{ fromMural }} className="ft-btn ft-btn-primary ft-detail-button" aria-label={`Ver detalle de ${vehicle}`}>
+            Ver detalle <ChevronRight size={16} />
+          </Link>
+          {ownerActions && <MyFaultActions fault={fault} diagnosisCount={diagnosisCount} onChanged={ownerActions.onChanged} />}
+          {onToggleSaved && (
+            <button type="button" className={`ft-btn ft-btn-outline ${isSaved ? 'is-saved' : ''}`} aria-pressed={isSaved} onClick={() => onToggleSaved(fault)}>
+              <Bookmark size={16} fill={isSaved ? 'currentColor' : 'none'} /> {isSaved ? 'Guardada' : 'Guardar'}
+            </button>
+          )}
+        </div>
       </div>
     </article>
   );
@@ -388,7 +390,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
             ? <article className="is-pending"><CheckCircle2 size={18} /><span><strong>{summary.closed}</strong>Cerradas</span></article>
             : <>
               <article className="is-pending"><MessageCircle size={18} /><span><strong>{summary.pending}</strong>Sin diagnóstico</span></article>
-              <article className="is-unread"><Stethoscope size={18} /><span><strong>{summary.diagnosed}</strong>Con diagnóstico</span></article>
+              <article className="is-unread"><Wrench size={18} /><span><strong>{summary.diagnosed}</strong>Con diagnóstico</span></article>
             </>}
         </div>
 
