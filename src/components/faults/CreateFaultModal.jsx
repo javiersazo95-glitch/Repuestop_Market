@@ -127,6 +127,10 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
   const goesThere = effectiveAttention !== 'LLEVO_YO';
   // Lo que se ve marcado: si el vehiculo no se mueve, el cliente debe elegir (no se marca nada por el); si se mueve, "lo llevo yo".
   const shownAttention = attention ?? (canMove === false ? null : 'LLEVO_YO');
+  // Segun el estado del vehiculo: si se mueve, lo lleva el cliente o va el mecanico; si no se mueve, lo retiran o va el mecanico.
+  const allowedAttention = canMove === false ? ['RETIRO', 'DOMICILIO'] : ['LLEVO_YO', 'DOMICILIO'];
+  // Si el estado cambia y la opcion elegida ya no corresponde, se limpia: nunca queda guardada una combinacion sin sentido.
+  useEffect(() => { setAttention((current) => (current !== null && !allowedAttention.includes(current) ? null : current)); }, [canMove]); // eslint-disable-line react-hooks/exhaustive-deps
   // Donde esta el vehiculo: una direccion de la libreta (la principal viene marcada), la ubicacion actual u otra direccion.
   // La eleccion completa sola la comuna y la region; la direccion exacta solo viaja si se pide recogida.
   const [locChoice, setLocChoice] = useState('');
@@ -609,8 +613,10 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
               ['RETIRO', Truck, 'Que lo retiren', 'Grúa o recogida del taller'],
               ['DOMICILIO', Wrench, 'Que el mecánico vaya donde está el vehículo', 'Solo te avisamos talleres con servicio a domicilio'],
             ].map(([value, Icon, title, hint]) => (
-              <button key={value} type="button" role="radio" aria-checked={shownAttention === value}
-                className={`ft-where-opt ${shownAttention === value ? 'is-on' : ''}`}
+              <button key={value} type="button" role="radio" aria-checked={shownAttention === value} aria-disabled={!allowedAttention.includes(value)}
+                disabled={!allowedAttention.includes(value)}
+                title={allowedAttention.includes(value) ? undefined : (canMove === false ? 'No aplica: el vehículo no se puede mover' : 'No aplica: el vehículo se puede mover')}
+                className={`ft-where-opt ${shownAttention === value ? 'is-on' : ''} ${allowedAttention.includes(value) ? '' : 'is-disabled'}`}
                 onClick={() => setAttention(value)}>
                 <Icon size={17} aria-hidden="true" />
                 <span><strong>{title}</strong><small>{hint}</small></span>

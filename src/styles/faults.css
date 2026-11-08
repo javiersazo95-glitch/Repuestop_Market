@@ -722,4 +722,7 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-detail-hero-actions { flex-wrap: wrap; gap: 10px; }
 /* Editar y Cerrar falla: con aire respecto al aviso de recogida. */
 .ft-detail-hero-actions { padding-top: 18px; }
+/* Opciones que no corresponden al estado del vehiculo: visibles pero en gris y sin poder elegirse. */
+.ft-where-opt.is-disabled, .ft-where-opt:disabled { background: #f3f5f7; border-color: #e1e6eb; color: #9aa6b2; cursor: not-allowed; }
+.ft-where-opt.is-disabled strong, .ft-where-opt.is-disabled small, .ft-where-opt.is-disabled svg { color: #9aa6b2; }
 
