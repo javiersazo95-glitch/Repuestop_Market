@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Camera, Car, Info, Loader2, Plus, Trash2, X } from 'lucide-react';
-import { normalizePlate } from '../utils/vehicleLookup';
+import { addRecentPlate, getRecentPlates, isValidPlate, normalizePlate } from '../utils/vehicleLookup';
 import AuctionManualVehicle from './AuctionManualVehicle';
 import { PlateBenefitHint, RecommendedBadge } from './PlateRecommended';
 import usePlateLookup, { maskPlate } from '../utils/usePlateLookup';
@@ -79,6 +79,9 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
   const source = auction || template;
   const [patente, setPatente] = useState(() => source?.patente || initialPatente);
   const { vehicle: plateVehicle, error: plateError, looking } = usePlateLookup(patente);
+  // Últimas patentes consultadas en este navegador: un toque y se completa la patente.
+  const [recentPlates, setRecentPlates] = useState(() => getRecentPlates());
+  useEffect(() => { if (plateVehicle?.patente) setRecentPlates(addRecentPlate(plateVehicle.patente)); }, [plateVehicle?.patente]);
   // Sin patente a mano: marca, modelo y año del catálogo (búsqueda manual).
   const [vehicleMode, setVehicleMode] = useState(() => (source && !source.patente && source.marca ? 'manual' : 'plate'));
   const [manualVehicle, setManualVehicle] = useState(() => (source && !source.patente && source.marca
@@ -300,6 +303,16 @@ export default function AuctionCreateMobile({ onClose, onSuccess, auction = null
                       {looking && <Loader2 size={18} className="am-spin" />}
                     </span>
                   </Field>
+                  {recentPlates.length > 0 && !isValidPlate(normalizePlate(patente)) && (
+                    <div className="ft-page">
+                      <div className="ft-recent-plates" aria-label="Tus últimas patentes">
+                        <small>Tus últimas patentes:</small>
+                        {recentPlates.slice(0, 4).map((recent) => (
+                          <button key={recent} type="button" className="ft-chip is-toggle" onClick={() => setPatente(recent)}>{recent}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {plateError && <p className="am-error" role="alert">{plateError}</p>}
                   <div className="am-two">
                     <Field label="Marca"><input type="text" value={plateVehicle?.marca || ''} placeholder="Toyota" readOnly /></Field>

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   X, Upload, Trash2, AlertCircle, CheckCircle2, Plus, Package, Car,
 } from 'lucide-react';
-import { normalizePlate } from '../utils/vehicleLookup';
+import { addRecentPlate, getRecentPlates, isValidPlate, normalizePlate } from '../utils/vehicleLookup';
 import usePlateLookup, { maskPlate } from '../utils/usePlateLookup';
 import { shippingClass } from '../utils/auctionOfferFit';
 import { getAddressesApi, resolveMediaUrl } from '../services/api';
@@ -219,6 +219,9 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
   const [manualVehicle, setManualVehicle] = useState(() => (source && !source.patente && source.marca
     ? { marca: source.marca, modelo: source.modelo, anio: source.anio || undefined, version: source.version || undefined, motor: source.motor || undefined, chasis: source.chasis || undefined } : null));
   const vehicle = manualVehicle || plateVehicle;
+  // Últimas patentes consultadas en este navegador: un toque y se completa la patente (igual que en la app y en fallas).
+  const [recentPlates, setRecentPlates] = useState(() => getRecentPlates());
+  useEffect(() => { if (plateVehicle?.patente) setRecentPlates(addRecentPlate(plateVehicle.patente)); }, [plateVehicle?.patente]);
 
   const [items, setItems] = useState(() => (source ? itemsFromAuction(source) : [newItem()]));
   const [itemVehicles, setItemVehicles] = useState({});
@@ -438,6 +441,14 @@ function CreateAuctionModalContent({ onClose, onSuccess, auction = null, templat
                     placeholder="ABCD12"
                     className="acv-plate-input"
                   />
+                  {recentPlates.length > 0 && !isValidPlate(normalizePlate(patente)) && (
+                    <div className="ft-recent-plates" aria-label="Tus últimas patentes">
+                      <small>Tus últimas patentes:</small>
+                      {recentPlates.slice(0, 4).map((recent) => (
+                        <button key={recent} type="button" className="ft-chip is-toggle" onClick={() => setPatente(recent)}>{recent}</button>
+                      ))}
+                    </div>
+                  )}
                   <small className="acv-plate-hint">
                     {lookingUpPlate ? 'Consultando patente…' : <>¿No la tienes a mano? <button type="button" className="ft-link" onClick={() => setVehicleMode('manual')}>Ingresa el vehículo a mano</button>.</>}
                   </small>

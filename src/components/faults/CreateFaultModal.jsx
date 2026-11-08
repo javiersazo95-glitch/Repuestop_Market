@@ -472,8 +472,8 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
                 {recentPlates.length > 0 && !isValidPlate(normalizePlate(plate)) && (
                   <div className="ft-recent-plates" aria-label="Tus últimas patentes">
                     <small>Tus últimas patentes:</small>
-                    {recentPlates.map((recent) => (
-                      <button key={recent} type="button" className="ft-chip is-toggle" onClick={() => setPlate(recent)}>{maskPlate(recent)}</button>
+                    {recentPlates.slice(0, 4).map((recent) => (
+                      <button key={recent} type="button" className="ft-chip is-toggle" onClick={() => setPlate(recent)}>{recent}</button>
                     ))}
                   </div>
                 )}
