@@ -551,8 +551,15 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 @media (max-width: 767px) {
   .ft-page { background: #f8fafc; }
   .ft-m-hero { padding: 12px 16px 0; }
-  .ft-index-breadcrumb, .ft-index-head, .ft-index-value-row { display: none; }
-  .ft-index-shell { display: none; }
+  .ft-index-breadcrumb, .ft-index-head { display: none; }
+  /* Las cifras del día se quedan en el celular, en tres columnas compactas bajo el banner. */
+  .ft-index-shell { padding-top: 12px; }
+  .ft-index-value-row { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 0; }
+  .ft-index-value-row article { flex-direction: column; justify-content: center; gap: 6px; padding: 10px 4px; text-align: center; }
+  .ft-index-value-row article + article { border-top: 0; border-left: 1px solid var(--ft-primary-border); }
+  .ft-index-value-row article > span:last-child { align-items: center; }
+  .ft-index-value-row strong { font-size: 18px; }
+  .ft-index-value-row small { font-size: 11px; }
   .ft-m-only { display: block; }
   .ft-m-controls { display: flex; flex-direction: column; gap: 12px; margin: 12px 0; }
   .ft-m-tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
