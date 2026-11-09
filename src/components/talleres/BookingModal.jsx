@@ -68,6 +68,8 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
   // el mismo precargado que "reservar otra hora" (el servicio es el diagnostico de esa falla).
   // Si la falla pidió mecánico a domicilio, el interruptor parte encendido con la dirección de la falla.
   const fallaDomicilio = fallaContext?.modalidad === 'DOMICILIO' && Boolean(fallaContext?.direccion);
+  // Desde una falla la atención ya está decidida (y el taller aceptó el diagnóstico sobre eso): la agenda la hereda, no la pregunta.
+  const fromFalla = Boolean(fallaContext?.modalidad);
   const fromAppointment = fromAppointmentProp || (fallaContext ? {
     vehiclePatent: fallaContext.patente || '',
     vehicleModel: fallaContext.vehiculo || '',
@@ -110,6 +112,9 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
   const [serviceAddress, setServiceAddress] = useState(previousHomeAddress || (fallaContext?.direccion || '').trim());
   // La dirección ya cargada (la de la falla o la principal de la libreta) se muestra como tarjeta; solo se abre el campo al cambiarla.
   const [editAddress, setEditAddress] = useState(false);
+  // Una cita nacida de una falla con dirección usa SIEMPRE esa dirección: es la que el taller vio al aceptar el diagnóstico,
+  // y cambiarla a última hora lo llevaría a cancelar. Para otra dirección se edita la falla.
+  const addressLocked = Boolean((fallaContext?.direccion || '').trim());
   const [addressFromBook, setAddressFromBook] = useState(false);
   // Ranura "Servicio a domicilio" (igual que la app): apagada por defecto; al activarla se pide la dirección.
   const [atHomeChoice, setAtHome] = useState(Boolean(fromAppointment?.homeService || previousHomeLine));
@@ -521,7 +526,19 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
 
                   {/* ¿Dónde quieres la atención?: solo en talleres que ofrecen domicilio. Va antes del calendario
                       porque condiciona la anticipación mínima y, por tanto, los horarios que se ofrecen. */}
-                  {offersHomeService && (
+                  {offersHomeService && fromFalla && (
+                    <section className="bk-card bk-where">
+                      <h5 className="bk-section-title"><MapPin size={17} /> Atención</h5>
+                      <div className="bk-address-card">
+                        {atHome ? <Home size={17} /> : <Store size={17} />}
+                        <span>
+                          <strong>{atHome ? `A domicilio · ${(fallaContext.direccion || '').trim()}` : 'En el taller'}</strong>
+                          <small>Es lo que registraste en tu falla. Para cambiarlo, edita tu falla.</small>
+                        </span>
+                      </div>
+                    </section>
+                  )}
+                  {offersHomeService && !fromFalla && (
                     <section className="bk-card bk-where">
                       <h5 className="bk-section-title"><MapPin size={17} /> ¿Dónde quieres la atención?</h5>
                       <div className="bk-where-options" role="radiogroup" aria-label="Dónde quieres la atención">
@@ -534,24 +551,17 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                           <small>El mecánico va a ti</small>
                         </button>
                       </div>
-                      {fallaContext?.modalidad && (
-                        <small className="bk-helper">
-                          {fallaContext.modalidad === 'DOMICILIO' ? 'En tu falla pediste mecánico a domicilio.'
-                            : fallaContext.modalidad === 'RETIRO' ? 'En tu falla pediste que retiren el vehículo.'
-                              : 'En tu falla elegiste llevarlo tú al taller.'}
-                        </small>
-                      )}
                       {atHome && (
                         <div className="bk-group bk-address" onBlur={() => touch('address')}>
                           <span className="bk-label">Dirección del servicio <em aria-hidden="true">*</em></span>
-                          {!editAddress && serviceAddress.trim() ? (
+                          {addressLocked || (!editAddress && serviceAddress.trim()) ? (
                             <div className="bk-address-card">
                               <MapPin size={17} />
                               <span>
-                                <strong>{serviceAddress.trim()}</strong>
-                                <small>{serviceAddress.trim() === (fallaContext?.direccion || '').trim() ? 'La dirección de tu falla' : addressFromBook ? 'Tu dirección principal' : 'Dirección del servicio'}</small>
+                                <strong>{(addressLocked ? fallaContext.direccion : serviceAddress).trim()}</strong>
+                                <small>{addressLocked ? 'La dirección de tu falla, la que vio el taller. Para usar otra, edita tu falla.' : addressFromBook ? 'Tu dirección principal' : 'Dirección del servicio'}</small>
                               </span>
-                              <button type="button" className="bk-address-change" onClick={() => setEditAddress(true)}>Cambiar</button>
+                              {!addressLocked && <button type="button" className="bk-address-change" onClick={() => setEditAddress(true)}>Cambiar</button>}
                             </div>
                           ) : (
                             <AddressAutocompleteInput

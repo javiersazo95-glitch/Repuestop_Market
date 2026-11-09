@@ -3,6 +3,22 @@
    Plus Jakarta Sans, azul #0066ff, tarjetas de borde 1 px. Prefijo .ft- para no tocar otros estilos.
    ========================================================================== */
 
+/* Las tarjetas de fallas también se pintan en el perfil (fuera de .ft-page): sin estas variables el botón principal quedaba transparente. */
+.ft-profile-faults {
+  --ft-primary: #0066ff;
+  --ft-primary-light: #eaf2ff;
+  --ft-primary-border: #bfd6f7;
+  --ft-text: #243442;
+  --ft-strong: #0f172a;
+  --ft-muted: #5a6b7a;
+  --ft-border: #d9e0e7;
+  --ft-green: #0e7038;
+  --ft-green-bg: #eafbf1;
+  --ft-amber: #9a5a00;
+  --ft-amber-bg: #fff7e6;
+  --ft-red: #b42318;
+}
+
 .ft-page {
   --ft-primary: #0066ff;
   --ft-primary-light: #eaf2ff;
