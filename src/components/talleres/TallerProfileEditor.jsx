@@ -4,7 +4,7 @@ import {
   AlertTriangle, Calendar, Camera, Car, ChevronRight, Clock, Eye, FileText, Home, ImagePlus, Loader2, MapPin, MessageCircle,
   Pencil, Plus, Store, Wrench, X
 } from 'lucide-react';
-import { fetchMiTaller, updateMiTallerPerfil, uploadTallerPhotos } from '../../services/talleresStorage';
+import { fetchMiTaller, selectTallerCoverTemplate, updateMiTallerPerfil, uploadTallerPhotos } from '../../services/talleresStorage';
 import { daysLeft, getDiagnosticStatus, getTallerInfo, prizeProgress, saveTallerInfo } from '../../services/workshopApi';
 import { apiErrorMessage } from '../../services/walletStorage';
 import { toMediaPath, updateAutomotiveServiceHoursApi, updateAutomotiveServiceLogoApi } from '../../services/api';
@@ -14,6 +14,7 @@ import { hoursFromRecord, toWorkshopHoursPayload, workshopHoursMissing } from '.
 import ConfirmDialog from '../ConfirmDialog';
 import EditDialog from './EditDialog';
 import PrincipalAgendaCard from './PrincipalAgendaCard';
+import TallerCoverModal from './TallerCoverModal';
 import WorkshopHoursSection from './WorkshopHoursSection';
 import './taller-editor.css';
 
@@ -100,7 +101,8 @@ export default function TallerProfileEditor({ record, businessName, hasAgenda, o
   const [infoForm, setInfoForm] = useState({ descripcion: '', anios: '', garantia: '', equipamiento: [] });
   const [hoursForm, setHoursForm] = useState(null);
   const [whatsappForm, setWhatsappForm] = useState('');
-  const coverInputRef = useRef(null);
+  const [coverOpen, setCoverOpen] = useState(false);
+  const [coverError, setCoverError] = useState('');
   const logoInputRef = useRef(null);
   const galleryInputRef = useRef(null);
 
@@ -125,8 +127,8 @@ export default function TallerProfileEditor({ record, businessName, hasAgenda, o
   }, [load]);
 
   const photos = taller?.photos || [];
-  const cover = photos[0] || null;
-  const gallery = photos.slice(1);
+  const cover = taller?.cover || null;
+  const gallery = photos;
   const services = taller?.services || [];
   const brands = taller?.specialistBrands || [];
   const info = infoData?.info || {};
@@ -154,13 +156,19 @@ export default function TallerProfileEditor({ record, businessName, hasAgenda, o
     return files;
   };
 
-  const changeCover = (event) => {
-    const [file] = pickedFiles(event);
-    if (!file) return;
-    run('cover', async () => {
-      const [url] = await uploadTallerPhotos([file]);
-      setTaller(await updateMiTallerPerfil({ photos: [url, ...photos.slice(1)] }));
-    });
+  // La portada solo se elige entre las oficiales de taller (igual que la tienda); la galeria no se toca.
+  const saveCover = async (templateId) => {
+    setBusy('cover');
+    setCoverError('');
+    try {
+      setTaller(await selectTallerCoverTemplate(templateId));
+      setCoverOpen(false);
+      onSaved?.();
+    } catch (error) {
+      setCoverError(apiErrorMessage(error, 'No se pudo guardar la portada.'));
+    } finally {
+      setBusy(null);
+    }
   };
 
   const changeLogo = (event) => {
@@ -288,13 +296,12 @@ export default function TallerProfileEditor({ record, businessName, hasAgenda, o
       {/* Portada y logo */}
       <section className="agenda-configs-section taller-editor__identity" aria-label="Portada y logo del taller">
         <div className="taller-editor__cover">
-          {cover ? <img src={cover} alt="Portada del taller" /> : <span className="taller-editor__cover-empty"><ImagePlus size={22} /> Agrega una portada</span>}
+          {cover && <img src={cover} alt="Portada del taller" />}
           {/* «Ver cómo se ve mi perfil»: el ojo de la app sobre la portada; sin servicio publicado avisa por qué aún no se ve. */}
           <button type="button" className="agenda-cfg-icon taller-editor__eye-btn" aria-label="Ver cómo se ve mi perfil" onClick={onOpenPublicProfile}><Eye size={15} /></button>
-          <button type="button" className="agenda-cfg-icon taller-editor__cover-btn" aria-label="Cambiar portada" disabled={Boolean(busy)} onClick={() => coverInputRef.current?.click()}>
+          <button type="button" className="agenda-cfg-icon taller-editor__cover-btn" aria-label="Cambiar portada" disabled={Boolean(busy)} onClick={() => { setCoverError(''); setCoverOpen(true); }}>
             {busy === 'cover' ? <Loader2 size={15} className="spin-icon" /> : <Camera size={15} />}
           </button>
-          <input ref={coverInputRef} type="file" accept="image/*" hidden onChange={changeCover} />
         </div>
         <div className="taller-editor__who">
           <div className="taller-editor__logo">
@@ -327,9 +334,9 @@ export default function TallerProfileEditor({ record, businessName, hasAgenda, o
         <Row
           icon={ImagePlus}
           title="Galería"
-          summary={cover ? `${gallery.length} de ${MAX_PHOTOS - 1} fotos del taller y trabajos terminados` : 'Agrega primero la portada; después, fotos del taller y trabajos terminados'}
+          summary={`${gallery.length} de ${MAX_PHOTOS} fotos del taller y trabajos terminados`}
           trailing={
-            <button type="button" className="agenda-cfg-icon" aria-label="Agregar fotos a la galería" disabled={Boolean(busy) || photos.length >= MAX_PHOTOS || !cover} title={cover ? undefined : 'Agrega primero la portada'} onClick={() => galleryInputRef.current?.click()}>
+            <button type="button" className="agenda-cfg-icon" aria-label="Agregar fotos a la galería" disabled={Boolean(busy) || photos.length >= MAX_PHOTOS} onClick={() => galleryInputRef.current?.click()}>
               {busy === 'gallery' ? <Loader2 size={15} className="spin-icon" /> : <Plus size={15} />}
             </button>
           }
@@ -340,7 +347,7 @@ export default function TallerProfileEditor({ record, businessName, hasAgenda, o
               {gallery.map((src, index) => (
                 <div className="taller-editor__photo" key={`${src}-${index}`}>
                   <img src={src} alt={`Foto ${index + 1} del taller`} />
-                  <button type="button" onClick={() => setPhotoToRemove(index + 1)} aria-label={`Quitar foto ${index + 1}`}><X size={14} /></button>
+                  <button type="button" onClick={() => setPhotoToRemove(index)} aria-label={`Quitar foto ${index + 1}`}><X size={14} /></button>
                 </div>
               ))}
             </div>
@@ -492,6 +499,16 @@ export default function TallerProfileEditor({ record, businessName, hasAgenda, o
             <small>Déjalo vacío si no quieres compartirlo.</small>
           </div>
         </EditDialog>
+      )}
+
+      {coverOpen && (
+        <TallerCoverModal
+          currentCover={cover}
+          saving={busy === 'cover'}
+          error={coverError}
+          onClose={() => setCoverOpen(false)}
+          onSave={saveCover}
+        />
       )}
 
       <ConfirmDialog

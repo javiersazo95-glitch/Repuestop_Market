@@ -402,7 +402,7 @@ function FavoritesMobile({
               {(tab === 'all' ? talleres.slice(0, 2) : talleres).map((taller) => (
                 <div key={taller.id} className="fav-m-ad" role="button" tabIndex={0} onClick={() => onOpenTaller(taller)} onKeyDown={(e) => e.key === 'Enter' && onOpenTaller(taller)}>
                   <span className="fav-m-thumb is-ad">
-                    {taller.photos?.[0] ? <img src={taller.photos[0]} alt="" /> : <Wrench size={26} />}
+                    {taller.cover || taller.photos?.[0] ? <img src={taller.cover || taller.photos[0]} alt="" /> : <Wrench size={26} />}
                   </span>
                   <span className="fav-m-copy">
                     {taller.services?.[0]?.name && <em className="fav-m-overline">{taller.services[0].name}</em>}

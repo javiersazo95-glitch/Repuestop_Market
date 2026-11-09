@@ -649,6 +649,9 @@ export function adaptCompatibleOffersPage(response) {
  *   calculan los bloques disponibles.
  * - `calificacion` y `opiniones` son el promedio y la cantidad de opiniones de clientes (0 sin opiniones).
  */
+/** Portada de un taller que aun no elige una de sus portadas oficiales (plantilla "Taller moderno"). */
+export const DEFAULT_TALLER_COVER = '/taller_cover.webp';
+
 export function adaptTaller(dto) {
   if (!dto) return null;
   const services = (Array.isArray(dto.servicios) ? dto.servicios : [])
@@ -683,6 +686,8 @@ export function adaptTaller(dto) {
     ownerUserId: dto.usuarioId ? String(dto.usuarioId) : null,
     name: dto.nombre || '',
     logo: resolveMediaUrl(dto.logoUrl) || null,
+    // Portada oficial elegida por el taller; sin ella, la de por defecto (la misma de la app).
+    cover: resolveMediaUrl(dto.portadaUrl) || DEFAULT_TALLER_COVER,
     description: info?.description || '',
     info,
     photos: (Array.isArray(dto.fotos) ? dto.fotos : []).map(resolveMediaUrl).filter(Boolean),

@@ -8,6 +8,7 @@
 // mientras responde la red.
 import {
   getTalleresApi, getTallerApi, getMiTallerPerfilApi, updateMiTallerPerfilApi, uploadTallerPhotosApi, resolveMediaUrl,
+  getTallerCoverTemplatesApi, selectTallerCoverTemplateApi,
   getTallerAppointmentsApi, getMyAppointmentsApi, createTallerAppointmentApi,
   updateAppointmentStatusApi, sendAppointmentSummaryEmailsApi, rescheduleAppointmentApi, rateAppointmentWorkshopApi, registerAppointmentResultApi,
   getAppointmentMessagesApi, sendAppointmentMessageApi,
@@ -81,6 +82,19 @@ export async function fetchMiTaller({ signal } = {}) {
  */
 export async function updateMiTallerPerfil(profile) {
   const saved = adaptTaller(await updateMiTallerPerfilApi(toTallerProfilePayload(profile)));
+  fetchTalleres().catch(() => {});
+  return saved;
+}
+
+/** Portadas oficiales de taller: es lo unico que el taller puede poner como portada. */
+export async function fetchTallerCoverTemplates() {
+  const list = await getTallerCoverTemplatesApi();
+  return (Array.isArray(list) ? list : []).map((item) => ({ ...item, url: resolveMediaUrl(item?.url) })).filter((item) => item.id && item.url);
+}
+
+/** Guarda la portada elegida y devuelve el perfil ya adaptado. Refresca el buscador. */
+export async function selectTallerCoverTemplate(templateId) {
+  const saved = adaptTaller(await selectTallerCoverTemplateApi(templateId));
   fetchTalleres().catch(() => {});
   return saved;
 }

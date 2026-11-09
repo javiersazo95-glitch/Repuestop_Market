@@ -61,7 +61,8 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
   const canBook = canBookTaller(taller);
   const canWhatsapp = Boolean(taller.whatsapp);
 
-  const photos = taller.photos.filter((src, index) => src && !coverError[index]);
+  const allPhotos = [taller.cover, ...taller.photos];
+  const photos = allPhotos.filter((src, index) => src && !coverError[index]);
   const mainCategory = taller.categories[0];
   const CategoryIcon = getCategoryIcon(mainCategory);
   const categoryLabels = useMemo(() => taller.categories
@@ -227,7 +228,7 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
                   <img
                     src={photos[imgIndex % photos.length]}
                     alt={`${taller.name} — foto ${(imgIndex % photos.length) + 1}`}
-                    onError={() => setCoverError((prev) => ({ ...prev, [taller.photos.indexOf(photos[imgIndex % photos.length])]: true }))}
+                    onError={() => setCoverError((prev) => ({ ...prev, [allPhotos.indexOf(photos[imgIndex % photos.length])]: true }))}
                   />
                   {photos.length > 1 && (
                     <>

@@ -99,7 +99,7 @@ export default function TallerCard({
   const firstService = orderedServices[0];
 
   const [coverFailed, setCoverFailed] = useState(false);
-  const cover = !coverFailed ? taller.photos[0] : null;
+  const cover = !coverFailed ? taller.cover : null;
 
   const guard = (action, run) => {
     const blocked = blockIfOwnTaller(taller, action);

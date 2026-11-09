@@ -1991,6 +1991,16 @@ export async function updateMiTallerPerfilApi(payload) {
  * Sube fotos del taller a R2 y devuelve `{ imagenes: [{ key, url }] }` con rutas relativas al
  * proxy del backend. Timeout largo: son varias imagenes de hasta 5MB.
  */
+/** Portadas oficiales exclusivas de talleres (`GET /automotive-services/me/portadas-plantilla`). */
+export async function getTallerCoverTemplatesApi() {
+  return fetchApi('/automotive-services/me/portadas-plantilla', { method: 'GET' });
+}
+
+/** Pone como portada del taller una de sus plantillas oficiales. Devuelve el perfil publico guardado. */
+export async function selectTallerCoverTemplateApi(templateId) {
+  return fetchApi('/automotive-services/me/portada-plantilla', { method: 'PUT', body: JSON.stringify({ templateId }) });
+}
+
 export async function uploadTallerPhotosApi(files) {
   const formData = new FormData();
   const comprimidas = await Promise.all((files || []).map((file) => compressImageFile(file)));
