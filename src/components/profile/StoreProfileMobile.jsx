@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import { getComunasApi, resolveMediaUrl, updateStoreDataApi } from '../../services/api';
 import { resolverUbicacionPorNombre } from '../../services/geoLookup';
 import { qk } from '../../services/queryKeys';
-import { isValidClPhone } from '../../services/adapters';
+import { DEFAULT_STORE_COVER, isValidClPhone } from '../../services/adapters';
 import { storePath } from '../../routes/paths';
 import { founderBenefitLabel } from '../../utils/founderBenefit';
 import FounderBenefitInfo from '../FounderBenefitInfo';
@@ -177,8 +177,8 @@ export default function StoreProfileMobile({
   const city = storeInfo?.comuna || storeInfo?.city || user?.comuna || user?.city || '';
   const hours = storeInfo?.hours || user?.hours || '';
   const isOpen = typeof (storeInfo?.isOpen ?? storeInfo?.open) === 'boolean' ? (storeInfo.isOpen ?? storeInfo.open) : null;
-  // Sin portada propia va la de siempre del Market (`tiensoft_cover.jpg`), igual que `storeCoverSource` de la app.
-  const cover = resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || '') || '/tiensoft_cover.jpg';
+  // Sin portada elegida va la oficial por defecto de las tiendas ("Fachada profesional").
+  const cover = resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || '') || DEFAULT_STORE_COVER;
   const logo = resolveMediaUrl(user?.userProfileUrl || storeInfo?.logoUrl || '');
   const sellerId = effectiveSellerId || user?.sellerId;
 

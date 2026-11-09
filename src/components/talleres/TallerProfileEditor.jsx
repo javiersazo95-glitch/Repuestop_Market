@@ -15,6 +15,7 @@ import ConfirmDialog from '../ConfirmDialog';
 import EditDialog from './EditDialog';
 import PrincipalAgendaCard from './PrincipalAgendaCard';
 import TallerCoverModal from './TallerCoverModal';
+import { tallerCoverPosition } from '../../services/adapters';
 import WorkshopHoursSection from './WorkshopHoursSection';
 import './taller-editor.css';
 
@@ -296,7 +297,7 @@ export default function TallerProfileEditor({ record, businessName, hasAgenda, o
       {/* Portada y logo */}
       <section className="agenda-configs-section taller-editor__identity" aria-label="Portada y logo del taller">
         <div className="taller-editor__cover">
-          {cover && <img src={cover} alt="Portada del taller" />}
+          {cover && <img src={cover} alt="Portada del taller" style={{ objectPosition: tallerCoverPosition(cover) }} />}
           {/* «Ver cómo se ve mi perfil»: el ojo de la app sobre la portada; sin servicio publicado avisa por qué aún no se ve. */}
           <button type="button" className="agenda-cfg-icon taller-editor__eye-btn" aria-label="Ver cómo se ve mi perfil" onClick={onOpenPublicProfile}><Eye size={15} /></button>
           <button type="button" className="agenda-cfg-icon taller-editor__cover-btn" aria-label="Cambiar portada" disabled={Boolean(busy)} onClick={() => { setCoverError(''); setCoverOpen(true); }}>

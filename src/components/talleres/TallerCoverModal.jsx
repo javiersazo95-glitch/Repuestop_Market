@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, Check, Image as ImageIcon, Loader2, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { fetchTallerCoverTemplates } from '../../services/talleresStorage';
+import { DEFAULT_TALLER_COVER, DEFAULT_TALLER_COVER_TEMPLATE_ID } from '../../services/adapters';
 import { apiErrorMessage } from '../../services/walletStorage';
 
 /**
@@ -20,7 +21,9 @@ export default function TallerCoverModal({ currentCover, saving, error, onClose,
       .then((list) => {
         if (!active) return;
         setTemplates(list);
-        setSelectedId(list.find((template) => template.url === currentCover)?.id || null);
+        // Sin portada elegida el taller ve "Taller moderno": queda marcada como la actual.
+        const currentId = currentCover === DEFAULT_TALLER_COVER ? DEFAULT_TALLER_COVER_TEMPLATE_ID : null;
+        setSelectedId(list.find((template) => template.url === currentCover || template.id === currentId)?.id || null);
       })
       .catch((err) => { if (active) setLoadError(apiErrorMessage(err, 'No se pudieron cargar las portadas.')); })
       .finally(() => { if (active) setLoading(false); });

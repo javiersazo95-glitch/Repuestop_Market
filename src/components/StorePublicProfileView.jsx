@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import ContextualReportButton from './ContextualReportButton';
 import { parseShippingMethods } from '../data/shippingMethods';
 import { getStoreProfileApi } from '../services/api';
-import { adaptStore } from '../services/adapters';
+import { adaptStore, DEFAULT_STORE_COVER } from '../services/adapters';
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useMarketplace } from '../context/MarketplaceContext';
 import PartsCatalogView from './PartsCatalogView';
@@ -98,7 +98,7 @@ export default function StorePublicProfileView({
       marcasVehiculoDisponibles: Array.isArray(inputStore.marcasVehiculoDisponibles) ? inputStore.marcasVehiculoDisponibles : [],
       metodosEnvio: Array.isArray(inputStore.metodosEnvio) ? inputStore.metodosEnvio : [],
       logoUrl: inputStore.logoUrl || null,
-      coverUrl: inputStore.coverUrl || null,
+      coverUrl: inputStore.coverUrl || DEFAULT_STORE_COVER,
       instagramUrl: inputStore.instagramUrl || null,
       facebookUrl: inputStore.facebookUrl || null,
       tiktokUrl: inputStore.tiktokUrl || null,

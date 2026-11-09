@@ -25,6 +25,12 @@ import { resolveMediaUrl, toMediaPath } from './api';
  */
 const GENERIC_IMAGE_FILE = 'imagen-generica';
 
+/**
+ * Portada de una tienda que aun no elige una de sus portadas oficiales: la plantilla "Fachada profesional"
+ * de `GET /users/perfil/portadas-plantilla` (misma url que guarda el backend al elegirla).
+ */
+export const DEFAULT_STORE_COVER = 'https://pub-650d4cc5c6be42bc9a81e878e6042ea6.r2.dev/Plantillas/Portadas_Tienda/fachada-profesional.png';
+
 export function isGenericProductImage(url) {
   return typeof url === 'string' && url.toLowerCase().includes(GENERIC_IMAGE_FILE);
 }
@@ -435,7 +441,7 @@ export function adaptStore(dto, index = 0) {
     // de otra empresa. Sin logo se pinta `.store-avatar-fallback`, que son las iniciales.
     // La portada si conserva la imagen generica, que es decorativa y no identifica a nadie.
     logoUrl: resolveMediaUrl(dto.logoUrl || dto.userProfileUrl) || null,
-    coverUrl: resolveMediaUrl(dto.coverUrl) || '/tiensoft_cover.jpg',
+    coverUrl: resolveMediaUrl(dto.coverUrl) || DEFAULT_STORE_COVER,
     // Redes sociales de la tienda; el perfil solo muestra las que traen enlace.
     instagramUrl: dto.instagramUrl || null,
     facebookUrl: dto.facebookUrl || null,
@@ -651,6 +657,29 @@ export function adaptCompatibleOffersPage(response) {
  */
 /** Portada de un taller que aun no elige una de sus portadas oficiales (plantilla "Taller moderno"). */
 export const DEFAULT_TALLER_COVER = '/taller_cover.webp';
+/** Id de esa plantilla en `GET /automotive-services/me/portadas-plantilla`: el selector la marca como la actual. */
+export const DEFAULT_TALLER_COVER_TEMPLATE_ID = 'taller-moderno';
+
+/**
+ * Encuadre vertical de cada portada oficial de taller en la franja baja (7:1) de "Mi taller": deja dentro el logo y
+ * el titulo de las portadas con texto, y el mecanico o los autos en las fotos. Va por el nombre del archivo en R2.
+ */
+const TALLER_COVER_FOCUS = {
+  'Taller Automotriz Moderno y Profesional.png': 45,
+  'Taller Mecánico Profesional y Moderno.png': 37,
+  'Taller mecánico clásico en acción.png': 29,
+  'Lubricentro clásico con auto en mantenimiento.png': 14,
+  'Servicio de Aceite en Taller Moderno.png': 24,
+  'LubriCentro_ Servicio Automotriz Integral.png': 22,
+};
+
+/** `object-position` para la portada del taller en una franja mas baja que la portada. */
+export function tallerCoverPosition(coverUrl) {
+  let fileName = String(coverUrl || '').split('?')[0].split('/').pop() || '';
+  try { fileName = decodeURIComponent(fileName); } catch { /* nombre ya decodificado */ }
+  const focus = TALLER_COVER_FOCUS[fileName.normalize('NFC')];
+  return `center ${focus ?? 45}%`;
+}
 
 export function adaptTaller(dto) {
   if (!dto) return null;

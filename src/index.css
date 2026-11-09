@@ -923,6 +923,9 @@ input, select, textarea {
 }
 
 .profile-dashboard .facebook-cover-banner { height: 202px; }
+/* Banner de la intranet del taller: imagen fija "Taller moderno" (foto amplia y sin texto). Encuadrada un poco
+   arriba del centro para que el mecanico y los autos queden dentro aun en pantallas muy anchas. */
+.facebook-cover-banner.is-workshop-cover { background-image: url('/taller_cover.webp'); background-position: center 42%; background-color: #0b1220; }
 .profile-dashboard .facebook-cover-banner::before {
   background: linear-gradient(90deg, rgba(5, 21, 42, .68), rgba(5, 21, 42, .20) 60%, rgba(5, 21, 42, .48));
 }

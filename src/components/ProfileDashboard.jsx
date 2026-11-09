@@ -68,6 +68,7 @@ import NewCatalogProductModal from './NewCatalogProductModal';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import SellerWithdrawalsPanel, { isCompleteBankAccount } from './SellerWithdrawalsPanel';
 import MiTallerSection from './talleres/MiTallerSection';
+import { DEFAULT_STORE_COVER } from '../services/adapters';
 import WorkshopAppointmentsSection from './talleres/WorkshopAppointmentsSection';
 import WorkshopReferralsPanel from './workshop/WorkshopReferralsPanel';
 import ProfileFavoritesPanel from './ProfileFavoritesPanel';
@@ -489,7 +490,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         ...template,
         url: resolveMediaUrl(template.url),
       }));
-      const currentCover = resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || '');
+      const currentCover = resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || '') || DEFAULT_STORE_COVER;
       const currentTemplate = normalizedTemplates.find((template) => template.url === currentCover);
       setCoverTemplates(normalizedTemplates);
       setSelectedCoverTemplateId(currentTemplate?.id || null);
@@ -992,9 +993,12 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const dataError = ordersQuery.error?.message || null;
 
   const displayName = user?.userName || user?.nombre || (isSeller ? user?.storeName : null) || 'Usuario Repuestop';
+  // El banner del taller lleva una imagen fija de taller por CSS (`.facebook-cover-banner.is-workshop-cover`).
   const profileCoverUrl = isSeller
-    ? resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || '')
-    : BUYER_PROFILE_COVER_URL;
+    ? (resolveMediaUrl(user?.coverUrl || storeInfo?.coverUrl || '') || DEFAULT_STORE_COVER)
+    : isWorkshop
+      ? null
+      : BUYER_PROFILE_COVER_URL;
   const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' }) : null;
 
   /**
@@ -1526,9 +1530,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
       {/* Facebook Style Cover & Hero Header */}
       <div className="facebook-cover-hero-container">
         {/* Cover Photo Banner */}
+        {/* El taller lleva una imagen generica de taller: sus portadas oficiales (5:2, con texto) se cortaban en esta
+            franja tan ancha. Su portada la cambia en "Mi taller". */}
         <div
-          className="facebook-cover-banner"
-          style={{
+          className={`facebook-cover-banner${isWorkshop ? ' is-workshop-cover' : ''}`}
+          style={isWorkshop ? undefined : {
             backgroundImage: profileCoverUrl
               ? `url(${profileCoverUrl})`
               : 'linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0066ff 100%)',
