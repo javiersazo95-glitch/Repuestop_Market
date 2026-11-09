@@ -5127,3 +5127,9 @@
 .bk-where-opt.is-active { border: 2px solid #0066ff; padding: 9px 11px; background: #eaf2ff; }
 .bk-where-opt.is-active span { color: #0066ff; }
 .bk-where-opt:focus-visible { outline: 2px solid #0866ed; outline-offset: 2px; }
+/* Dirección del servicio ya cargada: tarjeta con «Cambiar» en vez de un campo abierto. */
+.bk-address-card { display: flex; align-items: center; gap: 10px; padding: 12px; border: 1px solid #bfd6f7; border-radius: 12px; background: #eaf2ff; color: #0066ff; }
+.bk-address-card > span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bk-address-card strong { font-size: 14px; font-weight: 700; color: #243442; overflow-wrap: anywhere; }
+.bk-address-card small { font-size: 12px; color: #5a6b7a; }
+.bk-address-change { flex: 0 0 auto; padding: 4px 8px; border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 700; color: #0066ff; cursor: pointer; }

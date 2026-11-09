@@ -107,7 +107,10 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
   // haya escrito el usuario.
   const autoFilledVehicle = useRef('');
   // Solo hace falta si el taller va donde está el vehículo (igual que en la app).
-  const [serviceAddress, setServiceAddress] = useState(previousHomeAddress);
+  const [serviceAddress, setServiceAddress] = useState(previousHomeAddress || (fallaContext?.direccion || '').trim());
+  // La dirección ya cargada (la de la falla o la principal de la libreta) se muestra como tarjeta; solo se abre el campo al cambiarla.
+  const [editAddress, setEditAddress] = useState(false);
+  const [addressFromBook, setAddressFromBook] = useState(false);
   // Ranura "Servicio a domicilio" (igual que la app): apagada por defecto; al activarla se pide la dirección.
   const [atHomeChoice, setAtHome] = useState(Boolean(fromAppointment?.homeService || previousHomeLine));
   const atHome = offersHomeService && atHomeChoice;
@@ -124,7 +127,7 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
       .then((list) => {
         const saved = (Array.isArray(list) ? list : []).find((item) => item.esPrincipal) || list?.[0];
         const text = [saved?.calleYNumero, saved?.comunaNombre].filter(Boolean).join(', ');
-        if (active && text) setServiceAddress((current) => current.trim() ? current : text);
+        if (active && text) { setServiceAddress((current) => current.trim() ? current : text); setAddressFromBook(true); }
       })
       .catch(() => {});
     return () => { active = false; };
@@ -541,15 +544,26 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                       {atHome && (
                         <div className="bk-group bk-address" onBlur={() => touch('address')}>
                           <span className="bk-label">Dirección del servicio <em aria-hidden="true">*</em></span>
-                          <AddressAutocompleteInput
-                            value={serviceAddress}
-                            onChange={setServiceAddress}
-                            comuna={taller?.commune}
-                            region={taller?.region}
-                            requireComuna={false}
-                            placeholder="Calle y número donde está el vehículo"
-                            maxLength={200}
-                          />
+                          {!editAddress && serviceAddress.trim() ? (
+                            <div className="bk-address-card">
+                              <MapPin size={17} />
+                              <span>
+                                <strong>{serviceAddress.trim()}</strong>
+                                <small>{serviceAddress.trim() === (fallaContext?.direccion || '').trim() ? 'La dirección de tu falla' : addressFromBook ? 'Tu dirección principal' : 'Dirección del servicio'}</small>
+                              </span>
+                              <button type="button" className="bk-address-change" onClick={() => setEditAddress(true)}>Cambiar</button>
+                            </div>
+                          ) : (
+                            <AddressAutocompleteInput
+                              value={serviceAddress}
+                              onChange={(value) => { setEditAddress(true); setServiceAddress(value); }}
+                              comuna={taller?.commune}
+                              region={taller?.region}
+                              requireComuna={false}
+                              placeholder="Calle y número donde está el vehículo"
+                              maxLength={200}
+                            />
+                          )}
                           {touched.address && fieldErrors.address && <small className="bk-error" role="alert">{fieldErrors.address}</small>}
                         </div>
                       )}
