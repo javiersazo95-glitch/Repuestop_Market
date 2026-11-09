@@ -1,12 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertCircle, ArrowLeft } from 'lucide-react';
 import TallerProfileView from '../components/talleres/TallerProfileView';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { ROUTES, parseIdSlug } from '../routes/paths';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
-import { fetchTaller, getCachedTalleres } from '../services/talleresStorage';
+import { fetchTaller, getCachedTalleres, TALLERES_UPDATED_EVENT } from '../services/talleresStorage';
 import { qk } from '../services/queryKeys';
 import PageLoadingSkeleton from '../components/skeletons/PageLoadingSkeleton';
 
@@ -27,6 +27,15 @@ export default function TallerPage() {
   const { workshopId: tallerParam } = useParams();
   const location = useLocation();
   const nav = useAppNavigation();
+  const queryClient = useQueryClient();
+
+  // Al guardar algo en Mi taller (portada, fotos...) se refresca el buscador; el perfil abierto o
+  // guardado en cache se vuelve a pedir para no mostrar la portada anterior.
+  useEffect(() => {
+    const refresh = () => queryClient.invalidateQueries({ queryKey: ['taller'] });
+    window.addEventListener(TALLERES_UPDATED_EVENT, refresh);
+    return () => window.removeEventListener(TALLERES_UPDATED_EVENT, refresh);
+  }, [queryClient]);
 
   const tallerId = parseIdSlug(tallerParam);
   const preloaded = location.state?.taller;
@@ -38,7 +47,8 @@ export default function TallerPage() {
     initialData,
     initialDataUpdatedAt: 0,
     enabled: Boolean(tallerId),
-    staleTime: 30 * 1000,
+    // Siempre se vuelve a pedir al entrar: el dueño puede haber cambiado su portada en Mi taller.
+    staleTime: 0,
   });
 
   useDocumentTitle(taller?.name || 'Taller');
