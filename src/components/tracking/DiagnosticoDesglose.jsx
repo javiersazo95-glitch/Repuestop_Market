@@ -181,7 +181,6 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
                 <>
                   <small className="ofd-muted">Al aceptar, el taller verá la dirección exacta del vehículo. Puedes preguntarle antes lo que necesites.</small>
                   <button type="button" className="ofd-btn is-primary" disabled={accepting || loadingBooking} onClick={acceptAndBook}>{accepting || loadingBooking ? <Loader2 size={18} className="spin-icon" /> : <CalendarDays size={18} />} Aceptar y agendar cita</button>
-                  <button type="button" className="dsg-link dsg-only-accept" disabled={accepting || loadingBooking} onClick={accept}>Solo aceptar, agendo después</button>
                 </>
               ) : (
                 <>
