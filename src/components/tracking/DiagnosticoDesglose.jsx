@@ -67,8 +67,10 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
       await acceptFaultDiagnosis(faultId, diagnosis.id);
       setAccepted(true);
       onChanged?.();
+      return true;
     } catch (err) {
       setError(err?.message || 'No pudimos aceptar el diagnóstico.');
+      return false;
     } finally {
       setAccepting(false);
     }
@@ -102,6 +104,11 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
     } finally {
       setLoadingBooking(false);
     }
+  };
+
+  // «Aceptar y agendar cita»: acepta y, solo si salió bien, abre la agenda del taller.
+  const acceptAndBook = async () => {
+    if (await accept()) await openBooking();
   };
 
   const vehicle = booking?.fault ? [booking.fault.marca, booking.fault.modelo, booking.fault.anio, booking.fault.version].filter(Boolean).join(' ') : '';
@@ -167,10 +174,18 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
                 ? <button type="button" className="ofd-btn is-primary" disabled={loadingBooking} onClick={openBooking}>{loadingBooking ? <Loader2 size={18} className="spin-icon" /> : <CalendarDays size={18} />} Agendar cita</button>
                 : <small className="ofd-muted">Este taller no agenda en RepuesTop: entra a su perfil para llamar o escribirle.</small>
             ) : (
-              <>
-                <small className="ofd-muted">Al aceptarlo podrás agendar con el taller. Puedes preguntarle antes lo que necesites.</small>
-                <button type="button" className="ofd-btn is-primary" disabled={accepting} onClick={accept}>{accepting ? <Loader2 size={18} className="spin-icon" /> : <CheckCircle2 size={18} />} Aceptar diagnóstico</button>
-              </>
+              taller?.puedeAgendar ? (
+                <>
+                  <small className="ofd-muted">Al aceptar, el taller verá la dirección exacta del vehículo. Puedes preguntarle antes lo que necesites.</small>
+                  <button type="button" className="ofd-btn is-primary" disabled={accepting || loadingBooking} onClick={acceptAndBook}>{accepting || loadingBooking ? <Loader2 size={18} className="spin-icon" /> : <CalendarDays size={18} />} Aceptar y agendar cita</button>
+                  <button type="button" className="dsg-link dsg-only-accept" disabled={accepting || loadingBooking} onClick={accept}>Solo aceptar, agendo después</button>
+                </>
+              ) : (
+                <>
+                  <small className="ofd-muted">Al aceptar, el taller verá la dirección exacta del vehículo. Este taller no agenda en RepuesTop: después podrás llamar o escribirle.</small>
+                  <button type="button" className="ofd-btn is-primary" disabled={accepting} onClick={accept}>{accepting ? <Loader2 size={18} className="spin-icon" /> : <CheckCircle2 size={18} />} Aceptar diagnóstico</button>
+                </>
+              )
             )}
           </Block>
         )}
