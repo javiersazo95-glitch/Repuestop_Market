@@ -88,7 +88,7 @@
 .ofd-btn:disabled { opacity: .5; }
 .dsg-backdrop { z-index: 1150; align-items: flex-end; padding: 0; }
 .dsg { display: flex; flex-direction: column; gap: 12px; width: 100%; max-height: 90vh; padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); overflow-y: auto; border-radius: 16px 16px 0 0; }
-@media (min-width: 768px) { .dsg-backdrop { align-items: center; padding: 16px; } .dsg { max-width: 560px; border-radius: 16px; } }
+@media (min-width: 768px) { .ft-modal-backdrop.dsg-backdrop { align-items: center; padding: 16px; } .ft-modal.dsg { max-width: 560px; border-radius: 16px; } }
 .dsg-who { display: flex; align-items: center; gap: 10px; }
 .dsg-who > div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .dsg-who strong { font-size: 15px; }

@@ -4,7 +4,7 @@ import AuctionAvatar from '../components/AuctionAvatar';
 import TallerAvatar from '../components/TallerAvatar';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
-  AlertCircle, AlertTriangle, ArrowLeft, Bookmark, CalendarPlus, Car, CheckCircle2, Clock,
+  AlertCircle, AlertTriangle, ArrowLeft, Bookmark, Car, CheckCircle2, Clock,
   ChevronLeft, ChevronRight, Clock3, Eye, ExternalLink, FileText,
   Loader2, Lock, MapPin, MapPinned, MessageCircle, Navigation, Pencil, Share2, Star, Tag, Truck, UserRound,
   Maximize2, Wrench, X, XCircle,
@@ -12,13 +12,11 @@ import {
 import AuctionImageViewer from '../components/AuctionImageViewer';
 import { useAuth } from '../context/AuthContext';
 import {
-  acceptFaultDiagnosis, closeFault, commentFault, getDiagnosisEligibility, getFault,
+  closeFault, commentFault, getDiagnosisEligibility, getFault,
   getFaultComments, getPublicDiagnoses, priceRange, timeSince,
 } from '../services/faultApi';
 import { resolveMediaUrl } from '../services/api';
-import { fetchTaller } from '../services/talleresStorage';
 import { SERVICE_CATEGORIES } from '../data/talleresData';
-import BookingModal from '../components/talleres/BookingModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import ContextualReportButton from '../components/ContextualReportButton';
 import CreateFaultModal from '../components/faults/CreateFaultModal';
@@ -66,7 +64,6 @@ export default function FaultDetailPage() {
   const [text, setText] = useState('');
   const [publicText, setPublicText] = useState('');
   const [diagModal, setDiagModal] = useState(null);
-  const [accepting, setAccepting] = useState(false);
   const [eligibility, setEligibility] = useState(undefined);
   const [priceFrom, setPriceFrom] = useState('');
   const [priceTo, setPriceTo] = useState('');
@@ -76,8 +73,6 @@ export default function FaultDetailPage() {
   const [replyError, setReplyError] = useState('');
   const [sending, setSending] = useState(false);
   const [formError, setFormError] = useState('');
-  const [booking, setBooking] = useState(null);
-  const [loadingBookingId, setLoadingBookingId] = useState(null);
   const [activePhoto, setActivePhoto] = useState(0);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [commentFormOpen, setCommentFormOpen] = useState(false);
@@ -207,13 +202,6 @@ export default function FaultDetailPage() {
   // Reportar es para contenido ajeno: el backend rechaza reportar lo propio.
   const isMine = (comment) => comment.esCreador ? Boolean(fault?.propia) : Boolean(comment.taller && String(comment.taller.usuarioId) === myId);
 
-  const accept = async (commentId) => {
-    setAccepting(true);
-    try { await acceptFaultDiagnosis(fault.id, commentId); await load(); }
-    catch (err) { setFormError(err?.message || 'No pudimos aceptar el diagnóstico.'); }
-    finally { setAccepting(false); }
-  };
-
   const close = async () => {
     if (!fault) return;
     setClosing(true);
@@ -221,20 +209,6 @@ export default function FaultDetailPage() {
     try { setFault(await closeFault(fault.id)); setCloseConfirm(false); }
     catch (err) { setCloseError(err?.message || 'No pudimos cerrar la falla.'); }
     finally { setClosing(false); }
-  };
-
-  // La cita se pide al taller del diagnostico aceptado: sus bloques salen de su "Horario principal".
-  const openBooking = async (tallerId) => {
-    setLoadingBookingId(tallerId);
-    setFormError('');
-    try {
-      const taller = await fetchTaller(tallerId);
-      // El diagnostico se cierra al abrir la agenda: antes quedaba abierto detras de ella.
-      setDiagModal(null); setReplyTo(null);
-      setBooking(taller);
-    }
-    catch (err) { setFormError(err?.message || 'No pudimos abrir la agenda del taller.'); }
-    finally { setLoadingBookingId(null); }
   };
 
   const share = async () => {
@@ -550,7 +524,7 @@ export default function FaultDetailPage() {
         <div className="ft-modal-head"><h2><MessageCircle size={16} /> Comentarios públicos ({publicComments.length})</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => setAllCommentsOpen(false)}><X size={20} /></button></div>
         <ul className="fdt-list">{newestComments.map(renderComment)}</ul>
       </div></div>}
-      {isMobile && openDiagnosis && (
+      {openDiagnosis && (
         <DiagnosticoDesglose
           key={openDiagnosis.id}
           faultId={fault.id}
@@ -561,15 +535,14 @@ export default function FaultDetailPage() {
           onChanged={load}
         />
       )}
-      {diagModal != null && !(isMobile && openDiagnosis) && <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => { setDiagModal(null); setReplyTo(null); }}><div className="ft-modal" onClick={(event) => event.stopPropagation()}>
+      {diagModal === 'new' && <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => { setDiagModal(null); setReplyTo(null); }}><div className="ft-modal" onClick={(event) => event.stopPropagation()}>
         <div className="ft-modal-head"><h2><Lock size={16} /> {diagModal === 'new' ? 'Registrar diagnóstico' : 'Diagnóstico privado'}</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => { setDiagModal(null); setReplyTo(null); }}><X size={20} /></button></div>
         {diagModal === 'new' && eligibility === undefined ? <div className="ft-empty"><Loader2 size={18} className="spin-icon" /> Comprobando…</div>
           : diagModal === 'new' && eligibility?.habilitado !== true ? <div className="ft-form"><p>Para registrar un diagnóstico privado necesitas tener activo el servicio de agendamiento.</p><div className="ft-actions"><Link className="ft-btn ft-btn-primary" to={profilePath('diagnostico')}>Activar servicio</Link></div></div>
             : diagModal === 'new' ? <form className="ft-form" onSubmit={(event) => send(event, 'DIAGNOSTICO')}><p className="ft-sub">Solo el cliente y tú podrán verlo.</p><label className="ft-field"><span>Diagnóstico</span><textarea rows={5} value={text} maxLength={1500} onChange={(event) => setText(event.target.value)} placeholder="Posible causa, revisión y solución" /><CharCount value={text} max={1500} /></label><div className="ft-row"><label className="ft-field"><span>Precio desde <small>Opcional</small></span><input inputMode="numeric" maxLength={9} value={priceFrom} onChange={(event) => setPriceFrom(onlyDigits(event.target.value, 9))} placeholder="Ej: 25000" /></label><label className="ft-field"><span>Precio hasta <small>Opcional</small></span><input inputMode="numeric" maxLength={9} value={priceTo} onChange={(event) => setPriceTo(onlyDigits(event.target.value, 9))} placeholder="Ej: 45000" /></label></div>{formError && <p className="ft-error"><AlertCircle size={15} /> {formError}</p>}<button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !text.trim()}>{sending ? 'Registrando…' : 'Registrar diagnóstico'}</button></form>
-              : openDiagnosis ? <div className="ft-form"><p><strong>{openDiagnosis.autor}</strong> · {timeSince(openDiagnosis.createdAt)} {openDiagnosis.taller && <><br /><TallerRating rating={openDiagnosis.taller.calificacion} count={openDiagnosis.taller.opiniones} /><br /><Link className="ft-link-sub" to={workshopPath(openDiagnosis.taller.tallerId)}>Ver perfil del taller ›</Link></>}</p><p>{openDiagnosis.texto}</p>{priceRange(openDiagnosis.precioDesde, openDiagnosis.precioHasta) && <span className="ft-price"><Tag size={14} /> Precio estimado: {priceRange(openDiagnosis.precioDesde, openDiagnosis.precioHasta)}</span>}{repliesOf(openDiagnosis.id).map((reply) => <div key={reply.id} className="ft-reply"><small>{reply.esCreador ? (fault.propia ? 'Tú' : 'Cliente') : reply.autor}</small>{reply.texto}</div>)}{canReply && replyTo !== openDiagnosis.id && <button type="button" className="ft-link-btn" onClick={() => startReply(openDiagnosis.id)}><MessageCircle size={14} /> Responder al taller</button>}{replyForm(openDiagnosis.id, 'Pregúntale al taller o confirma detalles del diagnóstico')}<div className="ft-actions">{fault.propia && fault.vigente && !openDiagnosis.aceptado && <button type="button" className="ft-btn ft-btn-primary" disabled={accepting} onClick={() => accept(openDiagnosis.id)}>{accepting ? 'Aceptando…' : 'Aceptar diagnóstico'}</button>}{fault.propia && openDiagnosis.aceptado && openDiagnosis.taller?.puedeAgendar && <button type="button" className="ft-btn ft-btn-primary" disabled={loadingBookingId != null} onClick={() => openBooking(openDiagnosis.taller.tallerId)}>{loadingBookingId != null ? <Loader2 size={16} className="spin-icon" /> : <CalendarPlus size={16} />} Agendar cita</button>}{fault.propia && <ContextualReportButton tipoObjeto="FALLA_COMENTARIO" objetoId={openDiagnosis.id} objetoTitulo={`Diagnóstico de ${openDiagnosis.autor}`} className="ft-btn ft-btn-outline" />}</div>{formError && <p className="ft-error" role="alert"><AlertCircle size={15} /> {formError}</p>}</div> : null}
+              : null}
       </div></div>}
 
-      {booking && <BookingModal taller={booking} fallaContext={{ id: fault.id, patente: fault.patente, vehiculo: vehicle, titulo: fault.titulo }} onClose={() => setBooking(null)} />}
       <ConfirmDialog
         isOpen={closeConfirm}
         title="Cerrar falla"
