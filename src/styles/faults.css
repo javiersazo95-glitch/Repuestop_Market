@@ -757,3 +757,19 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-tip[data-tip]:hover::after, .ft-tip[data-tip]:focus::after { opacity: 1; }
 .ftd-owner .ft-tip[data-tip]::after { bottom: auto; top: calc(100% + 8px); left: 0; right: auto; }
 
+/* Mis fallas: la cita ya agendada se ve en la tarjeta (insignia, fila con día, hora y taller, y acceso a Mis citas). */
+.ft-badge.is-cita { display: inline-flex; align-items: center; gap: 4px; background: #fff7e6; color: #9a5a00; }
+.ft-badge.is-cita.is-ok { background: #eafbf1; color: #0e7038; }
+.ft-fault-cita { display: grid; grid-template-columns: 18px minmax(0, 1fr); align-items: start; gap: 4px 10px; margin: 10px 0 0; padding: 9px 12px; border-radius: 10px; background: #fff7e6; color: #9a5a00; }
+.ft-fault-cita.is-ok { background: #eafbf1; color: #0e7038; }
+.ft-fault-cita > span { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ft-fault-cita strong { font-size: 13px; color: #243442; }
+.ft-fault-cita small { font-size: 12px; color: #5a6b7a; overflow-wrap: anywhere; }
+.ft-fault-cita-link { grid-column: 2; justify-self: end; display: inline-flex; align-items: center; gap: 2px; font-size: 12.5px; font-weight: 700; color: #0066ff; text-decoration: none; white-space: nowrap; }
+.ftm-cita { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: #fff7e6; color: #9a5a00; }
+.ftm-cita.is-ok { background: #eafbf1; color: #0e7038; }
+.ftm-cita > span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ftm-cita strong { font-size: 13px; color: #243442; }
+.ftm-cita small { font-size: 12px; color: #5a6b7a; }
+.ftm-cita-link { display: flex; align-items: center; justify-content: flex-end; gap: 2px; padding: 6px 4px 0; font-size: 12.5px; font-weight: 700; color: #0066ff; text-decoration: none; }
+

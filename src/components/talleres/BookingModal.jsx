@@ -93,7 +93,6 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
 
   const [step, setStep] = useState('form'); // 'form' | 'confirm' | 'success'
   const [monthCursor, setMonthCursor] = useState(() => new Date());
-  const [dataConfirmed, setDataConfirmed] = useState(false);
   // Las condiciones de la cita se leen desde la casilla de confirmación, sin salir de la agenda.
   const [citaLegalOpen, setCitaLegalOpen] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState('');
@@ -311,7 +310,7 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
   // depende de estado local, asi que subirlo no cambia cuando corre.
   useEffect(() => {
     setSubmitError('');
-  }, [appointmentDate, appointmentTime, userName, userPhone, vehicleModel, dataConfirmed, atHome, serviceAddress]);
+  }, [appointmentDate, appointmentTime, userName, userPhone, vehicleModel, atHome, serviceAddress]);
 
   if (!taller) return null;
 
@@ -346,14 +345,12 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
     if (fieldErrors.phone) missing.push('un teléfono de contacto válido');
     if (fieldErrors.vehicle) missing.push('la marca y el modelo de tu vehículo');
     if (fieldErrors.address) missing.push('la dirección del servicio a domicilio');
-    if (!dataConfirmed) missing.push('confirmar que tus datos son correctos');
     return missing;
   };
 
   const canSubmit = Boolean(isLoggedIn && !isOwnTaller && !isWorkshopAccount && agendaConfig
     && appointmentDate && appointmentTime
-    && !fieldErrors.name && !fieldErrors.phone && !fieldErrors.vehicle && !fieldErrors.address
-    && dataConfirmed);
+    && !fieldErrors.name && !fieldErrors.phone && !fieldErrors.vehicle && !fieldErrors.address);
 
   /** Valida el formulario y abre el resumen previo a confirmar, como en la app. */
   const handleReview = (event) => {
@@ -726,27 +723,10 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                       </label>
                       <small className="bk-helper">{reason.length}/{MAX_REASON_LENGTH} · El taller lo ve antes de aceptar tu cita.</small>
                     </div>
-                    <div className={`bk-confirm-check ${dataConfirmed ? 'is-checked' : ''}`}>
-                      <button
-                        type="button"
-                        className="bk-checkbox-btn"
-                        role="checkbox"
-                        aria-checked={dataConfirmed}
-                        aria-label="Confirmo que los datos ingresados son correctos"
-                        onClick={() => setDataConfirmed((current) => !current)}
-                      >
-                        <span className="bk-checkbox">{dataConfirmed && <Check size={13} />}</span>
-                      </button>
-                      <span>
-                        <button type="button" className="bk-confirm-text" onClick={() => setDataConfirmed((current) => !current)}>
-                          <strong>Confirmo que los datos ingresados son correctos.</strong>
-                        </button>
-                        <small>
-                          Al continuar, acepto los <a href={ROUTES.terms} target="_blank" rel="noreferrer">términos y condiciones</a> y las{' '}
-                          <button type="button" className="bk-inline-link" onClick={() => setCitaLegalOpen(true)}>condiciones de la cita</button>.
-                        </small>
-                      </span>
-                    </div>
+                    <p className="bk-legal-line">
+                      Al agendar aceptas los <a href={ROUTES.terms} target="_blank" rel="noreferrer">términos y condiciones</a> y las{' '}
+                      <button type="button" className="bk-inline-link" onClick={() => setCitaLegalOpen(true)}>condiciones de la cita</button>.
+                    </p>
                   </section>
 
                   {submitError && (

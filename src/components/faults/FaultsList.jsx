@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle, Bookmark, CalendarDays, Camera, Car, ChevronRight, FileText, Filter, Loader2,
-  ArrowUpDown, ClipboardList, CheckCircle2, MapPin, MessageCircle, Plus, RotateCcw, Search, Settings, SlidersHorizontal, Truck, Wrench, X,
+  ArrowUpDown, CalendarCheck, ClipboardList, CheckCircle2, MapPin, MessageCircle, Plus, RotateCcw, Search, Settings, SlidersHorizontal, Truck, Wrench, X,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getCommentedFaults, getMyFaults, getOpenFaults, timeSince } from '../../services/faultApi';
-import { faultDetailPath } from '../../routes/paths';
+import { faultDetailPath, profilePath } from '../../routes/paths';
+import { fetchMyAppointments } from '../../services/talleresStorage';
 import { resolveMediaUrl } from '../../services/api';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
 import CreateFaultModal from './CreateFaultModal';
@@ -62,9 +63,32 @@ export const diagnosisCountOf = (fault) => Number(
     ?? (Array.isArray(fault.diagnosticos) ? fault.diagnosticos.length : fault.diagnosticos) ?? 0,
 ) || 0;
 
+/** Cita vigente (pendiente o confirmada) de cada falla, la más próxima: la lista la muestra en la tarjeta de su falla. */
+function citasPorFalla(citas, userId) {
+  const porFalla = {};
+  (Array.isArray(citas) ? citas : [])
+    .filter((cita) => cita.fallaId && ['pending', 'accepted'].includes(cita.status) && (userId == null || String(cita.customerUserId) === String(userId)))
+    .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
+    .forEach((cita) => { if (!porFalla[cita.fallaId]) porFalla[cita.fallaId] = cita; });
+  return porFalla;
+}
+
+/** Textos de la cita para la tarjeta: estado, cuándo y con quién. */
+function citaTexts(cita) {
+  const day = new Date(`${cita.date}T12:00:00`);
+  const dayLabel = Number.isNaN(day.getTime()) ? cita.date : new Intl.DateTimeFormat('es-CL', { weekday: 'short', day: 'numeric', month: 'short' }).format(day).replace(/\./g, '');
+  return {
+    confirmed: cita.status === 'accepted',
+    status: cita.status === 'accepted' ? 'Cita confirmada' : 'Cita pendiente',
+    when: `${dayLabel} · ${String(cita.time || '').split('-')[0].trim()}`,
+    who: `${cita.tallerName || 'Taller'} · ${cita.homeService ? 'A domicilio' : 'En el taller'}`,
+  };
+}
+
 /** Tarjeta de la falla en el celular: la de la app (vehículo, la falla, contexto y diagnósticos, separados por líneas). */
-function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking }) {
+function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking, cita }) {
   const symptoms = (fault.sintomas || []).slice(0, 3);
+  const citaInfo = cita ? citaTexts(cita) : null;
   return (
     <article className="ftm-card">
       {onToggleSaved && (
@@ -80,6 +104,7 @@ function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, on
           <div className="ftm-vehicle-body">
             <div className="ftm-chips">
               {fault.propia && <span className="ftm-chip is-primary">Mi falla</span>}
+              {citaInfo && <span className={`ftm-chip ${citaInfo.confirmed ? 'is-ok' : 'is-warn'}`}><CalendarCheck size={12} aria-hidden="true" /> {citaInfo.status}</span>}
               {showStatus && <span className={`ftm-chip ${fault.vigente ? 'is-ok' : ''}`}>{fault.vigente ? 'Abierta' : 'Cerrada'}</span>}
               {!showStatus && <span className={`ftm-chip ${diagnosisCount > 0 ? 'is-ok' : 'is-warn'}`}>{diagnosisCount > 0 ? 'Con diagnóstico' : 'Pendiente'}</span>}
             </div>
@@ -106,6 +131,7 @@ function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, on
           <span><CalendarDays size={12} /> {timeSince(fault.createdAt)}</span>
           {place && <span><MapPin size={12} /> {place}</span>}
         </div>
+        {citaInfo && <div className={`ftm-cita ${citaInfo.confirmed ? 'is-ok' : ''}`}><CalendarCheck size={16} aria-hidden="true" /><span><strong>{citaInfo.when}</strong><small>{citaInfo.who}</small></span></div>}
         <div className="ftm-footer">
           <span className="ftm-diag"><MessageCircle size={12} /> {diagnosisCount === 0 ? 'Sin diagnósticos aún' : `${diagnosisCount} ${diagnosisCount === 1 ? 'taller diagnosticó' : 'talleres diagnosticaron'}`}</span>
           {showClient
@@ -113,6 +139,7 @@ function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, on
             : <ChevronRight size={20} className="ftm-chev" />}
         </div>
       </Link>
+      {citaInfo && <Link to={profilePath('mi_taller')} className="ftm-cita-link">Ver cita <ChevronRight size={14} /></Link>}
       {tracking && (() => {
         // Taller: su historial siempre se puede abrir (lo que dejó en la falla y lo que respondió el cliente).
         if (tracking.workshopUserId != null) {
@@ -142,7 +169,8 @@ function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, on
 }
 
 /** Tarjeta de una falla del mural. Tambien la usa Favoritos, con `onToggleSaved` para quitarla de los guardados. */
-export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = false, onToggleSaved, tracking = null, ownerActions = null }) {
+export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = false, onToggleSaved, tracking = null, ownerActions = null, cita = null }) {
+  const citaInfo = cita ? citaTexts(cita) : null;
   const place = [fault.comuna, fault.region].filter(Boolean).join(', ');
   const vehicle = [fault.marca, fault.modelo].filter(Boolean).join(' ') || fault.vehiculo;
   const vehicleData = [fault.anio, fault.motor || fault.combustible].filter(Boolean);
@@ -157,7 +185,7 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
   const mobility = fault.seMueve === true ? 'Sí, se puede mover' : fault.seMueve === false ? 'No se puede mover' : 'No informado';
 
   if (isMobile) {
-    return <FaultCardMobile {...{ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking }} />;
+    return <FaultCardMobile {...{ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking, cita }} />;
   }
 
   return (
@@ -172,6 +200,7 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
       <div className="ft-fault-summary">
         <div className="ft-card-badges">
           {fault.propia && <span className="ft-badge is-mine">Mi falla</span>}
+          {citaInfo && <span className={`ft-badge is-cita ${citaInfo.confirmed ? 'is-ok' : ''}`}><CalendarCheck size={13} aria-hidden="true" /> {citaInfo.status}</span>}
           {fault.requiereRecogida && (fault.modalidadAtencion === 'DOMICILIO'
             ? <span className="ft-badge is-pickup"><Wrench size={13} aria-hidden="true" /> Mecánico a domicilio</span>
             : <span className="ft-badge is-pickup"><Truck size={13} aria-hidden="true" /> {showClient ? 'Hay que ir a buscar el vehículo' : 'Piden recogida del vehículo'}</span>)}
@@ -199,6 +228,13 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
             : <div><dt><Truck size={14} /> Recogida</dt><dd>El cliente necesita que vayan por el vehículo</dd></div>)}
           <div><dt><MessageCircle size={14} /> Diagnósticos</dt><dd>{diagnosisCount === 0 ? 'Sin diagnósticos aún' : `${diagnosisCount} ${diagnosisCount === 1 ? 'taller diagnosticó' : 'talleres diagnosticaron'}`}</dd></div>
         </dl>
+        {citaInfo && (
+          <div className={`ft-fault-cita ${citaInfo.confirmed ? 'is-ok' : ''}`}>
+            <CalendarCheck size={18} aria-hidden="true" />
+            <span><strong>{citaInfo.when}</strong><small>{citaInfo.who}</small></span>
+            <Link to={profilePath('mi_taller')} className="ft-fault-cita-link">Ver cita <ChevronRight size={14} /></Link>
+          </div>
+        )}
         <div className="ft-fault-actions">
           <Link to={faultDetailPath(fault)} state={{ fromMural }} className="ft-btn ft-btn-primary ft-detail-button" aria-label={`Ver detalle de ${vehicle}`}>
             Ver detalle <ChevronRight size={16} />
@@ -265,6 +301,16 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   }, [isLoggedIn, isWorkshop, intranet]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Mis fallas muestra la cita que ya se agendó por cada una (pendiente o confirmada).
+  const [citasFalla, setCitasFalla] = useState({});
+  const myId = user?.userId ?? user?.id;
+  useEffect(() => {
+    if (isWorkshop || view !== 'MINE') return undefined;
+    let active = true;
+    fetchMyAppointments().then((citas) => { if (active) setCitasFalla(citasPorFalla(citas, myId)); }).catch(() => {});
+    return () => { active = false; };
+  }, [isWorkshop, view, myId]);
   // Una sola vez, al terminar de cargar, quien ya tiene fallas propias abre en ellas; sin ninguna, el mural.
   const initialViewApplied = useRef(false);
   useEffect(() => {
@@ -352,7 +398,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   const results = loading ? <div className="ft-empty"><Loader2 size={20} className="spin-icon" /> Cargando fallas…</div>
     : error ? <div className="ft-empty" role="alert"><AlertCircle size={20} /><strong>No pudimos cargar las fallas</strong>{error}<br /><button type="button" className="ft-btn ft-btn-outline" onClick={load}>Reintentar</button></div>
       : items.length === 0 ? <div className="ft-empty"><Wrench size={22} /><strong>{empty[0]}</strong>{empty[1]}</div>
-        : <><div className="ft-fault-list">{pageItems.map((fault) => <FaultCard key={fault.id} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} ownerActions={!isWorkshop && view === 'MINE' ? { onChanged: () => load() } : null} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div><ListPager pagerProps={pagerProps} itemLabel="fallas" /></>;
+        : <><div className="ft-fault-list">{pageItems.map((fault) => <FaultCard key={fault.id} cita={!isWorkshop && view === 'MINE' ? citasFalla[String(fault.id)] : null} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} ownerActions={!isWorkshop && view === 'MINE' ? { onChanged: () => load() } : null} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div><ListPager pagerProps={pagerProps} itemLabel="fallas" /></>;
 
   // /fallas en escritorio: el mismo esqueleto que Encargos de repuestos.
   if (heading && !isMobile) {
