@@ -155,7 +155,12 @@ export function notificationTargetPath(notification, context = {}) {
   }
   // Fallas automotrices: el aviso trae `/fallas/{id}` (nueva falla, diagnostico de un taller o respuesta del cliente).
   const faultMatch = /^\/fallas\/(\d+)$/.exec(route);
-  if (faultMatch) return faultDetailPath(faultMatch[1]);
+  if (faultMatch) {
+    const base = faultDetailPath(faultMatch[1]);
+    // El aviso de un diagnóstico trae `diagnostico`: la falla abre directo ese diagnóstico.
+    const diagnosisId = notification?.targetParams?.diagnostico;
+    return /^\d+$/.test(String(diagnosisId ?? '')) ? `${base}?diagnostico=${diagnosisId}` : base;
+  }
   // Premio del servicio Diagnostico (app: `/(workshop)/diagnostico`).
   if (route === '/(workshop)/diagnostico') return PROFILE('diagnostico');
   const resolver = TARGETS[route];
