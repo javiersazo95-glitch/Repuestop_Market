@@ -29,6 +29,8 @@ import {
   fetchTallerAppointments, createTallerAppointment, rescheduleAppointment, notifyAppointmentCreated
 } from '../../services/talleresStorage';
 import { apiErrorMessage } from '../../services/walletStorage';
+import { CONDICIONES_CITA } from '../../data/legalTexts';
+import { ROUTES } from '../../routes/paths';
 
 /**
  * Reserva de hora en un taller con agenda en línea.
@@ -88,6 +90,8 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
   const [step, setStep] = useState('form'); // 'form' | 'confirm' | 'success'
   const [monthCursor, setMonthCursor] = useState(() => new Date());
   const [dataConfirmed, setDataConfirmed] = useState(false);
+  // Las condiciones de la cita se leen desde la casilla de confirmación, sin salir de la agenda.
+  const [citaLegalOpen, setCitaLegalOpen] = useState(false);
   const [appointmentDate, setAppointmentDate] = useState('');
   const [appointmentTime, setAppointmentTime] = useState('');
   const [bookedSlots, setBookedSlots] = useState([]);
@@ -718,20 +722,27 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                       </label>
                       <small className="bk-helper">{reason.length}/{MAX_REASON_LENGTH} · El taller lo ve antes de aceptar tu cita.</small>
                     </div>
-                    <button
-                      type="button"
-                      className={`bk-confirm-check ${dataConfirmed ? 'is-checked' : ''}`}
-                      role="checkbox"
-                      aria-checked={dataConfirmed}
-                      aria-label="Confirmo que los datos ingresados son correctos"
-                      onClick={() => setDataConfirmed((current) => !current)}
-                    >
-                      <span className="bk-checkbox">{dataConfirmed && <Check size={13} />}</span>
+                    <div className={`bk-confirm-check ${dataConfirmed ? 'is-checked' : ''}`}>
+                      <button
+                        type="button"
+                        className="bk-checkbox-btn"
+                        role="checkbox"
+                        aria-checked={dataConfirmed}
+                        aria-label="Confirmo que los datos ingresados son correctos"
+                        onClick={() => setDataConfirmed((current) => !current)}
+                      >
+                        <span className="bk-checkbox">{dataConfirmed && <Check size={13} />}</span>
+                      </button>
                       <span>
-                        <strong>Confirmo que los datos ingresados son correctos.</strong>
-                        <small>Al continuar, acepto los términos y condiciones del servicio.</small>
+                        <button type="button" className="bk-confirm-text" onClick={() => setDataConfirmed((current) => !current)}>
+                          <strong>Confirmo que los datos ingresados son correctos.</strong>
+                        </button>
+                        <small>
+                          Al continuar, acepto los <a href={ROUTES.terms} target="_blank" rel="noreferrer">términos y condiciones</a> y las{' '}
+                          <button type="button" className="bk-inline-link" onClick={() => setCitaLegalOpen(true)}>condiciones de la cita</button>.
+                        </small>
                       </span>
-                    </button>
+                    </div>
                   </section>
 
                   {submitError && (
@@ -747,6 +758,14 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                     <Calendar size={18} /> {isRescheduling ? 'Cambiar la hora' : 'Agendar cita'}
                   </button>
                   <p className="bk-footer-note"><Mail size={14} /> Recibirás la confirmación por correo y por notificación</p>
+                  {citaLegalOpen && (
+                    <div className="bk-legal-backdrop" role="dialog" aria-modal="true" aria-label="Condiciones de la cita" onClick={(event) => { if (event.target === event.currentTarget) setCitaLegalOpen(false); }}>
+                      <div className="bk-legal">
+                        <header><h3>Condiciones de la cita</h3><button type="button" className="bk-icon-btn" aria-label="Cerrar" onClick={() => setCitaLegalOpen(false)}><X size={18} /></button></header>
+                        <div className="bk-legal-body">{CONDICIONES_CITA.split('\n').filter((line) => line.trim()).map((line, index) => <p key={index}>{line}</p>)}</div>
+                      </div>
+                    </div>
+                  )}
                 </form>
               )}
             </>

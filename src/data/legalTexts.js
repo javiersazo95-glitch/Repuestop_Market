@@ -239,6 +239,14 @@ Para soporte, reclamos o mediación, el canal principal será el botón de ayuda
 23. REPRESENTANTE LEGAL
 ${REPRESENTANTE_LEGAL}`;
 
+/** Sección «E. AGENDA DE CITAS» de los términos: lo que acepta quien pide una cita (datos que se comparten, plazo para cancelar, costo). */
+export const CONDICIONES_CITA = (() => {
+  const inicio = COMPRADOR_TERMS.indexOf('E. AGENDA DE CITAS:');
+  if (inicio < 0) return COMPRADOR_TERMS;
+  const fin = COMPRADOR_TERMS.indexOf('F. FALLAS AUTOMOTRICES', inicio);
+  return COMPRADOR_TERMS.slice(inicio, fin < 0 ? undefined : fin).replace('E. AGENDA DE CITAS:', '').trim();
+})();
+
 export const VENDEDOR_TERMS = `RepuesTop es administrada por ${IDENTIFICACION_EMPRESA} (en adelante, "RepuesTop" o "la Plataforma"). Contacto: ${EMPRESA.correo}.
 
 1. REGISTRO Y VALIDACIÓN DEL VENDEDOR

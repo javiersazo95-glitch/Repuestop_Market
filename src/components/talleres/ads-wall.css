@@ -5133,3 +5133,13 @@
 .bk-address-card strong { font-size: 14px; font-weight: 700; color: #243442; overflow-wrap: anywhere; }
 .bk-address-card small { font-size: 12px; color: #5a6b7a; }
 .bk-address-change { flex: 0 0 auto; padding: 4px 8px; border: 0; background: transparent; font: inherit; font-size: 13px; font-weight: 700; color: #0066ff; cursor: pointer; }
+/* Casilla de confirmación con enlaces: la casilla y el texto son botones, y los términos y las condiciones de la cita se abren aparte. */
+.bk-confirm-check { cursor: default; }
+.bk-checkbox-btn, .bk-confirm-text { padding: 0; border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.bk-confirm-check a, .bk-inline-link { font: inherit; font-size: 12px; font-weight: 700; color: #0066ff; text-decoration: underline; background: transparent; border: 0; padding: 0; cursor: pointer; }
+.bk-legal-backdrop { position: fixed; inset: 0; z-index: 1300; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(15, 23, 42, 0.55); }
+.bk-legal { width: 100%; max-width: 560px; max-height: 80vh; display: flex; flex-direction: column; border-radius: 16px; background: #ffffff; overflow: hidden; }
+.bk-legal header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #e6eaef; }
+.bk-legal h3 { margin: 0; font-size: 16px; color: #243442; }
+.bk-legal-body { padding: 14px 16px 18px; overflow-y: auto; }
+.bk-legal-body p { margin: 0 0 10px; font-size: 14px; line-height: 1.5; color: #243442; }
