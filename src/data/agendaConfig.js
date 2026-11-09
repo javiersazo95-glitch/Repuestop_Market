@@ -411,10 +411,14 @@ export function getUpcomingAgendaDates(config, { daysAhead = 60, from = new Date
 }
 
 /** ¿El bloque ('09:00 - 10:00') de esa fecha ya empezo? Hoy solo se ofrecen los bloques que aun no empiezan. */
-export function isSlotPast(isoDate, slotLabel, now = new Date()) {
+export function isSlotPast(isoDate, slotLabel, now = new Date(), leadMinutes = 0) {
   const start = getAppointmentStartDate(isoDate, slotLabel);
-  return !start || start.getTime() <= now.getTime();
+  return !start || start.getTime() <= now.getTime() + leadMinutes * 60000;
 }
+
+/** Anticipación mínima de una cita (la misma regla que valida el backend): 1 hora, y 2 si es a domicilio. */
+export const BOOKING_LEAD_MINUTES = 60;
+export const BOOKING_LEAD_HOME_MINUTES = 120;
 
 /** Momento en que parte la cita, a partir de la fecha y del bloque ('09:00 - 10:00'). */
 export function getAppointmentStartDate(isoDate, timeLabel) {

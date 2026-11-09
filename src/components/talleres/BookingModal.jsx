@@ -9,7 +9,7 @@ import { useAuth } from '../../context/AuthContext';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import { useTallerOwnership } from './useTallerOwnership';
 import {
-  normalizeAgendaConfig, getUpcomingAgendaDates, getAgendaSlotsForDate, isSlotPast,
+  normalizeAgendaConfig, getUpcomingAgendaDates, getAgendaSlotsForDate, isSlotPast, BOOKING_LEAD_MINUTES, BOOKING_LEAD_HOME_MINUTES,
   getAgendaSummaryText, formatAgendaDateLong, formatAgendaMonthLabel, parseIsoDate, toIsoDate,
   weekdayIndexFromDate, WEEKDAYS
 } from '../../data/agendaConfig';
@@ -261,11 +261,13 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
     return () => controller.abort();
   }, [loadBookedSlots]);
 
+  // Anticipación mínima: 1 hora, y 2 si la cita es a domicilio (el mecánico se traslada). La valida también el backend.
+  const leadMinutes = atHome ? BOOKING_LEAD_HOME_MINUTES : BOOKING_LEAD_MINUTES;
   const availableSlots = useMemo(() => {
     if (!appointmentDate || !agendaConfig) return [];
     return getAgendaSlotsForDate(agendaConfig, appointmentDate)
-      .filter((slot) => !bookedSlots.includes(slot.label) && !isSlotPast(appointmentDate, slot.label, now));
-  }, [agendaConfig, appointmentDate, bookedSlots, now]);
+      .filter((slot) => !bookedSlots.includes(slot.label) && !isSlotPast(appointmentDate, slot.label, now, leadMinutes));
+  }, [agendaConfig, appointmentDate, bookedSlots, now, leadMinutes]);
 
   // Cambiar de dia invalida el bloque elegido para el dia anterior.
   useEffect(() => {
@@ -541,6 +543,7 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
 
                         <div className="bk-pick__slots">
                         <strong className="bk-slots-title">Horarios disponibles{dateLabel ? ` · ${dateLabel}` : ''}</strong>
+                        {appointmentDate === toIsoDate(now) && <small className="bk-helper">Las citas de hoy se agendan con al menos {atHome ? '2 horas' : '1 hora'} de anticipación.</small>}
                         {!appointmentDate ? (
                           <div className="bk-locked-box"><Lock size={15} /> Elige primero el día y aquí aparecerán los horarios disponibles.</div>
                         ) : isLoadingSlots ? (

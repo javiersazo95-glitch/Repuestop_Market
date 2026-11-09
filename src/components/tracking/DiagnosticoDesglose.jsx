@@ -115,6 +115,8 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
 
   return createPortal(
     <>
+    {/* Con la agenda abierta el diagnóstico se oculta (sigue montado): al cerrar la agenda se cierra todo de una vez. */}
+    {!booking && (
     <div className="ft-modal-backdrop ftd-sheet-backdrop dsg-backdrop" role="dialog" aria-modal="true" aria-label="Diagnóstico privado" onClick={onClose}>
       <div className="ft-modal ftd-sheet dsg" onClick={(event) => event.stopPropagation()}>
         <div className="ft-modal-head"><h2><Lock size={16} /> Diagnóstico privado</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={onClose}><X size={20} /></button></div>
@@ -194,6 +196,7 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
         {canAct && <div className="dsg-report"><Flag size={13} /><ContextualReportButton tipoObjeto="FALLA_COMENTARIO" objetoId={diagnosis.id} objetoTitulo={`Diagnóstico de ${diagnosis.autor}`} className="trk-link is-muted" label="Reportar este diagnóstico" /></div>}
       </div>
     </div>
+    )}
     {/* Fuera del fondo del popup: un clic dentro de la agenda no debe cerrar el diagnóstico (ni la agenda). */}
     {booking && (
       <BookingModal
@@ -204,7 +207,8 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
           modalidad: booking.fault ? (booking.fault.modalidadAtencion || (booking.fault.requiereRecogida ? 'RETIRO' : 'LLEVO_YO')) : null,
           direccion: booking.fault?.direccionRecogida || '',
         }}
-        onClose={() => setBooking(null)}
+        onBooked={() => onChanged?.()}
+        onClose={() => { setBooking(null); onClose(); }}
       />
     )}
     </>,
