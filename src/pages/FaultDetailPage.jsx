@@ -3,9 +3,11 @@ import TallerRating from '../components/talleres/TallerRating';
 import AuctionAvatar from '../components/AuctionAvatar';
 import TallerAvatar from '../components/TallerAvatar';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { fetchMyAppointments } from '../services/talleresStorage';
+import { citasPorFalla, citaTexts } from '../utils/faultAppointments';
 import {
   AlertCircle, AlertTriangle, ArrowLeft, Bookmark, Car, CheckCircle2, Clock,
-  ChevronLeft, ChevronRight, Clock3, Eye, ExternalLink, FileText,
+  CalendarCheck, ChevronLeft, ChevronRight, Clock3, Eye, ExternalLink, FileText,
   Loader2, Lock, MapPin, MapPinned, MessageCircle, Navigation, Pencil, Share2, Star, Tag, Truck, UserRound,
   Maximize2, Wrench, X, XCircle,
 } from 'lucide-react';
@@ -61,6 +63,8 @@ export default function FaultDetailPage() {
   const [comments, setComments] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  // Diagnóstico del taller, igual que en la app: el posible diagnóstico va aparte del comentario con la recomendación.
+  const [possibleDiagnosis, setPossibleDiagnosis] = useState('');
   const [text, setText] = useState('');
   const [publicText, setPublicText] = useState('');
   const [diagModal, setDiagModal] = useState(null);
@@ -77,6 +81,18 @@ export default function FaultDetailPage() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [commentFormOpen, setCommentFormOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  // La cita vigente de esta falla: el comprador ve la que pidió y el taller la que le hicieron.
+  const [faultCita, setFaultCita] = useState(null);
+  useEffect(() => {
+    if (!isLoggedIn || !fault?.id || (!fault.propia && !isWorkshop)) return undefined;
+    let active = true;
+    fetchMyAppointments().then((citas) => {
+      const mine = citasPorFalla(citas, user?.userId ?? user?.id, !fault.propia && isWorkshop)[String(fault.id)];
+      if (active) setFaultCita(mine || null);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [isLoggedIn, fault?.id, fault?.propia, isWorkshop, user]);
+
   // Con un diagnóstico aceptado la falla ya no se edita: el botón sigue visible y explica por qué en un tooltip.
   const startEditing = () => {
     if (fault?.edicion === 'BLOQUEADA') return;
@@ -149,8 +165,12 @@ export default function FaultDetailPage() {
   /** Diagnostico privado nuevo (`DIAGNOSTICO`, con precio estimado) o comentario publico (`COMENTARIO`) de un taller. */
   const send = async (event, kind) => {
     event.preventDefault();
-    const body = kind === 'COMENTARIO' ? publicText.trim() : text.trim();
-    if (!body || !fault) return;
+    const isDiagnosisForm = kind === 'DIAGNOSTICO';
+    // El taller registra su posible diagnóstico y, si quiere, un comentario con la recomendación (mismo formato que la app).
+    const body = kind === 'COMENTARIO'
+      ? publicText.trim()
+      : [`Posible diagnóstico: ${possibleDiagnosis.trim()}`, text.trim()].filter(Boolean).join('\n\n');
+    if (!fault || (isDiagnosisForm ? !possibleDiagnosis.trim() : !body)) return;
     setSending(true);
     setFormError('');
     try {
@@ -167,7 +187,7 @@ export default function FaultDetailPage() {
         precioDesde: isDiagnosis && Number.isFinite(from) ? from : null,
         precioHasta: isDiagnosis && Number.isFinite(to) ? to : null,
       });
-      setText(''); setPublicText(''); setPriceFrom(''); setPriceTo('');
+      setText(''); setPossibleDiagnosis(''); setPublicText(''); setPriceFrom(''); setPriceTo('');
       setDiagModal(null); setCommentFormOpen(false);
       await load();
     } catch (err) {
@@ -336,7 +356,7 @@ export default function FaultDetailPage() {
           diagnostics={diagnostics} publicComments={publicComments} repliesOf={repliesOf} diagnosisCount={diagnosisCount}
           publicDiagnoses={publicDiagnoses} isWorkshop={isWorkshop} isLoggedIn={isLoggedIn} saved={saved} onToggleSaved={toggleSaved}
           myDiagnosis={myDiagnosis} canReply={canReply} onReply={startReply} replyForm={replyForm} isMine={isMine}
-          onBack={() => navigate(-1)} onEdit={startEditing} onCloseFault={() => { setCloseError(''); setCloseConfirm(true); }}
+          onBack={() => navigate(-1)} onEdit={startEditing} cita={faultCita} onCloseFault={() => { setCloseError(''); setCloseConfirm(true); }}
           onOpenDiagnosis={setDiagModal} onOpenPublicList={() => setPublicDiagnosesOpen(true)} onShare={share}
           comment={{ text: publicText, setText: setPublicText, error: formError, sending, submit: (event) => send(event, 'COMENTARIO') }}
           distanceKm={distanceKm} userLocation={userLocation}
@@ -382,6 +402,13 @@ export default function FaultDetailPage() {
             {fault.requiereRecogida && (
               <p className="ft-pickup-alert" role="note"><Truck size={20} aria-hidden="true" /> {fault.modalidadAtencion === 'DOMICILIO' ? (fault.propia ? 'Pediste que el mecánico vaya donde está tu vehículo.' : 'Este cliente pide un mecánico a domicilio.') : fault.propia ? 'Pediste que el taller vaya a buscar tu vehículo.' : 'Este cliente necesita que vayan a buscar el vehículo.'}</p>
             )}
+            {faultCita && (() => { const info = citaTexts(faultCita); return (
+              <div className={`ft-detail-cita ${info.confirmed ? 'is-ok' : ''}`}>
+                <CalendarCheck size={18} aria-hidden="true" />
+                <span><strong>{info.status} · {info.when}</strong><small>{info.who}</small></span>
+                <Link to={info.to} className="ft-fault-cita-link">Ver cita <ChevronRight size={14} /></Link>
+              </div>
+            ); })()}
             <div className="ft-detail-hero-actions">{fault.propia && fault.vigente && <button type="button" className={`ft-btn ${fault.edicion === 'BLOQUEADA' ? 'ft-btn-outline is-locked ft-tip' : 'ft-btn-primary'}`} onClick={startEditing} data-tip={fault.edicion === 'BLOQUEADA' ? (fault.motivoEdicion || 'Esta falla ya no se puede editar.') : undefined} aria-label={fault.edicion === 'BLOQUEADA' ? `Editar falla no disponible: ${fault.motivoEdicion || ''}` : undefined}>{fault.edicion === 'BLOQUEADA' ? <Lock size={17} /> : <Pencil size={17} />} Editar falla</button>}{fault.propia && fault.vigente && <button type="button" className="ft-btn ft-btn-danger-outline" onClick={() => { setCloseError(''); setCloseConfirm(true); }}><XCircle size={17} /> Cerrar falla</button>}<button type="button" className="ft-detail-icon-action" onClick={share} aria-label="Compartir"><Share2 size={20} /></button>{!fault.propia && isLoggedIn && <button type="button" className={`ft-btn ft-btn-outline ${saved ? 'is-saved' : ''}`} aria-pressed={saved} onClick={toggleSaved}><Bookmark size={17} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Guardado' : 'Guardar'}</button>}{!fault.propia && <ContextualReportButton tipoObjeto="FALLA" objetoId={fault.id} objetoTitulo={fault.titulo} className="ft-btn ft-btn-outline" />}</div>
           </div>
         </section>
@@ -544,7 +571,7 @@ export default function FaultDetailPage() {
         <div className="ft-modal-head"><h2><Lock size={16} /> {diagModal === 'new' ? 'Registrar diagnóstico' : 'Diagnóstico privado'}</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => { setDiagModal(null); setReplyTo(null); }}><X size={20} /></button></div>
         {diagModal === 'new' && eligibility === undefined ? <div className="ft-empty"><Loader2 size={18} className="spin-icon" /> Comprobando…</div>
           : diagModal === 'new' && eligibility?.habilitado !== true ? <div className="ft-form"><p>Para registrar un diagnóstico privado necesitas tener activo el servicio de agendamiento.</p><div className="ft-actions"><Link className="ft-btn ft-btn-primary" to={profilePath('diagnostico')}>Activar servicio</Link></div></div>
-            : diagModal === 'new' ? <form className="ft-form" onSubmit={(event) => send(event, 'DIAGNOSTICO')}><p className="ft-sub">Solo el cliente y tú podrán verlo.</p><label className="ft-field"><span>Diagnóstico</span><textarea rows={5} value={text} maxLength={1500} onChange={(event) => setText(event.target.value)} placeholder="Posible causa, revisión y solución" /><CharCount value={text} max={1500} /></label><div className="ft-row"><label className="ft-field"><span>Precio desde <small>Opcional</small></span><input inputMode="numeric" maxLength={9} value={priceFrom} onChange={(event) => setPriceFrom(onlyDigits(event.target.value, 9))} placeholder="Ej: 25000" /></label><label className="ft-field"><span>Precio hasta <small>Opcional</small></span><input inputMode="numeric" maxLength={9} value={priceTo} onChange={(event) => setPriceTo(onlyDigits(event.target.value, 9))} placeholder="Ej: 45000" /></label></div>{formError && <p className="ft-error"><AlertCircle size={15} /> {formError}</p>}<button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !text.trim()}>{sending ? 'Registrando…' : 'Registrar diagnóstico'}</button></form>
+            : diagModal === 'new' ? <form className="ft-form" onSubmit={(event) => send(event, 'DIAGNOSTICO')}><p className="ft-sub">Solo el cliente y tú podrán verlo. Si le gusta, lo acepta y podrá agendar una cita contigo.</p><label className="ft-field"><span>Posible diagnóstico</span><input value={possibleDiagnosis} maxLength={300} onChange={(event) => setPossibleDiagnosis(event.target.value)} placeholder="Ej: Falla en el sensor MAF o inyectores sucios" /><CharCount value={possibleDiagnosis} max={300} /></label><label className="ft-field"><span>Comentario <small>Opcional</small></span><textarea rows={4} value={text} maxLength={1500} onChange={(event) => setText(event.target.value)} placeholder="Qué revisarías y cómo lo resolverías" /><CharCount value={text} max={1500} /></label><div className="ft-row"><label className="ft-field"><span>Precio desde <small>Opcional</small></span><input inputMode="numeric" maxLength={9} value={priceFrom} onChange={(event) => setPriceFrom(onlyDigits(event.target.value, 9))} placeholder="Ej: 25000" /></label><label className="ft-field"><span>Precio hasta <small>Opcional</small></span><input inputMode="numeric" maxLength={9} value={priceTo} onChange={(event) => setPriceTo(onlyDigits(event.target.value, 9))} placeholder="Ej: 45000" /></label></div>{formError && <p className="ft-error"><AlertCircle size={15} /> {formError}</p>}<button type="submit" className="ft-btn ft-btn-primary" disabled={sending || !possibleDiagnosis.trim()}>{sending ? 'Registrando…' : 'Registrar diagnóstico'}</button></form>
               : null}
       </div></div>}
 

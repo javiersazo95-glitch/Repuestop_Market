@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { getCommentedFaults, getMyFaults, getOpenFaults, timeSince } from '../../services/faultApi';
-import { faultDetailPath, profilePath } from '../../routes/paths';
+import { faultDetailPath } from '../../routes/paths';
+import { citasPorFalla, citaTexts } from '../../utils/faultAppointments';
 import { fetchMyAppointments } from '../../services/talleresStorage';
 import { resolveMediaUrl } from '../../services/api';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
@@ -63,28 +64,6 @@ export const diagnosisCountOf = (fault) => Number(
     ?? (Array.isArray(fault.diagnosticos) ? fault.diagnosticos.length : fault.diagnosticos) ?? 0,
 ) || 0;
 
-/** Cita vigente (pendiente o confirmada) de cada falla, la más próxima: la lista la muestra en la tarjeta de su falla. */
-function citasPorFalla(citas, userId) {
-  const porFalla = {};
-  (Array.isArray(citas) ? citas : [])
-    .filter((cita) => cita.fallaId && ['pending', 'accepted'].includes(cita.status) && (userId == null || String(cita.customerUserId) === String(userId)))
-    .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
-    .forEach((cita) => { if (!porFalla[cita.fallaId]) porFalla[cita.fallaId] = cita; });
-  return porFalla;
-}
-
-/** Textos de la cita para la tarjeta: estado, cuándo y con quién. */
-function citaTexts(cita) {
-  const day = new Date(`${cita.date}T12:00:00`);
-  const dayLabel = Number.isNaN(day.getTime()) ? cita.date : new Intl.DateTimeFormat('es-CL', { weekday: 'short', day: 'numeric', month: 'short' }).format(day).replace(/\./g, '');
-  return {
-    confirmed: cita.status === 'accepted',
-    status: cita.status === 'accepted' ? 'Cita confirmada' : 'Cita pendiente',
-    when: `${dayLabel} · ${String(cita.time || '').split('-')[0].trim()}`,
-    who: `${cita.tallerName || 'Taller'} · ${cita.homeService ? 'A domicilio' : 'En el taller'}`,
-  };
-}
-
 /** Tarjeta de la falla en el celular: la de la app (vehículo, la falla, contexto y diagnósticos, separados por líneas). */
 function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking, cita }) {
   const symptoms = (fault.sintomas || []).slice(0, 3);
@@ -139,7 +118,7 @@ function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, on
             : <ChevronRight size={20} className="ftm-chev" />}
         </div>
       </Link>
-      {citaInfo && <Link to={profilePath('mi_taller')} className="ftm-cita-link">Ver cita <ChevronRight size={14} /></Link>}
+      {citaInfo && <Link to={citaInfo.to} className="ftm-cita-link">Ver cita <ChevronRight size={14} /></Link>}
       {tracking && (() => {
         // Taller: su historial siempre se puede abrir (lo que dejó en la falla y lo que respondió el cliente).
         if (tracking.workshopUserId != null) {
@@ -232,7 +211,7 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
           <div className={`ft-fault-cita ${citaInfo.confirmed ? 'is-ok' : ''}`}>
             <CalendarCheck size={18} aria-hidden="true" />
             <span><strong>{citaInfo.when}</strong><small>{citaInfo.who}</small></span>
-            <Link to={profilePath('mi_taller')} className="ft-fault-cita-link">Ver cita <ChevronRight size={14} /></Link>
+            <Link to={citaInfo.to} className="ft-fault-cita-link">Ver cita <ChevronRight size={14} /></Link>
           </div>
         )}
         <div className="ft-fault-actions">
@@ -306,9 +285,10 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   const [citasFalla, setCitasFalla] = useState({});
   const myId = user?.userId ?? user?.id;
   useEffect(() => {
-    if (isWorkshop || view !== 'MINE') return undefined;
+    // El comprador ve la cita que pidió en Mis fallas; el taller, las que le hicieron, en sus fallas.
+    if (!isWorkshop && view !== 'MINE') return undefined;
     let active = true;
-    fetchMyAppointments().then((citas) => { if (active) setCitasFalla(citasPorFalla(citas, myId)); }).catch(() => {});
+    fetchMyAppointments().then((citas) => { if (active) setCitasFalla(citasPorFalla(citas, myId, isWorkshop)); }).catch(() => {});
     return () => { active = false; };
   }, [isWorkshop, view, myId]);
   // Una sola vez, al terminar de cargar, quien ya tiene fallas propias abre en ellas; sin ninguna, el mural.
@@ -398,11 +378,11 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   const results = loading ? <div className="ft-empty"><Loader2 size={20} className="spin-icon" /> Cargando fallas…</div>
     : error ? <div className="ft-empty" role="alert"><AlertCircle size={20} /><strong>No pudimos cargar las fallas</strong>{error}<br /><button type="button" className="ft-btn ft-btn-outline" onClick={load}>Reintentar</button></div>
       : items.length === 0 ? <div className="ft-empty"><Wrench size={22} /><strong>{empty[0]}</strong>{empty[1]}</div>
-        : <><div className="ft-fault-list">{pageItems.map((fault) => <FaultCard key={fault.id} cita={!isWorkshop && view === 'MINE' ? citasFalla[String(fault.id)] : null} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} ownerActions={!isWorkshop && view === 'MINE' ? { onChanged: () => load() } : null} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div><ListPager pagerProps={pagerProps} itemLabel="fallas" /></>;
+        : <><div className="ft-fault-list">{pageItems.map((fault) => <FaultCard key={fault.id} cita={isWorkshop || view === 'MINE' ? citasFalla[String(fault.id)] : null} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} ownerActions={!isWorkshop && view === 'MINE' ? { onChanged: () => load() } : null} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div><ListPager pagerProps={pagerProps} itemLabel="fallas" /></>;
 
   // /fallas en escritorio: el mismo esqueleto que Encargos de repuestos.
   if (heading && !isMobile) {
-    return <FaultsMural lists={lists} view={view} setView={setView} loading={loading} error={error} onRetry={load} isLoggedIn={isLoggedIn} isWorkshop={isWorkshop} user={user} />;
+    return <FaultsMural lists={lists} view={view} setView={setView} loading={loading} error={error} onRetry={load} isLoggedIn={isLoggedIn} isWorkshop={isWorkshop} user={user} citasFalla={citasFalla} />;
   }
 
   if (!heading && !mineOnly) {

@@ -36,7 +36,7 @@ const withSelected = (options, selected) => [
  * Mural de fallas en escritorio (/fallas): el mismo esqueleto que Encargos de repuestos (pestañas, barra de herramientas y
  * panel de filtros con casillas). Las opciones salen de la pestaña abierta y solo aparecen las que tienen datos.
  */
-export default function FaultsMural({ lists, view, setView, loading, error, onRetry, isLoggedIn, isWorkshop, user }) {
+export default function FaultsMural({ lists, view, setView, loading, error, onRetry, isLoggedIn, isWorkshop, user, citasFalla = {} }) {
   const mineKey = isWorkshop ? 'COMMENTED' : 'MINE';
   const source = lists[view] || [];
   const myComuna = isWorkshop ? user?.comuna || '' : '';
@@ -270,6 +270,7 @@ export default function FaultsMural({ lists, view, setView, loading, error, onRe
                     <FaultCard
                       key={fault.id}
                       fault={fault}
+                      cita={isWorkshop || view === 'MINE' ? citasFalla[String(fault.id)] : null}
                       showStatus={!isWorkshop && view === 'MINE'}
                       showClient={isWorkshop}
                       fromMural={view === 'OPEN'}

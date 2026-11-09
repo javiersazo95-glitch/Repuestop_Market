@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import TallerRating from '../talleres/TallerRating';
 import { Link } from 'react-router-dom';
 import {
-  AlertCircle, ArrowLeft, Bookmark, Calendar, Car, Check, ChevronDown, ChevronRight, ChevronUp, Copy, ExternalLink,
+  AlertCircle, ArrowLeft, Bookmark, Calendar, CalendarCheck, Car, Check, ChevronDown, ChevronRight, ChevronUp, Copy, ExternalLink,
   Lock, MapPin, MessageCircle, Navigation, Pencil, Share2, Signal, Star, Tag, Truck, UserRound, Wrench, X,
 } from 'lucide-react';
 import ContextualReportButton from '../ContextualReportButton';
@@ -13,6 +13,7 @@ import { priceRange, timeSince } from '../../services/faultApi';
 import { formatDistanceKm } from '../../utils/geoDistance';
 import TallerAvatar from '../TallerAvatar';
 import { workshopPath } from '../../routes/paths';
+import { citaTexts } from '../../utils/faultAppointments';
 import '../../styles/app-kit.css';
 import '../../styles/fault-detail-mobile.css';
 
@@ -53,7 +54,7 @@ function Avatar({ name, src, tallerId = null }) {
 export default function FaultDetailMobile({
   fault, vehicleTitle, place, photos, diagnostics, publicComments, repliesOf, diagnosisCount, publicDiagnoses,
   isWorkshop, isLoggedIn, saved, onToggleSaved, myDiagnosis, canReply, onReply, replyForm, isMine,
-  onBack, onEdit, onCloseFault, onOpenDiagnosis, onOpenPublicList, onShare,
+  onBack, onEdit, cita, onCloseFault, onOpenDiagnosis, onOpenPublicList, onShare,
   comment, distanceKm, userLocation, mapHref,
 }) {
   const [activePhoto, setActivePhoto] = useState(0);
@@ -118,6 +119,13 @@ export default function FaultDetailMobile({
       </div>
 
       <div className="ftd-body">
+        {cita && (() => { const info = citaTexts(cita); return (
+          <div className={`ft-detail-cita ${info.confirmed ? 'is-ok' : ''}`}>
+            <CalendarCheck size={18} aria-hidden="true" />
+            <span><strong>{info.status} · {info.when}</strong><small>{info.who}</small></span>
+            <Link to={info.to} className="ft-fault-cita-link">Ver cita</Link>
+          </div>
+        ); })()}
         {fault.propia && fault.vigente && (
           <div className="ftd-owner">
             <button type="button" onClick={onEdit} aria-label={fault.edicion === 'BLOQUEADA' ? `Editar no disponible: ${fault.motivoEdicion || ''}` : 'Editar el registro de la falla'} className={fault.edicion === 'BLOQUEADA' ? 'is-muted ft-tip' : undefined} data-tip={fault.edicion === 'BLOQUEADA' ? (fault.motivoEdicion || 'Esta falla ya no se puede editar.') : undefined}>{fault.edicion === 'BLOQUEADA' ? <Lock size={14} /> : <Pencil size={14} />} Editar</button>
