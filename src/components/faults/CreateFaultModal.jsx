@@ -238,10 +238,10 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     setPickupAddress(fault.direccionRecogida || '');
     setPickupCoords(fault.latitud != null && fault.longitud != null ? { latitud: fault.latitud, longitud: fault.longitud } : null);
     const existingPhotos = Array.isArray(fault.fotos) ? fault.fotos : [];
-    const hasSeparateVehiclePhoto = Boolean(fault.fotoVehiculo || fault.fotoUrl);
-    setVehiclePhoto(fault.fotoVehiculo || fault.fotoUrl || existingPhotos[0] || '');
-    // Compatibilidad con registros antiguos, donde la primera foto de `fotos` era la portada.
-    setPhotos((hasSeparateVehiclePhoto ? existingPhotos : existingPhotos.slice(1)).filter((photo, index, list) => list.indexOf(photo) === index));
+    // Ya no hay foto aparte del vehículo: la de portada de un registro antiguo pasa a ser la primera foto de la falla.
+    const legacyCover = fault.fotoVehiculo || fault.fotoUrl || '';
+    setVehiclePhoto('');
+    setPhotos([legacyCover, ...existingPhotos].filter((photo, index, list) => photo && list.indexOf(photo) === index));
     setError('');
   }, [fault, isOpen]);
 
@@ -360,14 +360,6 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
     } finally {
       setUploading(false);
     }
-  };
-
-  const addVehiclePhoto = async (event) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    const url = await uploadPhoto(file);
-    if (url) setVehiclePhoto(url);
   };
 
   const addPhoto = async (event) => {
@@ -500,30 +492,6 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         {resolved && (<>
         <label className="ft-field"><span>Kilometraje <small>Opcional</small></span><input inputMode="numeric" value={mileage} maxLength={7} placeholder="Ej: 85000" onChange={(e) => setMileage(e.target.value.replace(/\D/g, ''))} /><small>{techReview ? `Última revisión técnica${techReview.fecha ? ` (${techReview.fecha.slice(0, 7)})` : ''}: ${techReview.km.toLocaleString('es-CL')} km. Actualízalo si conoces el actual.` : ''}</small></label>
 
-        <div className="ft-field">
-          <span>Foto del vehículo <small>Una imagen · será la portada del aviso</small></span>
-          <div className="ft-photos">
-            {vehiclePhoto && (
-              <div key={vehiclePhoto} style={{ position: 'relative' }}>
-                <img src={resolveMediaUrl(vehiclePhoto)} alt="Vehículo: imagen principal del aviso" />
-                <button type="button" className="ft-icon-btn" style={{ position: 'absolute', top: 2, right: 2, background: '#fff', borderRadius: 6 }}
-                  onClick={() => setVehiclePhoto('')} aria-label="Quitar foto del vehículo"><Trash2 size={14} /></button>
-              </div>
-            )}
-            {!vehiclePhoto && (
-              <label className="ft-btn ft-btn-outline" style={{ cursor: 'pointer' }}>
-                {uploading ? <Loader2 size={16} className="spin-icon" /> : <Camera size={16} />} Agregar foto del vehículo
-                <input type="file" accept="image/*" hidden disabled={uploading} onChange={addVehiclePhoto} />
-              </label>
-            )}
-            {vehiclePhoto && (
-              <label className="ft-btn ft-btn-outline" style={{ cursor: 'pointer' }}>
-                {uploading ? <Loader2 size={16} className="spin-icon" /> : <Camera size={16} />} Cambiar foto
-                <input type="file" accept="image/*" hidden disabled={uploading} onChange={addVehiclePhoto} />
-              </label>
-            )}
-          </div>
-        </div>
         </>)}
         </FormSection>
 
@@ -534,7 +502,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         <label className="ft-field"><span>Qué pasaba antes del fallo <small>Opcional</small></span><textarea rows={3} value={before} maxLength={BEFORE_MAX} placeholder="Mantenciones recientes, golpes, luces encendidas…" onChange={(e) => setBefore(e.target.value)} /><CharCount value={before} max={BEFORE_MAX} /></label>
         )}
         <div className="ft-field">
-          <span>Foto de la falla <small>{vehiclePhoto ? 'Opcional' : 'Obligatoria'} · {evidencePhotos.length}/{MAX_EVIDENCE_PHOTOS}</small></span>
+          <span>Foto de la falla <small>Obligatoria · {evidencePhotos.length}/{MAX_EVIDENCE_PHOTOS}</small></span>
           <div className="ft-photos">
             {evidencePhotos.map((photo) => (
               <div key={photo} style={{ position: 'relative' }}>
