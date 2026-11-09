@@ -6,6 +6,7 @@ import { CalendarDays, CheckCircle2, ChevronRight, Flag, Loader2, Lock, Messages
 import { acceptFaultDiagnosis, commentFault, getFault, priceRange, timeSince } from '../../services/faultApi';
 import { fetchMyAppointments, fetchTaller } from '../../services/talleresStorage';
 import TallerAvatar from '../TallerAvatar';
+import { isAppointmentCurrent } from '../../utils/appointmentHistory';
 import { profilePath, workshopPath } from '../../routes/paths';
 import BookingModal from '../talleres/BookingModal';
 import ContextualReportButton from '../ContextualReportButton';
@@ -54,7 +55,7 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
     fetchMyAppointments()
       .then((list) => {
         if (!active) return;
-        setAppointment(list.find((item) => String(item.fallaId) === String(faultId) && String(item.ownerUserId) === String(taller.usuarioId) && !['cancelled', 'rejected'].includes(item.status)) || null);
+        setAppointment(list.find((item) => String(item.fallaId) === String(faultId) && String(item.ownerUserId) === String(taller.usuarioId) && isAppointmentCurrent(item)) || null);
       })
       .catch(() => {});
     return () => { active = false; };

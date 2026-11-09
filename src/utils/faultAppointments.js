@@ -1,4 +1,5 @@
 import { profilePath } from '../routes/paths';
+import { isAppointmentCurrent } from './appointmentHistory';
 
 /**
  * La cita vigente (pendiente o confirmada) de cada falla, la más próxima. Para el comprador son las citas que pidió él
@@ -7,7 +8,8 @@ import { profilePath } from '../routes/paths';
 export function citasPorFalla(citas, userId, asWorkshop = false) {
   const porFalla = {};
   (Array.isArray(citas) ? citas : [])
-    .filter((cita) => cita.fallaId && ['pending', 'accepted'].includes(cita.status)
+    // Vigente de verdad: una solicitud que el taller no respondió a tiempo ya no es una cita activa (pasa al historial como «sin respuesta»).
+    .filter((cita) => cita.fallaId && ['pending', 'accepted'].includes(cita.status) && isAppointmentCurrent(cita)
       && (userId == null || String(asWorkshop ? cita.ownerUserId : cita.customerUserId) === String(userId)))
     .sort((a, b) => `${a.date} ${a.time}`.localeCompare(`${b.date} ${b.time}`))
     .forEach((cita) => { if (!porFalla[cita.fallaId]) porFalla[cita.fallaId] = { ...cita, asWorkshop }; });
