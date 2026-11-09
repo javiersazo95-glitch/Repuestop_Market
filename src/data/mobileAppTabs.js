@@ -24,7 +24,7 @@ export const MOBILE_APP_TABS = {
   ],
   workshop: [
     { key: 'inicio', label: 'Inicio', icon: Gauge, tab: 'resumen' },
-    { key: 'fallas', label: 'Mis fallas', icon: EngineIcon, tab: 'fallas_taller' },
+    { key: 'fallas', label: 'Fallas', icon: EngineIcon, tab: 'fallas_taller' },
     { key: 'repuestos', label: 'Repuestos', icon: Cog, tab: 'repuestos', virtual: true },
     { key: 'busco', label: 'Encargar', icon: Search, tab: 'subastas' },
   ],

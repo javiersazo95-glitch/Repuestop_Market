@@ -8,7 +8,7 @@ export default function FaultsHero({ isWorkshop = false, mine = false }) {
     <SectionHero
       gradient={['#9A3412', '#EA580C', '#F59E0B']}
       eyebrow={{ icon: isWorkshop ? <Wrench /> : <CarFront />, label: mine ? 'SEGUIMIENTO' : isWorkshop ? 'DIAGNOSTICA' : 'MI AUTO' }}
-      title={mine ? 'Mis fallas' : 'Fallas automotrices'}
+      title={mine ? (isWorkshop ? 'Mis diagnósticos' : 'Mis fallas') : 'Fallas automotrices'}
       subtitle={mine ? (isWorkshop ? 'Sigue las fallas que comentaste y los diagnósticos que enviaste.' : 'Sigue tus fallas y los diagnósticos que recibiste de talleres.') : isWorkshop ? 'Revisa las fallas de los clientes y diagnostica para ganar trabajos.' : 'Registra la falla de tu vehículo y recibe diagnósticos de talleres.'}
       art={(
         <>

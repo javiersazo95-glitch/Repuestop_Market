@@ -278,7 +278,8 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
       const open = intranet ? [] : await getOpenFaults();
       let other = [];
       if (isLoggedIn) other = await (isWorkshop ? getCommentedFaults() : getMyFaults());
-      setLists({ OPEN: Array.isArray(open) ? open : [], [isWorkshop ? 'COMMENTED' : 'MINE']: Array.isArray(other) ? other : [] });
+      // Las fallas propias viven en «Mis fallas»: el mural público solo muestra las de otros.
+      setLists({ OPEN: Array.isArray(open) ? open.filter((fault) => !fault.propia) : [], [isWorkshop ? 'COMMENTED' : 'MINE']: Array.isArray(other) ? other : [] });
     } catch (err) {
       setError(err?.message || 'No pudimos cargar las fallas.');
     } finally {
@@ -503,7 +504,7 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
                   {(!isWorkshop && lists.MINE.length > 0 ? ['MINE', 'OPEN'] : ['OPEN', 'MINE']).map((tabKey) => (tabKey === 'OPEN' ? (
                     <button key="OPEN" type="button" role="tab" aria-selected={view === 'OPEN'} className={view === 'OPEN' ? 'is-active' : ''} onClick={() => setView('OPEN')}>Mural público ({lists.OPEN.length})</button>
                   ) : (
-                    <button key="MINE" type="button" role="tab" aria-selected={view !== 'OPEN'} className={view !== 'OPEN' ? 'is-active' : ''} onClick={() => setView(isWorkshop ? 'COMMENTED' : 'MINE')}>Mis fallas ({lists[isWorkshop ? 'COMMENTED' : 'MINE'].length})</button>
+                    <button key="MINE" type="button" role="tab" aria-selected={view !== 'OPEN'} className={view !== 'OPEN' ? 'is-active' : ''} onClick={() => setView(isWorkshop ? 'COMMENTED' : 'MINE')}>{isWorkshop ? 'Mis diagnósticos' : 'Mis fallas'} ({lists[isWorkshop ? 'COMMENTED' : 'MINE'].length})</button>
                   )))}
                 </div>
               )}
