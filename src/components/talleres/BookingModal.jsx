@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Calendar, Car, CheckCircle2, X, AlertCircle, MapPin, Loader2, LogIn, Clock, Phone, Mail,
   ChevronLeft, ChevronRight, Check, Lock, Info, User, Tag, LifeBuoy,
-  Home, MessageCircle, StickyNote } from 'lucide-react';
+  Home, Store, MessageCircle, StickyNote } from 'lucide-react';
 import { confirmWhatsappContact } from '../../utils/whatsappContact';
 import { useAuth } from '../../context/AuthContext';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
@@ -263,6 +263,17 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
 
   // Anticipación mínima: 1 hora, y 2 si la cita es a domicilio (el mecánico se traslada). La valida también el backend.
   const leadMinutes = atHome ? BOOKING_LEAD_HOME_MINUTES : BOOKING_LEAD_MINUTES;
+  // Cambiar entre taller y domicilio cambia la anticipación mínima: si el horario ya elegido deja de valer, se avisa.
+  const [slotNotice, setSlotNotice] = useState('');
+  const chooseHome = (home) => {
+    const lead = home ? BOOKING_LEAD_HOME_MINUTES : BOOKING_LEAD_MINUTES;
+    if (appointmentTime && appointmentDate && isSlotPast(appointmentDate, appointmentTime, now, lead)) {
+      setSlotNotice(`Ese horario ya no está disponible ${home ? 'con servicio a domicilio' : 'en el taller'}. Elige otro.`);
+    } else {
+      setSlotNotice('');
+    }
+    setAtHome(home);
+  };
   const availableSlots = useMemo(() => {
     if (!appointmentDate || !agendaConfig) return [];
     return getAgendaSlotsForDate(agendaConfig, appointmentDate)
@@ -505,6 +516,46 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                     })}
                   </div>
 
+                  {/* ¿Dónde quieres la atención?: solo en talleres que ofrecen domicilio. Va antes del calendario
+                      porque condiciona la anticipación mínima y, por tanto, los horarios que se ofrecen. */}
+                  {offersHomeService && (
+                    <section className="bk-card bk-where">
+                      <h5 className="bk-section-title"><MapPin size={17} /> ¿Dónde quieres la atención?</h5>
+                      <div className="bk-where-options" role="radiogroup" aria-label="Dónde quieres la atención">
+                        <button type="button" role="radio" aria-checked={!atHome} className={`bk-where-opt ${!atHome ? 'is-active' : ''}`} onClick={() => chooseHome(false)}>
+                          <span><Store size={16} /> <strong>En el taller</strong></span>
+                          <small>Tú vas al taller</small>
+                        </button>
+                        <button type="button" role="radio" aria-checked={atHome} className={`bk-where-opt ${atHome ? 'is-active' : ''}`} onClick={() => chooseHome(true)}>
+                          <span><Home size={16} /> <strong>A domicilio</strong></span>
+                          <small>El mecánico va a ti</small>
+                        </button>
+                      </div>
+                      {fallaContext?.modalidad && (
+                        <small className="bk-helper">
+                          {fallaContext.modalidad === 'DOMICILIO' ? 'En tu falla pediste mecánico a domicilio.'
+                            : fallaContext.modalidad === 'RETIRO' ? 'En tu falla pediste que retiren el vehículo.'
+                              : 'En tu falla elegiste llevarlo tú al taller.'}
+                        </small>
+                      )}
+                      {atHome && (
+                        <div className="bk-group bk-address" onBlur={() => touch('address')}>
+                          <span className="bk-label">Dirección del servicio <em aria-hidden="true">*</em></span>
+                          <AddressAutocompleteInput
+                            value={serviceAddress}
+                            onChange={setServiceAddress}
+                            comuna={taller?.commune}
+                            region={taller?.region}
+                            requireComuna={false}
+                            placeholder="Calle y número donde está el vehículo"
+                            maxLength={200}
+                          />
+                          {touched.address && fieldErrors.address && <small className="bk-error" role="alert">{fieldErrors.address}</small>}
+                        </div>
+                      )}
+                    </section>
+                  )}
+
                   {/* 1. Fecha y 2. hora */}
                   <section className="bk-card">
                     <h5 className="bk-section-title"><Calendar size={17} /> Primero elige la fecha</h5>
@@ -543,7 +594,8 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
 
                         <div className="bk-pick__slots">
                         <strong className="bk-slots-title">Horarios disponibles{dateLabel ? ` · ${dateLabel}` : ''}</strong>
-                        {appointmentDate === toIsoDate(now) && <small className="bk-helper">Las citas de hoy se agendan con al menos {atHome ? '2 horas' : '1 hora'} de anticipación.</small>}
+                        {appointmentDate === toIsoDate(now) && <small className="bk-helper">{atHome ? 'Con servicio a domicilio, las' : 'Las'} citas de hoy se agendan con al menos {atHome ? '2 horas' : '1 hora'} de anticipación.</small>}
+                        {slotNotice && !appointmentTime && <small className="bk-error" role="status">{slotNotice}</small>}
                         {!appointmentDate ? (
                           <div className="bk-locked-box"><Lock size={15} /> Elige primero el día y aquí aparecerán los horarios disponibles.</div>
                         ) : isLoadingSlots ? (
@@ -642,49 +694,6 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                       </label>
                       <small className="bk-helper">{reason.length}/{MAX_REASON_LENGTH} · El taller lo ve antes de aceptar tu cita.</small>
                     </div>
-                    {/* Ranura "Servicio a domicilio": solo en talleres que lo ofrecen. Apagada por
-                        defecto; al activarla se despliega la dirección donde está el vehículo, que
-                        pasa a ser obligatoria. */}
-                    {offersHomeService && (
-                    <label className={`bk-home-toggle ${atHome ? 'is-active' : ''}`}>
-                      <span className="bk-home-icon"><Home size={17} /></span>
-                      <span className="bk-home-text">
-                        <strong>¿Quieres el servicio a domicilio?</strong>
-                        <small>{atHome
-                          ? 'El taller irá a la dirección que indiques.'
-                          : `Este taller va donde está tu vehículo${taller?.commune ? ` dentro de ${taller.commune}` : ' dentro de su comuna'}.`}</small>
-                      </span>
-                      <input
-                        type="checkbox"
-                        role="switch"
-                        checked={atHome}
-                        onChange={(e) => setAtHome(e.target.checked)}
-                        aria-label="Servicio a domicilio"
-                      />
-                    </label>
-                    )}
-                    {offersHomeService && fallaContext?.modalidad && (
-                      <small className="bk-helper">
-                        {fallaContext.modalidad === 'DOMICILIO' ? 'En tu falla pediste mecánico a domicilio.'
-                          : fallaContext.modalidad === 'RETIRO' ? 'En tu falla pediste que retiren el vehículo.'
-                            : 'En tu falla elegiste llevarlo tú al taller.'}
-                      </small>
-                    )}
-                    {atHome && (
-                      <div className="bk-group bk-address" onBlur={() => touch('address')}>
-                        <span className="bk-label">Dirección del servicio <em aria-hidden="true">*</em></span>
-                        <AddressAutocompleteInput
-                          value={serviceAddress}
-                          onChange={setServiceAddress}
-                          comuna={taller?.commune}
-                          region={taller?.region}
-                          requireComuna={false}
-                          placeholder="Calle y número donde está el vehículo"
-                          maxLength={200}
-                        />
-                        {touched.address && fieldErrors.address && <small className="bk-error" role="alert">{fieldErrors.address}</small>}
-                      </div>
-                    )}
                     <button
                       type="button"
                       className={`bk-confirm-check ${dataConfirmed ? 'is-checked' : ''}`}

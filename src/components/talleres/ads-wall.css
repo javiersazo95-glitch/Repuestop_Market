@@ -5119,3 +5119,11 @@
 .appt-unread-count { min-width: 18px; height: 18px; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: #d92d20; color: #fff; font-size: 11px; font-weight: 800; line-height: 1; }
 @keyframes appt-unread-pulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(0, 102, 255, .16); } 50% { box-shadow: 0 0 0 6px rgba(0, 102, 255, .06); } }
 @media (prefers-reduced-motion: reduce) { .btn-mgmt-edit.has-unread { animation: none; } }
+/* ¿Dónde quieres la atención?: dos tarjetas elegibles (taller / domicilio) antes del calendario. */
+.bk-where-options { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.bk-where-opt { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border: 1px solid #d9e0e7; border-radius: 12px; background: #ffffff; text-align: left; cursor: pointer; font: inherit; }
+.bk-where-opt span { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #243442; }
+.bk-where-opt small { font-size: 12px; color: #5a6b7a; }
+.bk-where-opt.is-active { border: 2px solid #0066ff; padding: 9px 11px; background: #eaf2ff; }
+.bk-where-opt.is-active span { color: #0066ff; }
+.bk-where-opt:focus-visible { outline: 2px solid #0866ed; outline-offset: 2px; }
