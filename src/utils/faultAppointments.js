@@ -31,3 +31,24 @@ export function citaTexts(cita) {
     to: cita.asWorkshop ? profilePath('citas_taller') : profilePath('mi_taller'),
   };
 }
+
+/**
+ * Por falla, la solicitud más reciente que el taller no respondió a tiempo (ya venció y sigue «pendiente»), solo si la falla no
+ * tiene ahora una cita vigente. El comprador ve la nota «El taller no respondió tu solicitud» y puede elegir otra hora.
+ */
+export function citasSinRespuestaPorFalla(citas, userId) {
+  const vigentes = citasPorFalla(citas, userId);
+  const porFalla = {};
+  (Array.isArray(citas) ? citas : [])
+    .filter((cita) => cita.fallaId && cita.status === 'pending' && !isAppointmentCurrent(cita)
+      && !vigentes[cita.fallaId] && (userId == null || String(cita.customerUserId) === String(userId)))
+    .sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`))
+    .forEach((cita) => { if (!porFalla[cita.fallaId]) porFalla[cita.fallaId] = cita; });
+  return porFalla;
+}
+
+/** «lun 9 nov» de una cita, para la nota de la solicitud sin respuesta. */
+export function citaDayLabel(cita) {
+  const day = new Date(`${cita.date}T12:00:00`);
+  return Number.isNaN(day.getTime()) ? cita.date : new Intl.DateTimeFormat('es-CL', { weekday: 'short', day: 'numeric', month: 'short' }).format(day).replace(/\./g, '');
+}

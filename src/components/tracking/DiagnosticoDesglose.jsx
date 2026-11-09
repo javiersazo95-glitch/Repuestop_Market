@@ -7,6 +7,7 @@ import { acceptFaultDiagnosis, commentFault, getFault, priceRange, timeSince } f
 import { fetchMyAppointments, fetchTaller } from '../../services/talleresStorage';
 import TallerAvatar from '../TallerAvatar';
 import { isAppointmentCurrent } from '../../utils/appointmentHistory';
+import { citaDayLabel } from '../../utils/faultAppointments';
 import { profilePath, workshopPath } from '../../routes/paths';
 import BookingModal from '../talleres/BookingModal';
 import ContextualReportButton from '../ContextualReportButton';
@@ -46,6 +47,7 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
   const [booking, setBooking] = useState(null);
   const [loadingBooking, setLoadingBooking] = useState(false);
   const [appointment, setAppointment] = useState(null);
+  const [unanswered, setUnanswered] = useState(null);
   const [error, setError] = useState('');
 
   // Cita ya agendada con este taller por esta falla: en vez de agendar de nuevo se ofrece verla.
@@ -55,6 +57,7 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
     fetchMyAppointments()
       .then((list) => {
         if (!active) return;
+        setUnanswered(list.filter((item) => String(item.fallaId) === String(faultId) && String(item.ownerUserId) === String(taller.usuarioId) && item.status === 'pending' && !isAppointmentCurrent(item)).sort((a, b) => `${b.date} ${b.time}`.localeCompare(`${a.date} ${a.time}`))[0] || null);
         setAppointment(list.find((item) => String(item.fallaId) === String(faultId) && String(item.ownerUserId) === String(taller.usuarioId) && isAppointmentCurrent(item)) || null);
       })
       .catch(() => {});
@@ -167,6 +170,7 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
 
         {canAct && (
           <Block icon={Zap} title="Siguiente paso" highlight>
+            {!appointment && unanswered && <p className="dsg-unanswered" role="note"><strong>El taller no respondió tu solicitud</strong> del {citaDayLabel(unanswered)}. Elige otra hora.</p>}
             {accepted && appointment ? (
               <>
                 <div className="dsg-cita"><CalendarDays size={18} /><div><strong>Cita agendada</strong><small>{`${dayOf(appointment.date)} · ${appointment.time}${appointment.status === 'pending' ? ' · esperando confirmación del taller' : ''}`}</small></div></div>

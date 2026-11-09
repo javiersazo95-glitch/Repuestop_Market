@@ -13,7 +13,7 @@ import { priceRange, timeSince } from '../../services/faultApi';
 import { formatDistanceKm } from '../../utils/geoDistance';
 import TallerAvatar from '../TallerAvatar';
 import { workshopPath } from '../../routes/paths';
-import { citaTexts } from '../../utils/faultAppointments';
+import { citaTexts, citaDayLabel } from '../../utils/faultAppointments';
 import '../../styles/app-kit.css';
 import '../../styles/fault-detail-mobile.css';
 
@@ -54,7 +54,7 @@ function Avatar({ name, src, tallerId = null }) {
 export default function FaultDetailMobile({
   fault, vehicleTitle, place, photos, diagnostics, publicComments, repliesOf, diagnosisCount, publicDiagnoses,
   isWorkshop, isLoggedIn, saved, onToggleSaved, myDiagnosis, canReply, onReply, replyForm, isMine,
-  onBack, onEdit, cita, onCloseFault, onOpenDiagnosis, onOpenPublicList, onShare,
+  onBack, onEdit, cita, sinRespuesta, onCloseFault, onOpenDiagnosis, onOpenPublicList, onShare,
   comment, distanceKm, userLocation, mapHref,
 }) {
   const [activePhoto, setActivePhoto] = useState(0);
@@ -119,6 +119,12 @@ export default function FaultDetailMobile({
       </div>
 
       <div className="ftd-body">
+        {!cita && sinRespuesta && (
+          <div className="ft-detail-cita is-unanswered">
+            <AlertCircle size={18} aria-hidden="true" />
+            <span><strong>El taller no respondió tu solicitud</strong><small>{sinRespuesta.tallerName || 'El taller'} · {citaDayLabel(sinRespuesta)}</small></span>
+          </div>
+        )}
         {cita && (() => { const info = citaTexts(cita); return (
           <div className={`ft-detail-cita ${info.confirmed ? 'is-ok' : ''}`}>
             <CalendarCheck size={18} aria-hidden="true" />
@@ -243,7 +249,8 @@ export default function FaultDetailMobile({
         </div>
         <p className="ftd-note">Los talleres preguntan para afinar su diagnóstico y el cliente responde. Los diagnósticos son privados: solo los ve el creador de la falla (con «Ver diagnósticos») y el taller que los emitió.</p>
 
-        {isWorkshop && fault.vigente && (
+        {isWorkshop && fault.vigente && !myDiagnosis && fault.diagnosticoAceptado && <p className="ft-edit-note" role="note"><Lock size={14} aria-hidden="true" /> El cliente ya aceptó un diagnóstico: esta falla no recibe diagnósticos nuevos.</p>}
+        {isWorkshop && fault.vigente && (myDiagnosis || !fault.diagnosticoAceptado) && (
           <button type="button" className="ftd-primary" onClick={() => onOpenDiagnosis(myDiagnosis ? myDiagnosis.id : 'new')}>
             <Wrench size={18} /> {myDiagnosis ? 'Ver mi diagnóstico' : 'Diagnosticar'}
           </button>

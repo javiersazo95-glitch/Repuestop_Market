@@ -4,7 +4,7 @@ import AuctionAvatar from '../components/AuctionAvatar';
 import TallerAvatar from '../components/TallerAvatar';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { fetchMyAppointments } from '../services/talleresStorage';
-import { citasPorFalla, citaTexts } from '../utils/faultAppointments';
+import { citasPorFalla, citasSinRespuestaPorFalla, citaDayLabel, citaTexts } from '../utils/faultAppointments';
 import {
   AlertCircle, AlertTriangle, ArrowLeft, Bookmark, Car, CheckCircle2, Clock,
   CalendarCheck, ChevronLeft, ChevronRight, Clock3, Eye, ExternalLink, FileText,
@@ -83,12 +83,15 @@ export default function FaultDetailPage() {
   const [editing, setEditing] = useState(false);
   // La cita vigente de esta falla: el comprador ve la que pidió y el taller la que le hicieron.
   const [faultCita, setFaultCita] = useState(null);
+  const [faultSinRespuesta, setFaultSinRespuesta] = useState(null);
   useEffect(() => {
     if (!isLoggedIn || !fault?.id || (!fault.propia && !isWorkshop)) return undefined;
     let active = true;
     fetchMyAppointments().then((citas) => {
       const mine = citasPorFalla(citas, user?.userId ?? user?.id, !fault.propia && isWorkshop)[String(fault.id)];
-      if (active) setFaultCita(mine || null);
+      if (!active) return;
+      setFaultCita(mine || null);
+      setFaultSinRespuesta(fault.propia ? (citasSinRespuestaPorFalla(citas, user?.userId ?? user?.id)[String(fault.id)] || null) : null);
     }).catch(() => {});
     return () => { active = false; };
   }, [isLoggedIn, fault?.id, fault?.propia, isWorkshop, user]);
@@ -356,7 +359,7 @@ export default function FaultDetailPage() {
           diagnostics={diagnostics} publicComments={publicComments} repliesOf={repliesOf} diagnosisCount={diagnosisCount}
           publicDiagnoses={publicDiagnoses} isWorkshop={isWorkshop} isLoggedIn={isLoggedIn} saved={saved} onToggleSaved={toggleSaved}
           myDiagnosis={myDiagnosis} canReply={canReply} onReply={startReply} replyForm={replyForm} isMine={isMine}
-          onBack={() => navigate(-1)} onEdit={startEditing} cita={faultCita} onCloseFault={() => { setCloseError(''); setCloseConfirm(true); }}
+          onBack={() => navigate(-1)} onEdit={startEditing} cita={faultCita} sinRespuesta={faultSinRespuesta} onCloseFault={() => { setCloseError(''); setCloseConfirm(true); }}
           onOpenDiagnosis={setDiagModal} onOpenPublicList={() => setPublicDiagnosesOpen(true)} onShare={share}
           comment={{ text: publicText, setText: setPublicText, error: formError, sending, submit: (event) => send(event, 'COMENTARIO') }}
           distanceKm={distanceKm} userLocation={userLocation}
@@ -401,6 +404,12 @@ export default function FaultDetailPage() {
             <div className="ft-detail-meta"><span><MapPin size={18} /> {place}</span>{fault.requiereRecogida && <span className="ft-pickup-meta">{fault.modalidadAtencion === 'DOMICILIO' ? <Wrench size={18} /> : <Truck size={18} />} {fault.modalidadAtencion === 'DOMICILIO' ? 'Mecánico a domicilio' : 'Requiere recogida del vehículo'}</span>}<span><Clock3 size={18} /> Publicado {timeSince(fault.createdAt).toLowerCase()}</span>{fault.visitas != null && <span><Eye size={18} /> {fault.visitas} visitas</span>}</div>
             {fault.requiereRecogida && (
               <p className="ft-pickup-alert" role="note"><Truck size={20} aria-hidden="true" /> {fault.modalidadAtencion === 'DOMICILIO' ? (fault.propia ? 'Pediste que el mecánico vaya donde está tu vehículo.' : 'Este cliente pide un mecánico a domicilio.') : fault.propia ? 'Pediste que el taller vaya a buscar tu vehículo.' : 'Este cliente necesita que vayan a buscar el vehículo.'}</p>
+            )}
+            {!faultCita && faultSinRespuesta && (
+              <div className="ft-detail-cita is-unanswered">
+                <AlertCircle size={18} aria-hidden="true" />
+                <span><strong>El taller no respondió tu solicitud</strong><small>{faultSinRespuesta.tallerName || 'El taller'} · {citaDayLabel(faultSinRespuesta)}. Elige otra hora desde su diagnóstico.</small></span>
+              </div>
             )}
             {faultCita && (() => { const info = citaTexts(faultCita); return (
               <div className={`ft-detail-cita ${info.confirmed ? 'is-ok' : ''}`}>
@@ -530,7 +539,8 @@ export default function FaultDetailPage() {
                   {publicDiagnoses.length > LIMITE_VISIBLE && <button type="button" className="fdt-more" onClick={() => setPublicDiagnosesOpen(true)}>Ver todos los talleres ({publicDiagnoses.length})</button>}
                 </div>
               )}
-              {isWorkshop && fault.vigente && <button type="button" className="fdt-cta" onClick={() => setDiagModal(myDiagnosis ? myDiagnosis.id : 'new')}>{myDiagnosis ? 'Ver mi diagnóstico' : 'Agregar diagnóstico'}</button>}
+              {isWorkshop && fault.vigente && !myDiagnosis && fault.diagnosticoAceptado && <p className="fdt-closed-note" role="note"><Lock size={14} aria-hidden="true" /> El cliente ya aceptó un diagnóstico: esta falla no recibe diagnósticos nuevos.</p>}
+              {isWorkshop && fault.vigente && (myDiagnosis || !fault.diagnosticoAceptado) && <button type="button" className="fdt-cta" onClick={() => setDiagModal(myDiagnosis ? myDiagnosis.id : 'new')}>{myDiagnosis ? 'Ver mi diagnóstico' : 'Agregar diagnóstico'}</button>}
             </section>
           </div>
         </div>

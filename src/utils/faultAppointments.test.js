@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { citasPorFalla, citaTexts } from './faultAppointments';
+import { citasPorFalla, citasSinRespuestaPorFalla, citaTexts } from './faultAppointments';
 
 const cita = (extra = {}) => ({
   id: '1', fallaId: '10', status: 'pending', date: '2099-11-09', time: '15:00 - 16:00', tallerName: 'Grúa don Elías', customerName: 'Camila',
@@ -29,5 +29,13 @@ describe('citas por falla', () => {
     expect(delComprador.status).toBe('Cita pendiente');
     expect(delComprador.who).toBe('Grúa don Elías · En el taller');
     expect(citaTexts(citasPorFalla([cita({ status: 'accepted' })], '9')['10']).status).toBe('Cita confirmada');
+  });
+
+  it('la solicitud vencida sin respuesta se avisa solo si la falla no tiene una cita vigente', () => {
+    const vencida = cita({ date: '2020-01-02', time: '10:00 - 11:00' });
+    expect(citasSinRespuestaPorFalla([vencida], '9')['10'].id).toBe('1');
+    expect(citasSinRespuestaPorFalla([vencida, cita({ id: '2' })], '9')).toEqual({});
+    expect(citasSinRespuestaPorFalla([cita({ status: 'cancelled', date: '2020-01-02' }), cita({ id: '3', status: 'accepted', date: '2020-01-02' })], '9')).toEqual({});
+    expect(citasSinRespuestaPorFalla([vencida], '12')).toEqual({});
   });
 });

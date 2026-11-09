@@ -780,3 +780,9 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-detail-cita strong { font-size: 13.5px; color: #243442; }
 .ft-detail-cita small { font-size: 12px; color: #5a6b7a; overflow-wrap: anywhere; }
 
+/* «El taller no respondió tu solicitud» y «Esta falla ya aceptó un diagnóstico»: avisos neutros, sin alarma. */
+.ft-fault-cita.is-unanswered, .ftm-cita.is-unanswered, .ft-detail-cita.is-unanswered { background: #f1f4f8; color: #5a6b7a; }
+.fdt-closed-note { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: #f1f4f8; color: #5a6b7a; font-size: 12.5px; }
+.dsg-unanswered { margin: 0; padding: 8px 10px; border-radius: 8px; background: #f1f4f8; color: #5a6b7a; font-size: 12.5px; }
+.dsg-unanswered strong { color: #243442; }
+

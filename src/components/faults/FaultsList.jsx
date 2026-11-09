@@ -7,7 +7,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { getCommentedFaults, getMyFaults, getOpenFaults, timeSince } from '../../services/faultApi';
 import { faultDetailPath } from '../../routes/paths';
-import { citasPorFalla, citaTexts } from '../../utils/faultAppointments';
+import { citasPorFalla, citasSinRespuestaPorFalla, citaDayLabel, citaTexts } from '../../utils/faultAppointments';
 import { fetchMyAppointments } from '../../services/talleresStorage';
 import { resolveMediaUrl } from '../../services/api';
 import { SERVICE_CATEGORIES } from '../../data/talleresData';
@@ -65,7 +65,7 @@ export const diagnosisCountOf = (fault) => Number(
 ) || 0;
 
 /** Tarjeta de la falla en el celular: la de la app (vehículo, la falla, contexto y diagnósticos, separados por líneas). */
-function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking, cita }) {
+function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking, cita, sinRespuesta }) {
   const symptoms = (fault.sintomas || []).slice(0, 3);
   const citaInfo = cita ? citaTexts(cita) : null;
   return (
@@ -110,6 +110,7 @@ function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, on
           <span><CalendarDays size={12} /> {timeSince(fault.createdAt)}</span>
           {place && <span><MapPin size={12} /> {place}</span>}
         </div>
+        {!citaInfo && sinRespuesta && <div className="ftm-cita is-unanswered"><AlertCircle size={16} aria-hidden="true" /><span><strong>El taller no respondió tu solicitud</strong><small>{sinRespuesta.tallerName || 'El taller'} · {citaDayLabel(sinRespuesta)}</small></span></div>}
         {citaInfo && <div className={`ftm-cita ${citaInfo.confirmed ? 'is-ok' : ''}`}><CalendarCheck size={16} aria-hidden="true" /><span><strong>{citaInfo.when}</strong><small>{citaInfo.who}</small></span></div>}
         <div className="ftm-footer">
           <span className="ftm-diag"><MessageCircle size={12} /> {diagnosisCount === 0 ? 'Sin diagnósticos aún' : `${diagnosisCount} ${diagnosisCount === 1 ? 'taller diagnosticó' : 'talleres diagnosticaron'}`}</span>
@@ -148,7 +149,7 @@ function FaultCardMobile({ fault, showStatus, showClient, fromMural, isSaved, on
 }
 
 /** Tarjeta de una falla del mural. Tambien la usa Favoritos, con `onToggleSaved` para quitarla de los guardados. */
-export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = false, onToggleSaved, tracking = null, ownerActions = null, cita = null }) {
+export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = false, onToggleSaved, tracking = null, ownerActions = null, cita = null, sinRespuesta = null }) {
   const citaInfo = cita ? citaTexts(cita) : null;
   const place = [fault.comuna, fault.region].filter(Boolean).join(', ');
   const vehicle = [fault.marca, fault.modelo].filter(Boolean).join(' ') || fault.vehiculo;
@@ -164,7 +165,7 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
   const mobility = fault.seMueve === true ? 'Sí, se puede mover' : fault.seMueve === false ? 'No se puede mover' : 'No informado';
 
   if (isMobile) {
-    return <FaultCardMobile {...{ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking, cita }} />;
+    return <FaultCardMobile {...{ fault, showStatus, showClient, fromMural, isSaved, onToggleSaved, vehicle, vehicleData, place, type, diagnosisCount, coverPhoto, tracking, cita, sinRespuesta }} />;
   }
 
   return (
@@ -212,6 +213,12 @@ export function FaultCard({ fault, showStatus, showClient, fromMural, isSaved = 
             <CalendarCheck size={18} aria-hidden="true" />
             <span><strong>{citaInfo.when}</strong><small>{citaInfo.who}</small></span>
             <Link to={citaInfo.to} className="ft-fault-cita-link">Ver cita <ChevronRight size={14} /></Link>
+          </div>
+        )}
+        {!citaInfo && sinRespuesta && (
+          <div className="ft-fault-cita is-unanswered">
+            <AlertCircle size={18} aria-hidden="true" />
+            <span><strong>El taller no respondió tu solicitud</strong><small>{sinRespuesta.tallerName || 'El taller'} · {citaDayLabel(sinRespuesta)}. Elige otra hora desde el diagnóstico.</small></span>
           </div>
         )}
         <div className="ft-fault-actions">
@@ -283,12 +290,17 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
 
   // Mis fallas muestra la cita que ya se agendó por cada una (pendiente o confirmada).
   const [citasFalla, setCitasFalla] = useState({});
+  const [sinRespuestaFalla, setSinRespuestaFalla] = useState({});
   const myId = user?.userId ?? user?.id;
   useEffect(() => {
     // El comprador ve la cita que pidió en Mis fallas; el taller, las que le hicieron, en sus fallas.
     if (!isWorkshop && view !== 'MINE') return undefined;
     let active = true;
-    fetchMyAppointments().then((citas) => { if (active) setCitasFalla(citasPorFalla(citas, myId, isWorkshop)); }).catch(() => {});
+    fetchMyAppointments().then((citas) => {
+      if (!active) return;
+      setCitasFalla(citasPorFalla(citas, myId, isWorkshop));
+      if (!isWorkshop) setSinRespuestaFalla(citasSinRespuestaPorFalla(citas, myId));
+    }).catch(() => {});
     return () => { active = false; };
   }, [isWorkshop, view, myId]);
   // Una sola vez, al terminar de cargar, quien ya tiene fallas propias abre en ellas; sin ninguna, el mural.
@@ -378,11 +390,11 @@ export default function FaultsList({ heading = true, onMetricsChange }) {
   const results = loading ? <div className="ft-empty"><Loader2 size={20} className="spin-icon" /> Cargando fallas…</div>
     : error ? <div className="ft-empty" role="alert"><AlertCircle size={20} /><strong>No pudimos cargar las fallas</strong>{error}<br /><button type="button" className="ft-btn ft-btn-outline" onClick={load}>Reintentar</button></div>
       : items.length === 0 ? <div className="ft-empty"><Wrench size={22} /><strong>{empty[0]}</strong>{empty[1]}</div>
-        : <><div className="ft-fault-list">{pageItems.map((fault) => <FaultCard key={fault.id} cita={isWorkshop || view === 'MINE' ? citasFalla[String(fault.id)] : null} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} ownerActions={!isWorkshop && view === 'MINE' ? { onChanged: () => load() } : null} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div><ListPager pagerProps={pagerProps} itemLabel="fallas" /></>;
+        : <><div className="ft-fault-list">{pageItems.map((fault) => <FaultCard key={fault.id} cita={isWorkshop || view === 'MINE' ? citasFalla[String(fault.id)] : null} sinRespuesta={!isWorkshop && view === 'MINE' ? sinRespuestaFalla[String(fault.id)] : null} fault={fault} showStatus={!isWorkshop && view === 'MINE'} showClient={isWorkshop} fromMural={view === 'OPEN'} ownerActions={!isWorkshop && view === 'MINE' ? { onChanged: () => load() } : null} tracking={isMobile && ((!isWorkshop && view === 'MINE') || (isWorkshop && view === 'COMMENTED')) ? { seen, markSeen, onChanged: () => load(), workshopUserId: isWorkshop ? (user?.userId ?? user?.id) : null } : null} />)}</div><ListPager pagerProps={pagerProps} itemLabel="fallas" /></>;
 
   // /fallas en escritorio: el mismo esqueleto que Encargos de repuestos.
   if (heading && !isMobile) {
-    return <FaultsMural lists={lists} view={view} setView={setView} loading={loading} error={error} onRetry={load} isLoggedIn={isLoggedIn} isWorkshop={isWorkshop} user={user} citasFalla={citasFalla} />;
+    return <FaultsMural lists={lists} view={view} setView={setView} loading={loading} error={error} onRetry={load} isLoggedIn={isLoggedIn} isWorkshop={isWorkshop} user={user} citasFalla={citasFalla} sinRespuestaFalla={sinRespuestaFalla} />;
   }
 
   if (!heading && !mineOnly) {
