@@ -125,7 +125,7 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
         <div className="trk-cells">
           <Cell label="Registrado" value={`${publishedOn(diagnosis.createdAt)} · ${timeSince(diagnosis.createdAt)}`} />
           <Cell label="Precio estimado" value={price || 'Sin precio'} tone={price ? undefined : 'muted'} />
-          <Cell label="Agenda" value={taller?.puedeAgendar ? 'Agenda en la app' : 'Por contacto'} tone={taller?.puedeAgendar ? 'ok' : 'muted'} />
+          <Cell label="Agenda" value={taller?.puedeAgendar ? 'Agenda en RepuesTop' : 'Por contacto'} tone={taller?.puedeAgendar ? 'ok' : 'muted'} />
         </div>
 
         <Block icon={Stethoscope} title="Diagnóstico">
@@ -165,7 +165,7 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
             ) : accepted ? (
               taller?.puedeAgendar
                 ? <button type="button" className="ofd-btn is-primary" disabled={loadingBooking} onClick={openBooking}>{loadingBooking ? <Loader2 size={18} className="spin-icon" /> : <CalendarDays size={18} />} Agendar cita</button>
-                : <small className="ofd-muted">Este taller no agenda desde la app: entra a su perfil para llamar o escribirle.</small>
+                : <small className="ofd-muted">Este taller no agenda en RepuesTop: entra a su perfil para llamar o escribirle.</small>
             ) : (
               <>
                 <small className="ofd-muted">Al aceptarlo podrás agendar con el taller. Puedes preguntarle antes lo que necesites.</small>
