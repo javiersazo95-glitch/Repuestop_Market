@@ -114,6 +114,7 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
   const vehicle = booking?.fault ? [booking.fault.marca, booking.fault.modelo, booking.fault.anio, booking.fault.version].filter(Boolean).join(' ') : '';
 
   return createPortal(
+    <>
     <div className="ft-modal-backdrop ftd-sheet-backdrop dsg-backdrop" role="dialog" aria-modal="true" aria-label="Diagnóstico privado" onClick={onClose}>
       <div className="ft-modal ftd-sheet dsg" onClick={(event) => event.stopPropagation()}>
         <div className="ft-modal-head"><h2><Lock size={16} /> Diagnóstico privado</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={onClose}><X size={20} /></button></div>
@@ -192,14 +193,16 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
         {error && <p className="trk-error" role="alert">{error}</p>}
         {canAct && <div className="dsg-report"><Flag size={13} /><ContextualReportButton tipoObjeto="FALLA_COMENTARIO" objetoId={diagnosis.id} objetoTitulo={`Diagnóstico de ${diagnosis.autor}`} className="trk-link is-muted" label="Reportar este diagnóstico" /></div>}
       </div>
-      {booking && (
-        <BookingModal
-          taller={booking.workshop}
-          fallaContext={{ id: Number(faultId), patente: booking.fault?.patente ?? '', vehiculo: vehicle, titulo: booking.fault?.titulo || '' }}
-          onClose={() => setBooking(null)}
-        />
-      )}
-    </div>,
+    </div>
+    {/* Fuera del fondo del popup: un clic dentro de la agenda no debe cerrar el diagnóstico (ni la agenda). */}
+    {booking && (
+      <BookingModal
+        taller={booking.workshop}
+        fallaContext={{ id: Number(faultId), patente: booking.fault?.patente ?? '', vehiculo: vehicle, titulo: booking.fault?.titulo || '' }}
+        onClose={() => setBooking(null)}
+      />
+    )}
+    </>,
     document.body,
   );
 }
