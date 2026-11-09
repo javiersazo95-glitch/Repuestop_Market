@@ -66,9 +66,12 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
   const isWorkshopAccount = role === 'WORKSHOP';
   // Desde el diagnostico de una falla la cita parte con el vehiculo y el motivo ya cargados: se reusa
   // el mismo precargado que "reservar otra hora" (el servicio es el diagnostico de esa falla).
+  // Si la falla pidió mecánico a domicilio, el interruptor parte encendido con la dirección de la falla.
+  const fallaDomicilio = fallaContext?.modalidad === 'DOMICILIO' && Boolean(fallaContext?.direccion);
   const fromAppointment = fromAppointmentProp || (fallaContext ? {
     vehiclePatent: fallaContext.patente || '',
     vehicleModel: fallaContext.vehiculo || '',
+    ...(fallaDomicilio ? { homeService: true, homeAddress: fallaContext.direccion } : {}),
   } : null);
   const { isOwn } = useTallerOwnership();
   const previousNoteLines = String(fromAppointment?.notes || '').split('\n');
@@ -656,6 +659,13 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                         aria-label="Servicio a domicilio"
                       />
                     </label>
+                    )}
+                    {offersHomeService && fallaContext?.modalidad && (
+                      <small className="bk-helper">
+                        {fallaContext.modalidad === 'DOMICILIO' ? 'En tu falla pediste mecánico a domicilio.'
+                          : fallaContext.modalidad === 'RETIRO' ? 'En tu falla pediste que retiren el vehículo.'
+                            : 'En tu falla elegiste llevarlo tú al taller.'}
+                      </small>
                     )}
                     {atHome && (
                       <div className="bk-group bk-address" onBlur={() => touch('address')}>

@@ -198,7 +198,12 @@ export default function DiagnosticoDesglose({ faultId, diagnosis, replies, canAc
     {booking && (
       <BookingModal
         taller={booking.workshop}
-        fallaContext={{ id: Number(faultId), patente: booking.fault?.patente ?? '', vehiculo: vehicle, titulo: booking.fault?.titulo || '' }}
+        fallaContext={{
+          id: Number(faultId), patente: booking.fault?.patente ?? '', vehiculo: vehicle, titulo: booking.fault?.titulo || '',
+          // Cómo pidió el cliente que lo atiendan: la agenda parte de ahí (sin la falla no se sabe, y no se supone).
+          modalidad: booking.fault ? (booking.fault.modalidadAtencion || (booking.fault.requiereRecogida ? 'RETIRO' : 'LLEVO_YO')) : null,
+          direccion: booking.fault?.direccionRecogida || '',
+        }}
         onClose={() => setBooking(null)}
       />
     )}
