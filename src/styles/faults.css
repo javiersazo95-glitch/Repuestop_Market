@@ -751,4 +751,9 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-edit-note svg { flex: 0 0 auto; margin-top: 2px; }
 .ft-locked { min-width: 0; margin: 0; padding: 0; border: 0; opacity: .6; }
 .ft-btn.is-locked { color: var(--ft-muted, #5a6b7a); border-color: var(--ft-border, #d9e0e7); }
+/* Tooltip del botón bloqueado (Editar): el motivo se ve al pasar el cursor o al tocarlo, sin ocupar espacio en la tarjeta. */
+.ft-tip { position: relative; }
+.ft-tip[data-tip]::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 8px); right: 0; z-index: 30; width: 280px; max-width: 70vw; padding: 8px 10px; border-radius: 8px; background: #0f172a; color: #ffffff; font-size: 12px; font-weight: 400; line-height: 1.4; text-align: left; white-space: normal; opacity: 0; pointer-events: none; transition: opacity .12s ease; }
+.ft-tip[data-tip]:hover::after, .ft-tip[data-tip]:focus::after { opacity: 1; }
+.ftd-owner .ft-tip[data-tip]::after { bottom: auto; top: calc(100% + 8px); left: 0; right: auto; }
 

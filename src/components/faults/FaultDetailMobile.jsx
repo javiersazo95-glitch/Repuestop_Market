@@ -53,7 +53,7 @@ function Avatar({ name, src, tallerId = null }) {
 export default function FaultDetailMobile({
   fault, vehicleTitle, place, photos, diagnostics, publicComments, repliesOf, diagnosisCount, publicDiagnoses,
   isWorkshop, isLoggedIn, saved, onToggleSaved, myDiagnosis, canReply, onReply, replyForm, isMine,
-  onBack, onEdit, editNotice, onCloseFault, onOpenDiagnosis, onOpenPublicList, onShare,
+  onBack, onEdit, onCloseFault, onOpenDiagnosis, onOpenPublicList, onShare,
   comment, distanceKm, userLocation, mapHref,
 }) {
   const [activePhoto, setActivePhoto] = useState(0);
@@ -120,11 +120,10 @@ export default function FaultDetailMobile({
       <div className="ftd-body">
         {fault.propia && fault.vigente && (
           <div className="ftd-owner">
-            <button type="button" onClick={onEdit} aria-label="Editar el registro de la falla" className={fault.edicion === 'BLOQUEADA' ? 'is-muted' : undefined}>{fault.edicion === 'BLOQUEADA' ? <Lock size={14} /> : <Pencil size={14} />} Editar</button>
+            <button type="button" onClick={onEdit} aria-label={fault.edicion === 'BLOQUEADA' ? `Editar no disponible: ${fault.motivoEdicion || ''}` : 'Editar el registro de la falla'} className={fault.edicion === 'BLOQUEADA' ? 'is-muted ft-tip' : undefined} data-tip={fault.edicion === 'BLOQUEADA' ? (fault.motivoEdicion || 'Esta falla ya no se puede editar.') : undefined}>{fault.edicion === 'BLOQUEADA' ? <Lock size={14} /> : <Pencil size={14} />} Editar</button>
             <button type="button" className="is-muted" onClick={onCloseFault} aria-label="Cerrar la falla"><Lock size={14} /> Cerrar</button>
           </div>
         )}
-        {fault.propia && fault.vigente && editNotice && <p className="ft-edit-note" role="alert"><Lock size={14} /> {editNotice}</p>}
 
         <div className="ftd-hero">
           <div className="ftd-gallery">
