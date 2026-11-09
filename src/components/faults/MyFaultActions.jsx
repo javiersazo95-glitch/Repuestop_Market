@@ -17,12 +17,13 @@ export default function MyFaultActions({ fault, diagnosisCount = 0, onChanged })
   const [editing, setEditing] = useState(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
-  const open = fault.vigente !== false;
+  // Cerrada o con un diagnóstico aceptado: no se edita (el servidor manda el motivo).
+  const open = fault.vigente !== false && fault.edicion !== 'BLOQUEADA';
   const pending = Number(fault.preguntasPendientes) || 0;
   const vehicle = [fault.marca, fault.modelo].filter(Boolean).join(' ') || fault.vehiculo || 'tu vehículo';
 
   const startEdit = async () => {
-    if (!open) { setNotice((value) => (value ? '' : 'Esta falla está cerrada y ya no se puede editar.')); return; }
+    if (!open) { setNotice((value) => (value ? '' : (fault.motivoEdicion || 'Esta falla está cerrada y ya no se puede editar.'))); return; }
     setBusy(true);
     setNotice('');
     try {
@@ -41,8 +42,8 @@ export default function MyFaultActions({ fault, diagnosisCount = 0, onChanged })
       <button
         type="button"
         className={`mfa-edit ${open ? '' : 'is-locked'}`}
-        aria-label={open ? 'Editar la falla' : 'La falla está cerrada y no se puede editar'}
-        title={open ? 'Editar falla' : 'Falla cerrada: ya no se puede editar'}
+        aria-label={open ? 'Editar la falla' : 'La falla no se puede editar'}
+        title={open ? 'Editar falla' : (fault.motivoEdicion || 'Falla cerrada: ya no se puede editar')}
         aria-disabled={!open}
         onClick={() => void startEdit()}
         disabled={busy}

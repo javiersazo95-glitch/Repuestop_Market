@@ -29,7 +29,7 @@ const BEFORE_MAX = 1000;
 const SHOW_ADVANCED_FIELDS = false;
 
 /** Seccion numerada del formulario: titulo y una linea que explica que se pide ahi. */
-function FormSection({ number, title, hint, children }) {
+function FormSection({ number, title, hint, locked = false, children }) {
   return (
     <section className="ft-section" aria-labelledby={`ft-section-${number}`}>
       <header className="ft-section-head">
@@ -39,7 +39,7 @@ function FormSection({ number, title, hint, children }) {
           {hint && <p>{hint}</p>}
         </div>
       </header>
-      {children}
+      {locked ? <fieldset className="ft-locked" disabled>{children}</fieldset> : children}
     </section>
   );
 }
@@ -68,6 +68,8 @@ const sameComuna = (a, b) => Boolean(a && b) && normalizarNombreGeografico(a) ==
 export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated, fault = null }) {
   const { user, role } = useAuth();
   const isEditing = Boolean(fault?.id);
+  // Con diagnósticos recibidos no se cambia sobre lo que los talleres diagnostican (el servidor también lo exige).
+  const majorLocked = isEditing && fault?.edicion === 'PARCIAL';
   // El vehiculo va primero: por patente (se identifica sola) o a mano con el catalogo, como en la busqueda de repuestos.
   // `resolved` es el vehiculo ya definido ({ patente, marca, modelo, anio, version, motor }); sin el no se muestra el resto.
   const [mode, setMode] = useState('plate');
@@ -445,7 +447,9 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         </div>
         <p className="ft-sub">{isEditing ? 'Actualiza la información de tu falla para que los talleres tengan los antecedentes correctos.' : 'Cuéntanos qué le pasa a tu vehículo. Los talleres acreditados te enviarán su diagnóstico y tú decides con cuál agendar.'}</p>
 
-        <FormSection number={1} title="Tu vehículo" hint={resolved ? 'Verifica que los datos de tu vehículo estén correctos.' : 'Indícalo con la patente o ingrésalo a mano.'}>
+        {majorLocked && <p className="ft-edit-note" role="note"><Lock size={14} /> {fault.motivoEdicion}</p>}
+
+        <FormSection number={1} locked={majorLocked} title="Tu vehículo" hint={resolved ? 'Verifica que los datos de tu vehículo estén correctos.' : 'Indícalo con la patente o ingrésalo a mano.'}>
         {resolved ? (
           <div className="ft-vehicle-card">
             <div className="ft-vehicle-head">
@@ -565,7 +569,7 @@ export default function CreateFaultModal({ isOpen, onClose, onCreated, onUpdated
         </FormSection>
         )}
 
-        <FormSection number={3} title="Estado y ubicación" hint="Así el taller sabe si necesita grúa y qué talleres cercanos te sirven.">
+        <FormSection number={3} locked={majorLocked} title="Estado y ubicación" hint="Así el taller sabe si necesita grúa y qué talleres cercanos te sirven.">
         <div className="ft-field">
           <span>¿El vehículo se puede mover?</span>
           <div className="ft-chips">

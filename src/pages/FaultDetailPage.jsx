@@ -77,6 +77,13 @@ export default function FaultDetailPage() {
   const [viewerOpen, setViewerOpen] = useState(false);
   const [commentFormOpen, setCommentFormOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  // Con un diagnóstico aceptado la falla ya no se edita: el botón sigue visible y explica por qué.
+  const [editNotice, setEditNotice] = useState('');
+  const startEditing = () => {
+    if (fault?.edicion === 'BLOQUEADA') { setEditNotice((value) => (value ? '' : (fault.motivoEdicion || 'Esta falla ya no se puede editar.'))); return; }
+    setEditNotice('');
+    setEditing(true);
+  };
   const [closeConfirm, setCloseConfirm] = useState(false);
   const [closing, setClosing] = useState(false);
   const [closeError, setCloseError] = useState('');
@@ -331,7 +338,7 @@ export default function FaultDetailPage() {
           diagnostics={diagnostics} publicComments={publicComments} repliesOf={repliesOf} diagnosisCount={diagnosisCount}
           publicDiagnoses={publicDiagnoses} isWorkshop={isWorkshop} isLoggedIn={isLoggedIn} saved={saved} onToggleSaved={toggleSaved}
           myDiagnosis={myDiagnosis} canReply={canReply} onReply={startReply} replyForm={replyForm} isMine={isMine}
-          onBack={() => navigate(-1)} onEdit={() => setEditing(true)} onCloseFault={() => { setCloseError(''); setCloseConfirm(true); }}
+          onBack={() => navigate(-1)} onEdit={startEditing} editNotice={editNotice} onCloseFault={() => { setCloseError(''); setCloseConfirm(true); }}
           onOpenDiagnosis={setDiagModal} onOpenPublicList={() => setPublicDiagnosesOpen(true)} onShare={share}
           comment={{ text: publicText, setText: setPublicText, error: formError, sending, submit: (event) => send(event, 'COMENTARIO') }}
           distanceKm={distanceKm} userLocation={userLocation}
@@ -377,7 +384,7 @@ export default function FaultDetailPage() {
             {fault.requiereRecogida && (
               <p className="ft-pickup-alert" role="note"><Truck size={20} aria-hidden="true" /> {fault.modalidadAtencion === 'DOMICILIO' ? (fault.propia ? 'Pediste que el mecánico vaya donde está tu vehículo.' : 'Este cliente pide un mecánico a domicilio.') : fault.propia ? 'Pediste que el taller vaya a buscar tu vehículo.' : 'Este cliente necesita que vayan a buscar el vehículo.'}</p>
             )}
-            <div className="ft-detail-hero-actions">{fault.propia && fault.vigente && <button type="button" className="ft-btn ft-btn-primary" onClick={() => setEditing(true)}><Pencil size={17} /> Editar falla</button>}{fault.propia && fault.vigente && <button type="button" className="ft-btn ft-btn-danger-outline" onClick={() => { setCloseError(''); setCloseConfirm(true); }}><XCircle size={17} /> Cerrar falla</button>}<button type="button" className="ft-detail-icon-action" onClick={share} aria-label="Compartir"><Share2 size={20} /></button>{!fault.propia && isLoggedIn && <button type="button" className={`ft-btn ft-btn-outline ${saved ? 'is-saved' : ''}`} aria-pressed={saved} onClick={toggleSaved}><Bookmark size={17} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Guardado' : 'Guardar'}</button>}{!fault.propia && <ContextualReportButton tipoObjeto="FALLA" objetoId={fault.id} objetoTitulo={fault.titulo} className="ft-btn ft-btn-outline" />}</div>
+            <div className="ft-detail-hero-actions">{fault.propia && fault.vigente && <button type="button" className={`ft-btn ${fault.edicion === 'BLOQUEADA' ? 'ft-btn-outline is-locked' : 'ft-btn-primary'}`} onClick={startEditing} title={fault.edicion === 'BLOQUEADA' ? fault.motivoEdicion : undefined}>{fault.edicion === 'BLOQUEADA' ? <Lock size={17} /> : <Pencil size={17} />} Editar falla</button>}{fault.propia && fault.vigente && <button type="button" className="ft-btn ft-btn-danger-outline" onClick={() => { setCloseError(''); setCloseConfirm(true); }}><XCircle size={17} /> Cerrar falla</button>}{editNotice && <p className="ft-edit-note" role="alert"><Lock size={14} /> {editNotice}</p>}<button type="button" className="ft-detail-icon-action" onClick={share} aria-label="Compartir"><Share2 size={20} /></button>{!fault.propia && isLoggedIn && <button type="button" className={`ft-btn ft-btn-outline ${saved ? 'is-saved' : ''}`} aria-pressed={saved} onClick={toggleSaved}><Bookmark size={17} fill={saved ? 'currentColor' : 'none'} /> {saved ? 'Guardado' : 'Guardar'}</button>}{!fault.propia && <ContextualReportButton tipoObjeto="FALLA" objetoId={fault.id} objetoTitulo={fault.titulo} className="ft-btn ft-btn-outline" />}</div>
           </div>
         </section>
 

@@ -533,7 +533,7 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
                         {atHome ? <Home size={17} /> : <Store size={17} />}
                         <span>
                           <strong>{atHome ? `A domicilio · ${(fallaContext.direccion || '').trim()}` : 'En el taller'}</strong>
-                          <small>Es lo que registraste en tu falla. Para cambiarlo, edita tu falla.</small>
+                          <small>Es lo que registraste en tu falla y el taller aceptó. Para usar otra, publica una falla nueva.</small>
                         </span>
                       </div>
                     </section>

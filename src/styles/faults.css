@@ -746,3 +746,9 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-detail-main-photo > button.ft-view-image { position: absolute; top: auto; left: auto; right: 10px; bottom: 10px; width: auto; height: auto; transform: none; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; background: rgba(15, 23, 42, .78); font: inherit; font-size: 12px; font-weight: 700; }
 .ft-detail-main-photo > button.ft-view-image:hover { background: rgba(15, 23, 42, .92); }
 
+/* Edición bloqueada o parcial: el motivo se ve junto a los botones y las secciones fijas quedan deshabilitadas. */
+.ft-edit-note { flex-basis: 100%; display: flex; align-items: flex-start; gap: 6px; margin: 6px 0 0; padding: 8px 10px; border-radius: 8px; background: var(--ft-amber-bg, #fff7e6); color: var(--ft-amber, #9a5a00); font-size: 12.5px; line-height: 1.4; }
+.ft-edit-note svg { flex: 0 0 auto; margin-top: 2px; }
+.ft-locked { min-width: 0; margin: 0; padding: 0; border: 0; opacity: .6; }
+.ft-btn.is-locked { color: var(--ft-muted, #5a6b7a); border-color: var(--ft-border, #d9e0e7); }
+
