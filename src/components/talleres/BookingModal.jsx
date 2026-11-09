@@ -3,8 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   Calendar, Car, CheckCircle2, X, AlertCircle, MapPin, Loader2, LogIn, Clock, Phone, Mail,
   ChevronLeft, ChevronRight, Check, Lock, Info, User, Tag, LifeBuoy,
-  Home, Store, MessageCircle, StickyNote } from 'lucide-react';
-import { confirmWhatsappContact } from '../../utils/whatsappContact';
+  Home, Store, MessageCircle, StickyNote, Wrench } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import AddressAutocompleteInput from '../AddressAutocompleteInput';
 import { useTallerOwnership } from './useTallerOwnership';
@@ -30,7 +29,9 @@ import {
 } from '../../services/talleresStorage';
 import { apiErrorMessage } from '../../services/walletStorage';
 import { CONDICIONES_CITA } from '../../data/legalTexts';
-import { ROUTES } from '../../routes/paths';
+import { ROUTES, profilePath } from '../../routes/paths';
+import { useNavigate } from 'react-router-dom';
+import AppointmentChatDialog from './AppointmentChatDialog';
 
 /**
  * Reserva de hora en un taller con agenda en línea.
@@ -64,6 +65,9 @@ const MAX_REASON_LENGTH = 300;
 
 export default function BookingModal({ taller, onClose, onBooked, isRescheduling = false, rescheduleFromId = null, fromAppointment: fromAppointmentProp = null, fallaContext = null, initialService: _initialService = null }) {
   const { user, role } = useAuth();
+  const navigate = useNavigate();
+  // «Escribir al taller» abre el chat de la cita sin salir de la agenda.
+  const [chatOpen, setChatOpen] = useState(false);
   // Las citas las piden los compradores: una cuenta de taller las recibe, pero no las solicita.
   const isWorkshopAccount = role === 'WORKSHOP';
   // Desde el diagnostico de una falla la cita parte con el vehiculo y el motivo ya cargados: se reusa
@@ -815,43 +819,65 @@ export default function BookingModal({ taller, onClose, onBooked, isRescheduling
               <p>
                 Avisamos a <strong>{taller.name}</strong>. Tu cita queda pendiente hasta que
                 el taller la confirme: te avisaremos con una notificación.
-                {rescheduleFromId ? ' La hora anterior quedó liberada.' : ''} La encuentras en <strong>Mis citas</strong>, en tu perfil.
+                {rescheduleFromId ? ' La hora anterior quedó liberada.' : ''} La encuentras en <strong>Mis citas</strong>.
               </p>
-              <div className="bk-voucher">
-                <VoucherRow label="Código de reserva:" value={confirmedAppointment?.id} mono />
-                <VoucherRow label="Origen:" value={originLabel} />
-                {reason.trim() && <VoucherRow label="Detalle:" value={reason.trim()} />}
-                <VoucherRow label="Fecha y hora:" value={`${dateLabel} a las ${confirmedAppointment?.time || appointmentTime}`} />
-                <VoucherRow label="Dirección taller:" value={confirmedAppointment?.workshopAddress || [taller.address, taller.commune].filter(Boolean).join(', ') || 'Por confirmar con el taller'} />
-                <VoucherRow label="Vehículo:" value={vehicleModel.trim()} />
-                <VoucherRow label="Cliente:" value={`${userName.trim()} (${accountEmail})`} />
-              </div>
-              {(confirmedAppointment?.workshopPhone || confirmedAppointment?.workshopWhatsapp) && (
-                <div className="bk-contact">
-                  <p>Mientras el taller responde, escríbele desde <strong>Mis citas</strong> o contáctalo directo.</p>
-                  <div>
-                    {confirmedAppointment.workshopPhone && (
-                      <a className="bk-outline" href={`tel:${confirmedAppointment.workshopPhone.replace(/\s+/g, '')}`}><Phone size={17} /> Llamar</a>
-                    )}
-                    {confirmedAppointment.workshopWhatsapp && (
-                      <a
-                        className="bk-outline"
-                        href={`https://wa.me/${confirmedAppointment.workshopWhatsapp.replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(event) => { if (!confirmWhatsappContact(taller.name, confirmedAppointment.workshopWhatsapp)) event.preventDefault(); }}
-                      >
-                        <MessageCircle size={17} /> WhatsApp
-                      </a>
-                    )}
-                  </div>
+              {/* Resumen a ancho completo: cada dato en su fila, con la fecha y la hora primero. */}
+              <div className="bk-summary">
+                <div className="bk-summary-code"><span>Código de reserva</span><strong>{confirmedAppointment?.id}</strong></div>
+                <div className="bk-summary-row">
+                  <Calendar size={18} />
+                  <span><strong>{`${dateLabel} · ${confirmedAppointment?.time || appointmentTime}`}</strong><small>Fecha y hora</small></span>
                 </div>
+                <div className="bk-summary-row">
+                  {atHome ? <Home size={18} /> : <MapPin size={18} />}
+                  <span>
+                    <strong>{atHome
+                      ? `A domicilio · ${homeAddress}`
+                      : `En el taller · ${confirmedAppointment?.workshopAddress || [taller.address, taller.commune].filter(Boolean).join(', ') || 'dirección por confirmar con el taller'}`}</strong>
+                    <small>Dónde te atienden</small>
+                  </span>
+                </div>
+                <div className="bk-summary-row">
+                  <Car size={18} />
+                  <span><strong>{vehicleModel.trim()}</strong><small>Vehículo</small></span>
+                </div>
+                <div className="bk-summary-row">
+                  <Wrench size={18} />
+                  <span><strong>{taller.name}</strong><small>{fallaContext?.titulo ? `Taller · Por la falla «${fallaContext.titulo}»` : 'Taller'}</small></span>
+                </div>
+                {reason.trim() && (
+                  <div className="bk-summary-row">
+                    <StickyNote size={18} />
+                    <span><strong>{reason.trim()}</strong><small>Lo que le contaste al taller</small></span>
+                  </div>
+                )}
+              </div>
+              <button type="button" className="bk-primary" onClick={() => { onClose?.(); navigate(profilePath('mi_taller')); }}><Calendar size={18} /> Ver mi cita</button>
+              {confirmedAppointment?.id && (
+                <button type="button" className="bk-outline" onClick={() => setChatOpen(true)}><MessageCircle size={17} /> Escribir al taller</button>
               )}
-              <button type="button" className="bk-primary" onClick={onClose}>Listo, cerrar</button>
+              <button type="button" className="bk-text-link" onClick={onClose}>Listo, cerrar</button>
             </div>
           )}
         </div>
       </div>
+      {chatOpen && confirmedAppointment?.id && (
+        <AppointmentChatDialog
+          appointment={{
+            id: confirmedAppointment.id,
+            tallerName: taller.name,
+            time: confirmedAppointment.time || appointmentTime,
+            vehicleModel: vehicleModel.trim(),
+            vehiclePatent: vehiclePatent.trim(),
+            fallaId: fallaContext?.id,
+            fallaTitle: fallaContext?.titulo,
+            customerName: userName.trim(),
+            customerUserId: user?.userId ?? user?.id,
+          }}
+          sessionUserId={user?.userId ?? user?.id ?? null}
+          onClose={() => setChatOpen(false)}
+        />
+      )}
     </div>,
     document.body
   );
