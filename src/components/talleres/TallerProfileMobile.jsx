@@ -34,8 +34,11 @@ function Row({ icon: Icon, title, summary, onClick, trailing }) {
     : <div className="tpm-row">{body}</div>;
 }
 
-/** «Servicios y precios» como desplegable (`ServiciosDesplegable.tsx` de la app): cuántos hay y desde cuánto; abierto, cada servicio con lo que incluye. */
-function ServicesDropdown({ taller, canBook, onBook }) {
+/**
+ * «Servicios y precios» como desplegable (`ServiciosDesplegable.tsx` de la app): cuántos hay y desde cuánto; abierto, cada servicio con lo que incluye.
+ * Es solo informativo: no se agenda desde un servicio, la cita se pide con el botón general del perfil.
+ */
+function ServicesDropdown({ taller }) {
   const [open, setOpen] = useState(false);
   const [openIds, setOpenIds] = useState([]);
   const services = useMemo(() => [...taller.services].sort((a, b) => String(a.category).localeCompare(String(b.category), 'es') || a.name.localeCompare(b.name, 'es')), [taller.services]);
@@ -70,7 +73,6 @@ function ServicesDropdown({ taller, canBook, onBook }) {
                   {includes.length > 0 ? (
                     <ul>{includes.map((item) => <li key={item}>{item}</li>)}</ul>
                   ) : <p>El taller confirma el detalle al revisar tu vehículo.</p>}
-                  {canBook && <button type="button" className="tpm-btn is-small" onClick={() => onBook(service)}><Calendar size={15} /> Agendar este servicio</button>}
                 </div>
               )}
             </div>
@@ -135,7 +137,7 @@ export default function TallerProfileMobile({
       </div>
 
       {canBook && !isOwnTaller ? (
-        <button type="button" className="tpm-btn" onClick={() => onBook(null)}><Calendar size={18} /> Agendar una cita gratis</button>
+        <button type="button" className="tpm-btn" onClick={() => onBook()}><Calendar size={18} /> Agendar una cita gratis</button>
       ) : !isOwnTaller ? (
         <p className="tpm-note">Este taller aún no recibe citas en línea desde la app.</p>
       ) : null}
@@ -173,7 +175,7 @@ export default function TallerProfileMobile({
         </Group>
       )}
 
-      <ServicesDropdown taller={taller} canBook={canBook && !isOwnTaller} onBook={onBook} />
+      <ServicesDropdown taller={taller} />
 
       {taller.specialistBrands.length > 0 && (
         <Group title="Marcas especialistas">

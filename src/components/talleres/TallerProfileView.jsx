@@ -49,7 +49,7 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
   const [coverError, setCoverError] = useState({});
   const [logoFailed, setLogoFailed] = useState(false);
   const [shareMsg, setShareMsg] = useState('');
-  const [booking, setBooking] = useState(null); // { service } | null
+  const [booking, setBooking] = useState(false);
   const [blockNotice, setBlockNotice] = useState(null);
   const { user, isLoggedIn } = useAuth();
   const { openAuthModal } = useMarketplace();
@@ -115,7 +115,8 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
     const text = encodeURIComponent(`Hola ${taller.name}, vi su perfil en RepuesTop y quiero consultar por sus servicios.`);
     window.open(`https://wa.me/${String(taller.whatsapp).replace(/[^0-9]/g, '')}?text=${text}`, '_blank', 'noopener,noreferrer');
   });
-  const handleBooking = (service = null) => guard('booking', () => setBooking({ service }));
+  // La cita se pide siempre en general: no se agenda desde un servicio puntual.
+  const handleBooking = () => guard('booking', () => setBooking(true));
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -154,7 +155,7 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
           blockNotice={blockNotice}
           memberSince={memberSince}
         />
-        {booking && <BookingModal taller={taller} initialService={booking.service?.name || null} onClose={() => setBooking(null)} />}
+        {booking && <BookingModal taller={taller} onClose={() => setBooking(false)} />}
       </>
     );
   }
@@ -477,7 +478,7 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
       </div>
 
       {booking && (
-        <BookingModal taller={taller} initialService={booking.service?.name || null} onClose={() => setBooking(null)} />
+        <BookingModal taller={taller} onClose={() => setBooking(false)} />
       )}
     </main>
   );
