@@ -56,6 +56,19 @@ export const SEO_PAGES = [
     title: 'Sobre RepuesTop',
     description: 'Conoce RepuesTop: el marketplace chileno que conecta a conductores con casas de repuestos verificadas de todo el país, con pago seguro y compra protegida.',
   },
+  // 10-nov: catalogo abierto a Google. Las fichas de repuesto y de tienda no van aqui: son
+  // dinamicas, su SEO lo pone src/routes/pageSeo.js y su sitemap lo arma el backend
+  // (/sitemap-catalogo.xml, ver vercel.json y robots.txt).
+  {
+    path: '/repuestos',
+    title: 'Catálogo de repuestos',
+    description: 'Catálogo de repuestos automotrices de tiendas de todo Chile: busca por patente o por marca, modelo y año, compara precios y compra con pago seguro en RepuesTop.',
+  },
+  {
+    path: '/tiendas',
+    title: 'Casas de repuestos verificadas',
+    description: 'Casas de repuestos verificadas de todo Chile en RepuesTop: revisa su catálogo, ubicación, horarios y opiniones, y compra con pago seguro.',
+  },
   ...HELP_FIXED,
   ...HELP_CATEGORY_PAGES,
   {

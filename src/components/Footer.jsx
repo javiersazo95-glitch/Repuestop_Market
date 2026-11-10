@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { EMPRESA } from '../data/legalTexts';
 import { useCategories } from '../data/categories';
 import { useFlag } from '../remoteConfig/hooks';
+import SocialIcon from './SocialIcon';
 
 /**
  * Los enlaces del footer son `<a>` reales (`Link`), no botones: así se indexan,
@@ -62,6 +63,13 @@ const SELLER_LINKS = [
   ['Vende tus repuestos', Store, ROUTES.sellerRegister],
   ['Registra tu taller', Wrench, ROUTES.talleres],
   ['¿Quieres vender? Escríbenos', MessageSquare, helpContactPath('info')],
+];
+
+// Perfiles oficiales: los mismos que declara el `sameAs` de index.html. Enlazarlos desde el
+// sitio (y el sitio desde ellos) ayuda a Google a reconocer a RepuesTop como una sola marca.
+const SOCIAL_LINKS = [
+  ['Facebook', 'facebookUrl', 'https://www.facebook.com/people/RepuesTop/61592575473272/'],
+  ['Instagram', 'instagramUrl', 'https://www.instagram.com/repuestop_oficial/'],
 ];
 
 // El acceso a las compras está detrás de `RequireAuth`: a un invitado lo devuelve al
@@ -157,6 +165,16 @@ export default function Footer() {
               <span><strong>Pagos procesados por Flow</strong>Pago seguro en línea</span>
             </div>
           </div>
+
+          <ul className="footer-social-links" aria-label="RepuesTop en redes sociales">
+            {SOCIAL_LINKS.map(([label, network, href]) => (
+              <li key={label}>
+                <a href={href} target="_blank" rel="noopener noreferrer me" aria-label={`RepuesTop en ${label}`}>
+                  <SocialIcon network={network} size={19} colored={false} />
+                </a>
+              </li>
+            ))}
+          </ul>
         </section>
 
         <section className={`reference-footer-column ${openSections.explore ? 'is-open' : ''}`}>

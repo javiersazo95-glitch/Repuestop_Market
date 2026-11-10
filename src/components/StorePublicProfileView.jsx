@@ -1,6 +1,8 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useDocumentTitle, useNoIndexWhen } from '../routes/useDocumentTitle';
+import { storeSeo, usePageSeo } from '../routes/pageSeo';
 import { qk } from '../services/queryKeys';
 import {
   ShieldCheck, MapPin, Star, Package, Clock,
@@ -119,6 +121,11 @@ export default function StorePublicProfileView({
   // Sin ficha y sin precarga no hay nada que mostrar: o no existe, o dejo de ser
   // publica (suspendida o bloqueada por mediacion, que responden 404).
   const storeUnavailable = storeError || (!currentStore && !storeLoading);
+  // Titulo y SEO con la ficha completa: quien entra directo (Google, un enlace compartido) no
+  // trae la precarga del directorio y antes veia "Tienda | RepuesTop".
+  useDocumentTitle(currentStore?.nombre || 'Tienda');
+  usePageSeo(fetchedStore && !storeError ? storeSeo(fetchedStore) : null);
+  useNoIndexWhen(Boolean(storeUnavailable));
   const storeId = currentStore?.id;
   const rating = Number(currentStore?.rating ?? 0);
   const reviewCount = Number(currentStore?.reviewCount ?? 0);

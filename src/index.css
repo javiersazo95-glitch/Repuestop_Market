@@ -2637,6 +2637,10 @@ input, select, textarea {
 .footer-trust-points svg { width: 50px; height: 50px; padding: 13px; flex: 0 0 auto; border-radius: 9px; color: #fff; background: linear-gradient(145deg, #12418c, #06307d); box-shadow: 0 7px 18px rgba(0, 67, 185, .24); }
 .footer-trust-points span { display: flex; flex-direction: column; color: #cfd8e7; font-size: 12.5px; line-height: 1.35; }
 .footer-trust-points strong { margin-bottom: 3px; color: #fff; font-size: 13px; }
+.footer-social-links { display: flex; gap: 10px; margin: 18px 0 0; padding: 0; list-style: none; }
+.footer-social-links a { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 9px; color: #fff; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .14); transition: background .2s ease, transform .2s ease; }
+.footer-social-links a:hover, .footer-social-links a:focus-visible { background: linear-gradient(145deg, #12418c, #06307d); transform: translateY(-1px); }
+.footer-social-links .social-icon { width: 19px; height: 19px; padding: 0; box-shadow: none; background: none; border-radius: 0; }
 .footer-trust-points .footer-flow-point { align-items: center; }
 .footer-flow-point > b { min-width: 50px; color: #17d1c4; font-size: 30px; letter-spacing: -2px; line-height: 1; }
 

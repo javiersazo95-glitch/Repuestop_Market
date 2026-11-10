@@ -20,10 +20,12 @@
     <meta property="og:url" content="https://repuestop.cl/" />
     <meta property="og:title" content="RepuesTop | Marketplace de repuestos automotrices de Chile" />
     <meta property="og:description" content="Busca repuestos para tu auto por patente o por marca, modelo y año, y compara precios de tiendas de todo Chile." />
-    <meta property="og:image" content="https://repuestop.cl/og-repuestop.png" />
+    <!-- 10-nov: logo centrado. Google recorta la miniatura a cuadrado y con la imagen anterior
+         (texto a la izquierda y patente a la derecha) mostraba solo un pedazo del afiche. -->
+    <meta property="og:image" content="https://repuestop.cl/og-repuestop-logo.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="RepuesTop: repuestos para tu auto, de tiendas de todo Chile" />
+    <meta property="og:image:alt" content="Logo de RepuesTop, marketplace de repuestos automotrices de Chile" />
     <meta name="twitter:card" content="summary_large_image" />
     <!-- 22-oct: datos estructurados para que Google muestre "RepuesTop" como nombre del sitio y
          reconozca la marca y el logo. JSON-LD no se ejecuta, asi que la CSP no lo bloquea. -->
@@ -35,16 +37,38 @@
             "@type": "WebSite",
             "name": "RepuesTop",
             "alternateName": ["Repuestop", "RepuesTop Chile"],
-            "url": "https://repuestop.cl/"
+            "url": "https://repuestop.cl/",
+            "publisher": { "@id": "https://repuestop.cl/#organizacion" }
           },
           {
             "@type": "Organization",
+            "@id": "https://repuestop.cl/#organizacion",
             "name": "RepuesTop",
             "legalName": "COREBIT SpA",
             "url": "https://repuestop.cl/",
             "logo": "https://repuestop.cl/icon-512.png",
+            "image": "https://repuestop.cl/og-repuestop-logo.png",
             "email": "contacto@repuestop.cl",
-            "sameAs": ["https://play.google.com/store/apps/details?id=cl.repuestop.app"],
+            "address": {
+              "@type": "PostalAddress",
+              "streetAddress": "Pérez Valenzuela 1572, oficina 411",
+              "addressLocality": "Providencia",
+              "addressRegion": "Región Metropolitana",
+              "addressCountry": "CL"
+            },
+            "areaServed": { "@type": "Country", "name": "Chile" },
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "contactType": "customer support",
+              "email": "contacto@repuestop.cl",
+              "areaServed": "CL",
+              "availableLanguage": "es"
+            },
+            "sameAs": [
+              "https://www.facebook.com/people/RepuesTop/61592575473272/",
+              "https://www.instagram.com/repuestop_oficial/",
+              "https://play.google.com/store/apps/details?id=cl.repuestop.app"
+            ],
             "description": "Marketplace de repuestos automotrices de Chile: busca por patente o por marca, modelo y año y compara precios de tiendas de todo el país."
           }
         ]

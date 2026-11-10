@@ -5,7 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { ROUTES, parseIdSlug } from '../routes/paths';
-import { useDocumentTitle } from '../routes/useDocumentTitle';
 
 const SELLER_ROLES = ['SELLER', 'PROVIDER', 'PROVEEDOR'];
 
@@ -24,7 +23,7 @@ export default function StorePage() {
     preloaded && String(preloaded.id) === String(storeId) ? preloaded : { id: storeId }
   ), [preloaded, storeId]);
 
-  useDocumentTitle(preloaded?.nombre || 'Tienda');
+  // El titulo (y el SEO) lo fija StorePublicProfileView con la ficha completa.
 
   const ownsStore = SELLER_ROLES.includes(role) && (
     String(user?.sellerId || '') === String(storeId)

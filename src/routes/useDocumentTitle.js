@@ -20,11 +20,21 @@ export function useDocumentTitle(title) {
  * como páginas reales con el texto de "Página no encontrada".
  */
 export function useNoIndex() {
+  useNoIndexWhen(true);
+}
+
+/**
+ * Igual que useNoIndex, pero solo mientras `activo` sea verdadero: la ficha de un repuesto o de
+ * una tienda que ya no esta publicada responde 200 con "No encontramos...", y sin esto Google la
+ * guardaria como una pagina real (soft 404).
+ */
+export function useNoIndexWhen(activo) {
   useEffect(() => {
+    if (!activo) return undefined;
     const meta = document.createElement('meta');
     meta.name = 'robots';
     meta.content = 'noindex';
     document.head.appendChild(meta);
     return () => { meta.remove(); };
-  }, []);
+  }, [activo]);
 }

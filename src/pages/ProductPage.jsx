@@ -7,7 +7,8 @@ import { useAuth } from '../context/AuthContext';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
 import { ROUTES, parseIdSlug } from '../routes/paths';
-import { useDocumentTitle } from '../routes/useDocumentTitle';
+import { useDocumentTitle, useNoIndexWhen } from '../routes/useDocumentTitle';
+import { productSeo, usePageSeo } from '../routes/pageSeo';
 import { getPublicProductApi, getPublicProductsApi } from '../services/api';
 import { adaptPage, adaptProduct } from '../services/adapters';
 import { qk } from '../services/queryKeys';
@@ -57,6 +58,9 @@ export default function ProductPage() {
   });
 
   useDocumentTitle(product?.titulo || 'Repuesto');
+  // Despues del titulo: og:title toma el document.title que acaba de fijarse.
+  usePageSeo(error ? null : productSeo(product));
+  useNoIndexWhen(Boolean(error));
 
   if (error) {
     return (

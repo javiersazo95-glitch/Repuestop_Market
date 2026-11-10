@@ -1,19 +1,21 @@
 # ==========================================================================
-# APERTURA PARCIAL (20-oct, decision del usuario: opcion A)
+# APERTURA DEL CATALOGO (10-nov, decision del usuario)
 #
-# Mientras se captan tiendas, se indexan solo las paginas institucionales
-# (inicio, vender, nosotros, ayuda y legales): una tienda que recibe la tarjeta
-# y busca "RepuesTop" en Google encuentra el sitio. El catalogo y las tiendas
-# quedan fuera hasta que haya productos reales; sin eso Google clasificaria
-# esas rutas como paginas pobres y llegariamos al lanzamiento arrastrandolo.
+# 20-oct (opcion A): se indexaban solo las paginas institucionales mientras se
+# captaban tiendas. 10-nov: con productos reales publicados se abren tambien el
+# catalogo, las fichas de repuesto y las fichas de tienda. Cada ficha trae su
+# descripcion, canonical y datos de producto (src/routes/pageSeo.js) y el backend
+# arma su sitemap (/sitemap-catalogo.xml, ver vercel.json).
 #
 # Google aplica la regla mas especifica (la mas larga): "Allow: /$" abre solo
-# el inicio y "Disallow: /" cierra todo lo demas. Los archivos de /assets y las
-# imagenes se abren porque Google necesita el JavaScript para ver la pagina.
+# el inicio y "Disallow: /" cierra todo lo demas, asi que lo privado (perfil,
+# carrito, checkout, compra) sigue cerrado sin listarlo. Las combinaciones de
+# filtros del catalogo (?categoria=...&marca=...) son infinitas y repiten las
+# mismas fichas: "Disallow: /repuestos?" es mas larga que "Allow: /repuestos" y
+# las deja fuera. Los archivos de /assets y las imagenes se abren porque Google
+# necesita el JavaScript para ver la pagina.
 #
-# PARA EL LANZAMIENTO A COMPRADORES (con getapi.cl y catalogo minimo): borrar
-# este bloque y descomentar la configuracion completa de abajo (plan P3-12), y sumar
-# /repuestos y /tiendas a src/routes/seoPages.js para que entren al sitemap.
+# PENDIENTE: talleres y fallas siguen cerrados hasta decidir su indexacion.
 # ==========================================================================
 User-agent: *
 Allow: /$
@@ -22,9 +24,14 @@ Allow: /nosotros
 Allow: /ayuda
 Allow: /terminos
 Allow: /privacidad
+Allow: /repuestos
+Disallow: /repuestos?
+Allow: /tiendas
+Disallow: /tiendas?
 Allow: /assets/
 Allow: /about-assets/
 Allow: /brand-logos/
+Allow: /category-parts/
 Allow: /*.png$
 Allow: /*.svg$
 Allow: /*.webp$
@@ -32,22 +39,12 @@ Allow: /*.jpg$
 Allow: /*.ico$
 Allow: /site.webmanifest
 Allow: /googledb5011289430debb.html
-# Sin esto el sitemap queda bajo el "Disallow: /" y Search Console dice "No se ha podido obtener".
+# Sin esto los sitemaps quedan bajo el "Disallow: /" y Search Console dice "No se ha podido obtener".
 Allow: /sitemap.xml
+Allow: /sitemap-catalogo.xml
 Disallow: /
 
-# El sitemap lista solo las paginas abiertas arriba (se genera desde src/routes/seoPages.js).
+# Paginas institucionales y listados (se genera desde src/routes/seoPages.js).
 Sitemap: https://repuestop.cl/sitemap.xml
-
-# --- Configuracion completa, activar en el lanzamiento a compradores ---
-# User-agent: *
-# Allow: /
-#
-# # Rutas privadas o de un solo uso: no aportan nada al indice y algunas exigen sesion.
-# Disallow: /perfil
-# Disallow: /carrito
-# Disallow: /checkout
-# Disallow: /compra-exitosa
-# Disallow: /404
-#
-# Sitemap: https://repuestop.cl/sitemap.xml
+# Fichas de repuesto y de tienda publicadas (lo arma el backend en cada consulta, con cache de 1 hora).
+Sitemap: https://repuestop.cl/sitemap-catalogo.xml
