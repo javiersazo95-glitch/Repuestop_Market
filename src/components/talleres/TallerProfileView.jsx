@@ -62,7 +62,9 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
   const canWhatsapp = Boolean(taller.whatsapp);
 
   const allPhotos = [taller.cover, ...taller.photos];
-  const photos = allPhotos.filter((src, index) => src && !coverError[index]);
+  const mobilePhotos = allPhotos.filter((src, index) => src && !coverError[index]);
+  // En la ficha de escritorio la portada no va en la galeria (se repetia en todos los servicios): solo las fotos del taller.
+  const photos = (taller.photos || []).filter((src, index) => src && !coverError[index + 1]);
   const mainCategory = taller.categories[0];
   const CategoryIcon = getCategoryIcon(mainCategory);
   const categoryLabels = useMemo(() => taller.categories
@@ -136,7 +138,7 @@ export default function TallerProfileView({ taller, onBack, backLabel = 'Volver 
       <>
         <TallerProfileMobile
           taller={taller}
-          photos={photos}
+          photos={mobilePhotos}
           isSaved={isSaved}
           onToggleSaved={() => { if (!isLoggedIn) { openAuthModal(); return; } toggleTaller(taller); }}
           onShare={handleShare}
