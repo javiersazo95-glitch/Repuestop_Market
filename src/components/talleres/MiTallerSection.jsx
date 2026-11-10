@@ -15,6 +15,8 @@ import AccreditationModal from './AccreditationModal';
 import CapturerContactCard from '../CapturerContactCard';
 import NextStepsBanner from './NextStepsBanner';
 import AgendaConfigModal from './AgendaConfigModal';
+import BookingProgressInfo from '../workshop/BookingProgressInfo';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import MyAppointmentsHub from './MyAppointmentsHub';
 import TallerProfileEditor from './TallerProfileEditor';
 import { getAgendaConfigs } from '../../services/agendaConfigsStorage';
@@ -55,6 +57,7 @@ export default function MiTallerSection() {
 
 function WorkshopSection() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const accreditation = useAutomotiveAccreditation(Boolean(user));
   const [isAccreditationOpen, setIsAccreditationOpen] = useState(false);
   const [principalAgenda, setPrincipalAgenda] = useState(null); // { config, exists } | null
@@ -194,6 +197,9 @@ function WorkshopSection() {
                   <RefreshCw size={15} className={isLoading ? 'spin-icon' : ''} />
                   <span>Actualizar</span>
                 </button>
+
+                {/* Web: el avance del servicio de agendamiento (antes un item del menu) se ve desde este icono. */}
+                {!isMobile && <BookingProgressInfo />}
 
                 {/* Estado del expediente de servicio automotriz, compacto: es el requisito para
                     aparecer en el buscador. */}

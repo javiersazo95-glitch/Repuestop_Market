@@ -283,8 +283,6 @@ const WORKSHOP_SIDEBAR_GROUPS = [
     flag: 'market.perfil.taller.mi-taller',
     items: [
       { id: 'mural_fallas', label: 'Fallas automotrices', icon: EngineIcon, href: ROUTES.faults },
-      { id: 'fallas_taller', label: 'Mis diagnósticos', icon: EngineIcon },
-      { id: 'diagnostico', label: 'Servicio de agendamiento', icon: CalendarClock },
       { id: 'mi_taller', label: 'Mi taller', icon: Wrench },
       { id: 'citas_taller', label: 'Citas del taller', icon: CalendarClock },
       { id: 'invitar_compradores', label: 'Invitar compradores', icon: QrCode }

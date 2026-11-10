@@ -7,6 +7,7 @@ import {
 import { fetchTokensBalance } from '../../services/walletStorage';
 import { ROUTES, profilePath } from '../../routes/paths';
 import ConfirmDialog from '../ConfirmDialog';
+import { useIsMobile } from '../../hooks/useIsMobile';
 import '../../styles/faults.css';
 import '../talleres/taller-profile.css';
 
@@ -19,6 +20,7 @@ function formatDate(iso) {
  * gratis con búsquedas de repuestos. Mismo contenido que `mobile/components/workshop/BookingServiceGuide.tsx`.
  */
 export default function ProfileDiagnosticPanel({ onOpenAds }) {
+  const isMobile = useIsMobile();
   const [status, setStatus] = useState(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -105,23 +107,27 @@ export default function ProfileDiagnosticPanel({ onOpenAds }) {
           {error && !confirming && <p className="ft-error" role="alert"><AlertCircle size={15} /> {error}</p>}
           <div className="ft-actions"><button type="button" className="ft-btn ft-btn-primary" onClick={requestActivate} disabled={busy || !status.agendaConfigurada}>{busy ? 'Procesando…' : actionLabel}</button></div>
         </section>
+        {/* El avance gratis vive en Mi taller (icono de informacion) en la web; el celular lo sigue viendo aqui. */}
+        {isMobile && (
+          <>
+            <section className="ft-card">
+              <h3 style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Gift size={20} /> O consíguelo gratis</h3>
+              <p className="ft-sub">Cuando se completan {status.necesidadesPorGratis} pedidos pagados por búsquedas de repuestos, se agregan {status.vigenciaDias} días a tu contador.</p>
+              <div className="ft-progress" role="progressbar" aria-valuemin={0} aria-valuemax={status.necesidadesPorGratis} aria-valuenow={done}><div style={{ width: `${Math.round(prizeProgress(status) * 100)}%` }} /></div>
+              <p className="ft-sub">{done}/{status.necesidadesPorGratis} · te faltan {status.necesidadesParaProximoGratis} · {status.periodosGanados} premios ganados</p>
+              <div className="ft-actions"><Link className="ft-btn ft-btn-outline" to={ROUTES.auctions}>Publicar una búsqueda de repuestos</Link></div>
+            </section>
 
-        <section className="ft-card">
-          <h3 style={{ display: 'flex', gap: 8, alignItems: 'center' }}><Gift size={20} /> O consíguelo gratis</h3>
-          <p className="ft-sub">Cuando se completan {status.necesidadesPorGratis} pedidos pagados por búsquedas de repuestos, se agregan {status.vigenciaDias} días a tu contador.</p>
-          <div className="ft-progress" role="progressbar" aria-valuemin={0} aria-valuemax={status.necesidadesPorGratis} aria-valuenow={done}><div style={{ width: `${Math.round(prizeProgress(status) * 100)}%` }} /></div>
-          <p className="ft-sub">{done}/{status.necesidadesPorGratis} · te faltan {status.necesidadesParaProximoGratis} · {status.periodosGanados} premios ganados</p>
-          <div className="ft-actions"><Link className="ft-btn ft-btn-outline" to={ROUTES.auctions}>Publicar una búsqueda de repuestos</Link></div>
-        </section>
-
-        {referrals && (
-          <section className="ft-card">
-            <h3 style={{ display: 'flex', gap: 8, alignItems: 'center' }}><QrCode size={20} /> O invita compradores</h3>
-            <p className="ft-sub">Por cada {referrals.porPremio} compradores que se registren con el código de tu taller, se agregan {referrals.diasPorPeriodo} días a tu contador.</p>
-            <div className="ft-progress" role="progressbar" aria-valuemin={0} aria-valuemax={referrals.porPremio} aria-valuenow={referralsInCycle(referrals)}><div style={{ width: `${Math.round(referralsProgress(referrals) * 100)}%` }} /></div>
-            <p className="ft-sub">{referralsInCycle(referrals)}/{referrals.porPremio} · te faltan {referrals.paraProximo} · {referrals.periodosGanados} premios ganados</p>
-            <div className="ft-actions"><Link className="ft-btn ft-btn-outline" to={profilePath('invitar_compradores')}>Ver mi código QR</Link></div>
-          </section>
+            {referrals && (
+              <section className="ft-card">
+                <h3 style={{ display: 'flex', gap: 8, alignItems: 'center' }}><QrCode size={20} /> O invita compradores</h3>
+                <p className="ft-sub">Por cada {referrals.porPremio} compradores que se registren con el código de tu taller, se agregan {referrals.diasPorPeriodo} días a tu contador.</p>
+                <div className="ft-progress" role="progressbar" aria-valuemin={0} aria-valuemax={referrals.porPremio} aria-valuenow={referralsInCycle(referrals)}><div style={{ width: `${Math.round(referralsProgress(referrals) * 100)}%` }} /></div>
+                <p className="ft-sub">{referralsInCycle(referrals)}/{referrals.porPremio} · te faltan {referrals.paraProximo} · {referrals.periodosGanados} premios ganados</p>
+                <div className="ft-actions"><Link className="ft-btn ft-btn-outline" to={profilePath('invitar_compradores')}>Ver mi código QR</Link></div>
+              </section>
+            )}
+          </>
         )}
       </div>
       <ConfirmDialog
