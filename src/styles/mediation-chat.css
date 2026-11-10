@@ -1288,3 +1288,12 @@
 .mchat-aside-claim strong { color: var(--rt-text); font-size: 13px; }
 .mchat-aside-claim p { color: var(--rt-text-muted); font-size: 12.5px; line-height: 18px; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .mchat-aside-tips { display: grid; gap: 8px; margin: 0; padding-left: 18px; color: var(--rt-text-muted); font-size: 12.5px; line-height: 18px; }
+
+/* Popup "Vehiculo y boleta": un solo popup que muestra todo sin scroll horizontal (textos y nombre del archivo se ajustan). */
+.dispute-vehicle-dialog { width: min(520px, 100%); max-width: 100%; overflow-x: hidden; overflow-y: auto; }
+.dispute-vehicle-dialog, .dispute-vehicle-dialog * { min-width: 0; }
+.dispute-vehicle-dialog p, .dispute-vehicle-dialog small, .dispute-vehicle-dialog strong, .dispute-vehicle-dialog span { overflow-wrap: anywhere; }
+.dispute-vehicle-dialog .dispute-claim-dialog-body { padding: 14px 20px 18px; }
+.dispute-vehicle-dialog .dispute-claim-dialog-body button { max-width: 100%; white-space: normal; }
+.dispute-vehicle-dialog > header > button { min-width: 28px; }
+.dispute-vehicle-dialog svg { flex-shrink: 0; }

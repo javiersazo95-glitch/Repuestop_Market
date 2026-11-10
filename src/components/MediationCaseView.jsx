@@ -1792,7 +1792,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
       {showVehicleReceipt && typeof document !== 'undefined' && createPortal(
         <div className="dispute-dialog-backdrop" onClick={() => setShowVehicleReceipt(false)}>
           <section
-            className="dispute-dialog dispute-claim-dialog"
+            className="dispute-dialog dispute-claim-dialog dispute-vehicle-dialog"
             role="dialog"
             aria-modal="true"
             aria-label="Vehículo y boleta de la compra"
@@ -1835,7 +1835,7 @@ export default function MediationCaseView({ pedidoId, proveedorId, user, mode: m
               <div className="dispute-vehicle-card" style={{ border: '1px solid #e2e8f0', borderRadius: 10, padding: 12, display: 'grid', gap: 8 }}>
                 <small style={{ fontWeight: 700, color: '#0066ff', letterSpacing: '.04em' }}>BOLETA DE LA TIENDA</small>
                 {chat?.boletaVentaDisponible ? (
-                  <button type="button" onClick={() => setReceiptOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifySelf: 'start', padding: '8px 12px', borderRadius: 8, border: '1px solid #0066ff', background: '#fff', color: '#0066ff', fontWeight: 600, cursor: 'pointer' }}>
+                  <button type="button" onClick={() => setReceiptOpen(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, justifySelf: 'start', maxWidth: '100%', padding: '8px 12px', borderRadius: 8, border: '1px solid #0066ff', background: '#fff', color: '#0066ff', fontWeight: 600, cursor: 'pointer', textAlign: 'left', overflowWrap: 'anywhere' }}>
                     <FileText size={15} /> {chat.boletaVentaNombre || 'Ver boleta'}
                   </button>
                 ) : (
