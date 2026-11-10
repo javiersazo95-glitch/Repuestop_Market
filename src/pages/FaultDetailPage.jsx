@@ -8,7 +8,7 @@ import { citasPorFalla, citasSinRespuestaPorFalla, citaDayLabel, citaTexts } fro
 import {
   AlertCircle, AlertTriangle, ArrowLeft, Bookmark, Car, CheckCircle2, Clock,
   CalendarCheck, ChevronLeft, ChevronRight, Clock3, Eye, ExternalLink, FileText,
-  Loader2, Lock, MapPin, MapPinned, MessageCircle, Navigation, Pencil, Share2, Star, Tag, Truck, UserRound,
+  Loader2, Lock, MapPin, MapPinned, MessageCircle, MessageSquarePlus, Navigation, Pencil, Share2, Star, Tag, Truck, UserRound,
   Maximize2, Wrench, X, XCircle,
 } from 'lucide-react';
 import AuctionImageViewer from '../components/AuctionImageViewer';
@@ -285,38 +285,25 @@ export default function FaultDetailPage() {
   // Hasta 3 a la vista; el resto se abre en una ventana con "Ver todos". El diagnostico aceptado va primero.
   const LIMITE_VISIBLE = 3;
   const orderedDiagnostics = [...diagnostics].sort((a, b) => Number(Boolean(b.aceptado)) - Number(Boolean(a.aceptado)));
-  const shownDiagnostics = orderedDiagnostics.slice(0, LIMITE_VISIBLE);
+  // La columna de diagnosticos crece junto con la de comentarios: sin comentarios se resume en 1 registro y "Ver todos (N)".
+  const recordLimit = Math.min(LIMITE_VISIBLE, publicComments.length + 1);
+  const shownDiagnostics = orderedDiagnostics.slice(0, recordLimit);
   const newestComments = [...publicComments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   const shownComments = newestComments.slice(0, LIMITE_VISIBLE);
-  const renderDiagnosis = (diagnosis) => {
-                    const price = priceRange(diagnosis.precioDesde, diagnosis.precioHasta);
-                    const replies = repliesOf(diagnosis.id).length;
-                    const taller = diagnosis.taller;
-                    return (
-                      <li key={diagnosis.id} className={`fdt-card ${diagnosis.aceptado ? 'is-accepted' : ''}`}>
-                        {diagnosis.aceptado && <span className="fdt-ribbon"><CheckCircle2 size={13} /> Diagnóstico aceptado</span>}
-                        <div className="fdt-top">
-                          <TallerAvatar className="fdt-avatar" src={diagnosis.autorFotoUrl || taller?.logoUrl} name={diagnosis.autor} tallerId={taller?.tallerId} />
-                          <div className="fdt-info">
-                            <strong>{diagnosis.autor}</strong>
-                            <span className="fdt-meta">
-                              {taller && <TallerRating rating={taller.calificacion} count={taller.opiniones} />}
-                              {taller?.comuna && <span><MapPin size={12} /> {taller.comuna}</span>}
-                              <span><Clock size={12} /> {timeSince(diagnosis.createdAt)}</span>
-                            </span>
-                          </div>
-                          <span className={`fdt-price ${price ? '' : 'is-empty'}`}>{price || 'Sin precio estimado'}</span>
-                        </div>
-                        <p className="fdt-text">{diagnosis.texto}</p>
-                        <div className="fdt-foot">
-                          <span className="fdt-facts"><span><Tag size={13} /> {price ? 'Precio estimado' : 'Sin precio'}</span>{replies > 0 && <span><MessageCircle size={13} /> {replies} {replies === 1 ? 'respuesta' : 'respuestas'}</span>}</span>
-                          <span className="fdt-actions">
-                            {taller && <Link className="fdt-link" to={workshopPath(taller.tallerId)}>Ver perfil del taller</Link>}
-                            <button type="button" className="fdt-btn" onClick={() => { setAllDiagnosticsOpen(false); setDiagModal(diagnosis.id); }}><Wrench size={14} /> Ver diagnóstico</button>
-                          </span>
-                        </div>
-                      </li>
-                    );
+  // Solo registros: quien publico la falla ve una fila por taller y abre el diagnostico al tocarla.
+  const renderRecord = (diagnosis) => {
+    const taller = diagnosis.taller;
+    const price = priceRange(diagnosis.precioDesde, diagnosis.precioHasta);
+    return (
+      <li key={diagnosis.id}>
+        <button type="button" className="fdt-record" aria-label={`Ver el diagnóstico de ${diagnosis.autor}`} onClick={() => { setAllDiagnosticsOpen(false); setDiagModal(diagnosis.id); }}>
+          <TallerAvatar className="fdt-record-avatar" src={diagnosis.autorFotoUrl || taller?.logoUrl} name={diagnosis.autor} tallerId={taller?.tallerId} />
+          <span className="fdt-record-body"><strong>{diagnosis.autor}</strong><small>{[taller?.comuna, timeSince(diagnosis.createdAt), price].filter(Boolean).join(' · ')}</small>{taller && <TallerRating rating={taller.calificacion} count={taller.opiniones} />}</span>
+          {diagnosis.aceptado && <em>Aceptado</em>}
+          <ChevronRight size={15} />
+        </button>
+      </li>
+    );
   };
   const renderComment = (comment) => (
                     <li key={comment.id} className="fdt-card is-comment">
@@ -422,7 +409,7 @@ export default function FaultDetailPage() {
           </div>
         </section>
 
-        <div className="ft-detail-columns">
+        <div className={`ft-detail-columns ${fault.requiereRecogida ? 'has-location' : ''}`}>
           <div className="ft-detail-column">
             <div className="ft-detail-case-group">
               <DetailPanel icon={AlertTriangle} title="¿Qué pasó?" tone="is-alert"><p>{fault.descripcion || 'El usuario no describió lo que pasó.'}</p></DetailPanel>
@@ -435,8 +422,7 @@ export default function FaultDetailPage() {
                   <h2>{publicComments.length === 1 ? 'Comentario público' : 'Comentarios públicos'}</h2>
                   <small>Ayudan a afinar el diagnóstico. Todos los talleres pueden verlos y comentar.</small>
                 </div>
-                {!fault.propia && publicDiagnoses.length > 0 && <button type="button" className="fdt-banner-btn" onClick={() => setPublicDiagnosesOpen(true)}><Wrench size={15} /> Diagnósticos ({publicDiagnoses.length})</button>}
-                {isWorkshop && fault.vigente && <button type="button" className="fdt-banner-btn is-solid" onClick={() => setCommentFormOpen((value) => !value)}><MessageCircle size={15} /> Agregar comentario</button>}
+                {isWorkshop && fault.vigente && <button type="button" className="fdt-banner-btn" onClick={() => setCommentFormOpen((value) => !value)}><MessageSquarePlus size={15} /> Comentar</button>}
               </div>
               {publicComments.length === 0 && !commentFormOpen ? (
                 <div className="fdt-empty"><MessageCircle size={22} /><strong>Aún no hay comentarios</strong><p>Las preguntas de los talleres aparecerán aquí.</p></div>
@@ -510,21 +496,22 @@ export default function FaultDetailPage() {
                 <span className="fdt-private"><Lock size={13} /> Privado</span>
               </div>
               <p className="fdt-note"><Lock size={14} /> {fault.propia ? 'Solo tú y el taller que lo escribió ven cada diagnóstico.' : 'El detalle de cada diagnóstico solo lo ve quien publicó la falla y el taller que lo escribió.'}</p>
-              {diagnostics.length === 0 ? (
-                !fault.propia && publicDiagnoses.length > 0 ? null : (
-                  <div className="fdt-empty"><Wrench size={22} /><strong>Aún no hay diagnósticos</strong><p>Cuando un taller la diagnostique, lo verás aquí.</p></div>
-                )
-              ) : (
-                <ul className="fdt-list">
-                  {shownDiagnostics.map(renderDiagnosis)}
-                </ul>
+              {fault.propia ? (
+                diagnostics.length === 0
+                  ? <div className="fdt-empty"><Wrench size={22} /><strong>Aún no hay diagnósticos</strong><p>Cuando un taller la diagnostique, lo verás aquí.</p></div>
+                  : <div className="fdt-records" aria-label="Talleres que ya diagnosticaron">
+                    <h3><Wrench size={14} /> {diagnostics.length === 1 ? '1 taller ya diagnosticó tu falla' : `${diagnostics.length} talleres ya diagnosticaron tu falla`}</h3>
+                    <ul>{shownDiagnostics.map(renderRecord)}</ul>
+                    {diagnostics.length > recordLimit && <button type="button" className="fdt-more" onClick={() => setAllDiagnosticsOpen(true)}>Ver todos ({diagnostics.length})</button>}
+                  </div>
+              ) : publicDiagnoses.length === 0 && diagnostics.length === 0 && (
+                <div className="fdt-empty"><Wrench size={22} /><strong>Aún no hay diagnósticos</strong><p>Cuando un taller la diagnostique, lo verás aquí.</p></div>
               )}
-              {diagnostics.length > LIMITE_VISIBLE && <button type="button" className="fdt-more" onClick={() => setAllDiagnosticsOpen(true)}>Ver todos los diagnósticos ({diagnostics.length})</button>}
               {!fault.propia && publicDiagnoses.length > 0 && (
                 <div className="fdt-records" aria-label="Talleres que ya diagnosticaron">
                   <h3><Wrench size={14} /> {publicDiagnoses.length === 1 ? '1 taller ya diagnosticó esta falla' : `${publicDiagnoses.length} talleres ya diagnosticaron esta falla`}</h3>
                   <ul>
-                    {publicDiagnoses.slice(0, LIMITE_VISIBLE).map((item) => (
+                    {publicDiagnoses.slice(0, recordLimit).map((item) => (
                       <li key={`${item.tallerId}-${item.createdAt}`}>
                         <Link className="fdt-record" to={workshopPath(item.tallerId)} aria-label={`Ver el perfil del taller ${item.nombre}`}>
                           <TallerAvatar className="fdt-record-avatar" src={item.logoUrl} name={item.nombre} tallerId={item.tallerId} />
@@ -536,7 +523,7 @@ export default function FaultDetailPage() {
                       </li>
                     ))}
                   </ul>
-                  {publicDiagnoses.length > LIMITE_VISIBLE && <button type="button" className="fdt-more" onClick={() => setPublicDiagnosesOpen(true)}>Ver todos los talleres ({publicDiagnoses.length})</button>}
+                  {publicDiagnoses.length > recordLimit && <button type="button" className="fdt-more" onClick={() => setPublicDiagnosesOpen(true)}>Ver todos ({publicDiagnoses.length})</button>}
                 </div>
               )}
               {isWorkshop && fault.vigente && !myDiagnosis && fault.diagnosticoAceptado && <p className="fdt-closed-note" role="note"><Lock size={14} aria-hidden="true" /> El cliente ya aceptó un diagnóstico: esta falla no recibe diagnósticos nuevos.</p>}
@@ -560,7 +547,7 @@ export default function FaultDetailPage() {
       </div></div>}
       {allDiagnosticsOpen && <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => setAllDiagnosticsOpen(false)}><div className="ft-modal fdt-all-modal" onClick={(event) => event.stopPropagation()}>
         <div className="ft-modal-head"><h2><Wrench size={16} /> Diagnósticos de talleres ({diagnostics.length})</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => setAllDiagnosticsOpen(false)}><X size={20} /></button></div>
-        <ul className="fdt-list">{orderedDiagnostics.map(renderDiagnosis)}</ul>
+        <div className="fdt-records"><ul>{orderedDiagnostics.map(renderRecord)}</ul></div>
       </div></div>}
       {allCommentsOpen && <div className="ft-modal-backdrop" role="dialog" aria-modal="true" onClick={() => setAllCommentsOpen(false)}><div className="ft-modal fdt-all-modal" onClick={(event) => event.stopPropagation()}>
         <div className="ft-modal-head"><h2><MessageCircle size={16} /> Comentarios públicos ({publicComments.length})</h2><button type="button" className="ft-icon-btn" aria-label="Cerrar" onClick={() => setAllCommentsOpen(false)}><X size={20} /></button></div>
