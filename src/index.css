@@ -2888,7 +2888,10 @@ input, select, textarea {
   max-width: 560px;
   min-width: 0;
   max-height: calc(100dvh - 16px);
-  overflow: hidden;
+  /* Con "hidden", en celulares el aviso de error empujaba el boton Ingresar fuera de la
+     pantalla y no habia como llegar a el. Solo aparece scroll cuando el contenido no cabe. */
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .modal-backdrop:has(> .auth-modal-card--login) { padding-block: 8px; }
