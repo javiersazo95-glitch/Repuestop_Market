@@ -4,6 +4,7 @@ import HomeFeaturedParts from '../components/home/HomeFeaturedParts';
 import HomeEncargarBanner from '../components/home/HomeEncargarBanner';
 import HomeFeaturedStores from '../components/home/HomeFeaturedStores';
 import HomeServiceBanners from '../components/home/HomeServiceBanners';
+import SocialProofTestimonials from '../components/SocialProofTestimonials';
 import { useMarketplace } from '../context/MarketplaceContext';
 import { useAuth } from '../context/AuthContext';
 import { useAppNavigation } from '../routes/useAppNavigation';
@@ -61,6 +62,11 @@ export default function HomePage() {
 
       {/* 4 y 5. Fallas automotrices y talleres (la cuenta vendedora no tiene talleres) */}
       <HomeServiceBanners showWorkshops={!isSellerAccount} />
+
+      {/* 6. Comentarios de usuarios */}
+      <Feature flag="market.home.testimonios">
+        <SocialProofTestimonials />
+      </Feature>
     </>
   );
 }
