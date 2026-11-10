@@ -1,17 +1,12 @@
 import React, { useState } from 'react';
-import { Bell, BellOff, Loader2, ShoppingBag, Store } from 'lucide-react';
+import { Bell, BellOff, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { updateNotificationPreferencesApi } from '../services/api';
 import { LEVEL_OPTIONS, preferencesFromUser } from '../utils/notificationPreferences';
 
-const SECTION = {
-  VENDEDOR: { title: 'Como vendedor', Icon: Store },
-  COMPRADOR: { title: 'Como comprador', Icon: ShoppingBag },
-};
-
 /**
- * Moderacion de notificaciones por perfil (Todas / Solo importantes / Silenciadas). Una tienda ve
- * dos secciones (vendedor y comprador); un comprador, una. Se guarda al tocar, en la cuenta, y vale
+ * Moderacion de notificaciones por perfil (Todas / Solo importantes / Silenciadas). Cada cuenta ve una sola
+ * seccion (la tienda no tiene modo comprador). Se guarda al tocar, en la cuenta, y vale
  * igual en la app. Se usa dentro del popover de la campana y en "Mis datos".
  *
  * `compact`: version del popover (sin descripciones largas).
@@ -24,7 +19,8 @@ export default function NotificationPreferencesPanel({ compact = false }) {
   const [saving, setSaving] = useState(null);
   const [error, setError] = useState('');
 
-  const profiles = isSeller ? ['VENDEDOR', 'COMPRADOR'] : ['COMPRADOR'];
+  // La tienda ya no tiene modo comprador: solo avisos como vendedor.
+  const profiles = isSeller ? ['VENDEDOR'] : ['COMPRADOR'];
 
   const select = async (profile, level) => {
     if (!userId || preferences[profile] === level || saving) return;
@@ -43,14 +39,10 @@ export default function NotificationPreferencesPanel({ compact = false }) {
   return (
     <div className={`notif-prefs ${compact ? 'notif-prefs--compact' : ''}`}>
       {profiles.map((profile) => {
-        const { title, Icon } = SECTION[profile];
         const current = preferences[profile];
         return (
-          <section key={profile} className="notif-prefs-section" aria-labelledby={`notif-prefs-${profile}`}>
-            {isSeller && (
-              <h4 id={`notif-prefs-${profile}`} className="notif-prefs-title"><Icon size={14} /> {title}</h4>
-            )}
-            <div className="notif-prefs-options" role="radiogroup" aria-label={isSeller ? `Notificaciones ${title.toLowerCase()}` : 'Notificaciones'}>
+          <section key={profile} className="notif-prefs-section">
+            <div className="notif-prefs-options" role="radiogroup" aria-label="Notificaciones">
               {LEVEL_OPTIONS[profile].map((option) => {
                 const selected = option.value === current;
                 const OptionIcon = option.value === 'NINGUNA' ? BellOff : Bell;

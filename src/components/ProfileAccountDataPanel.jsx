@@ -963,20 +963,15 @@ export default function ProfileAccountDataPanel({
                   </div>
                 )}
 
-                {/* Tambien para la tienda: son las direcciones donde RECIBE lo que compra (la app las
-                    tiene en "Direcciones de entrega"). La comercial de la tienda es aparte, arriba. */}
-                {(
-                  <BuyerAddressBook usuarioId={user?.userId} />
-                )}
+                {/* La tienda ya no compra (no hay modo comprador): no tiene direcciones de entrega. */}
+                {!isSeller && <BuyerAddressBook usuarioId={user?.userId} />}
                 <ChangePasswordCard user={{ ...user, taxId: storeInfo?.taxId || user?.taxId }} isSeller={isSeller} />
                 <div className="notif-prefs-card">
                   <div className="form-section-title" style={{ marginTop: '20px' }}>
                     <Bell size={15} /> Notificaciones
                   </div>
                   <p className="notif-prefs-intro">
-                    {isSeller
-                      ? 'Elige cuántos avisos quieres recibir en cada perfil. Se guarda en tu cuenta y vale también en la app.'
-                      : 'Elige cuántos avisos quieres recibir. Se guarda en tu cuenta y vale también en la app.'}
+                    Elige cuántos avisos quieres recibir. Se guarda en tu cuenta y vale también en la app.
                   </p>
                   <NotificationPreferencesPanel />
                 </div>
