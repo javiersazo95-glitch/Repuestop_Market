@@ -4,7 +4,7 @@
  * al contador `unread-count`; aqui solo se replica para la lista de la campana.
  *
  * Niveles: TODAS (todo) · IMPORTANTES (solo lo importante) · NINGUNA (silenciadas: sin push ni
- * contador, la bandeja conserva el historial atenuado). Los correos transaccionales no se tocan.
+ * contador, la bandeja conserva el historial atenuado). Los correos transaccionales no se tocan; el de encargo nuevo a la tienda si sigue NINGUNA (11-nov).
  */
 export const NOTIFICATION_LEVELS = ['TODAS', 'IMPORTANTES', 'NINGUNA'];
 
@@ -14,7 +14,7 @@ export const LEVEL_OPTIONS = {
   VENDEDOR: [
     { value: 'TODAS', title: 'Todas', description: 'Ventas, pedidos, cotizaciones, mensajes, preguntas, stock, citas, finanzas, soporte y cuenta.' },
     { value: 'IMPORTANTES', title: 'Solo importantes', description: 'Ventas nuevas, despachos y cancelaciones, solicitudes de cotización, disputas, citas, retiros, soporte y estado de tu tienda. Sin mensajes de chat, preguntas ni stock bajo.' },
-    { value: 'NINGUNA', title: 'Silenciadas', description: 'Sin push en el teléfono ni contador en la campana. La bandeja conserva el historial.' },
+    { value: 'NINGUNA', title: 'Silenciadas', description: 'Sin push en el teléfono, contador en la campana ni correos de encargos nuevos. La bandeja conserva el historial.' },
   ],
   COMPRADOR: [
     { value: 'TODAS', title: 'Todas', description: 'Cambios de tus pedidos, cotizaciones, mensajes, respuestas a tus preguntas, citas, soporte y cuenta.' },
