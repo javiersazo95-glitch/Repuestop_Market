@@ -298,9 +298,11 @@ export default function Footer() {
       </div>
 
       <div className="container reference-footer-bottom">
-        {/* O49: identificacion del operador (DS 6/2021, art. 7). */}
+        {/* O49: identificacion del operador (DS 6/2021, art. 7). 10-nov (decision del usuario): el RUT
+            sale del pie, como en los demas marketplaces chilenos; sigue en los Terminos y la Politica de
+            Privacidad (IDENTIFICACION_EMPRESA de legalTexts.js), enlazados aqui mismo en todas las paginas. */}
         <p>
-          © 2026 {EMPRESA.razonSocial} · RUT {EMPRESA.rut}.<br />
+          © 2026 {EMPRESA.razonSocial}.<br />
           {EMPRESA.domicilioCorto} · {EMPRESA.correo}<br />
           Todos los derechos reservados.
         </p>

@@ -8,7 +8,7 @@ export const FLOW_RATE_BASE = 0.0289;
 export const FLOW_IVA = 0.19;
 export const FLOW_RATE_WITH_IVA = FLOW_RATE_BASE * (1 + FLOW_IVA);
 // Marcha blanca de Tienda Fundadora (2026-10-18): tarifa de servicio RepuesTop 0% (gratis)
-// durante los primeros 2 meses desde la aprobacion, para las primeras 100 tiendas aprobadas.
+// durante la marcha blanca desde la aprobacion (1 mes; 2 si postulo hasta el 10-nov), para las primeras 100 tiendas aprobadas.
 // En ese periodo el vendedor solo paga la pasarela Flow. Antes era 5% fijo por 3 meses.
 export const FOUNDER_APP_RATE = 0;
 // Tarifa estandar pareja para tiendas verificadas (7 % + IVA, sin tramos ni tope; 2026-10-18).
@@ -19,7 +19,23 @@ export const STANDARD_APP_RATE = 0.07;
 export const COMMISSION_IVA = 0.19;
 // Constantes de copy: las pantallas que explican el beneficio las usan para no repetir numeros
 // escritos a mano (modal/postulacion de fundador, ayuda, perfil del vendedor).
-export const FOUNDER_FREE_MONTHS = 2;
+// 2026-11-10: la marcha blanca dura 1 mes para quien postula desde el 11-nov y 2 para quien postulo
+// hasta el 10-nov. Las pantallas de una tienda usan founderFreeMonths() con sus fechas; esta
+// constante es el plazo que se ofrece a las tiendas nuevas y el respaldo sin fechas.
+export const FOUNDER_FREE_MONTHS = 1;
+
+/** "1 mes" / "2 meses". */
+export function founderMonthsLabel(months) {
+  return months === 1 ? '1 mes' : `${months} meses`;
+}
+
+/** Meses de marcha blanca de UNA tienda segun sus fechas; sin ellas, FOUNDER_FREE_MONTHS. */
+export function founderFreeMonths(founderSince, founderUntil) {
+  const desde = founderSince ? new Date(founderSince).getTime() : NaN;
+  const hasta = founderUntil ? new Date(founderUntil).getTime() : NaN;
+  if (Number.isNaN(desde) || Number.isNaN(hasta) || hasta <= desde) return FOUNDER_FREE_MONTHS;
+  return Math.max(1, Math.round((hasta - desde) / (1000 * 60 * 60 * 24 * 30.44)));
+}
 export const FOUNDER_STORE_QUOTA = 100;
 export const STANDARD_RATE_LABEL = '7%';
 // Si es false, el porcentaje es neto y el IVA (19%) se cobra adicional al vendedor (% + IVA)

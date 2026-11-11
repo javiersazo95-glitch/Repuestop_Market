@@ -5,7 +5,7 @@ import { Crown, X, Clock, ShieldCheck, CheckCircle2, Sparkles, ArrowRight, Perce
 import '../styles/founder.css';
 
 const BENEFITS = [
-  { icon: Percent, gradient: 'linear-gradient(135deg, #0066ff, #10c8e8)', title: 'Servicio gratis por 2 meses', text: 'Tarifa de servicio RepuesTop 0% durante tus primeros 2 meses de marcha blanca desde la aprobación: solo pagas Flow (2,89% + IVA). Después: 7% + IVA por venta.' },
+  { icon: Percent, gradient: 'linear-gradient(135deg, #0066ff, #10c8e8)', title: 'Servicio gratis por 1 mes', text: 'Tarifa de servicio RepuesTop 0% durante tu primer mes de marcha blanca desde la aprobación: solo pagas Flow (2,89% + IVA). Después: 7% + IVA por venta.' },
   { icon: Award, gradient: 'linear-gradient(135deg, #071b45, #0066ff)', title: 'Distintivo en publicaciones', text: 'Un sello oficial de "Fundador" que destaca tu tienda y genera mayor confianza con compradores.' },
   { icon: Radar, gradient: 'linear-gradient(135deg, #7257ff, #10c8e8)', title: 'Mayor visibilidad en RepuesTop', text: 'Tus repuestos aparecen destacados en las búsquedas por patente dentro de la plataforma web.' },
   { icon: Rocket, gradient: 'linear-gradient(135deg, #ffb800, #ff8a00)', title: 'Panel de gestión en tiempo real', text: 'Gestiona stock masivo, cotizaciones y pedidos desde tu panel de vendedor, sincronizado al instante con la vitrina pública.' }
@@ -55,7 +55,7 @@ export default function FounderModal({ isOpen, onClose, onApply }: { isOpen: boo
           <h2>Sé una Tienda <em>Fundadora</em> RepuesTop</h2>
           <p>Estamos eligiendo a los primeros proveedores de repuestos del país. Súmate ahora y asegura beneficios exclusivos que no volverán a repetirse.</p>
           <div className="founder-modal-stats">
-            <div><strong>0%</strong><span>Tarifa de servicio · 2 meses</span></div>
+            <div><strong>0%</strong><span>Tarifa de servicio · 1 mes</span></div>
             <div><strong>0$</strong><span>Costo de inscripción</span></div>
             <div><strong>24h</strong><span>Respuesta del equipo</span></div>
           </div>

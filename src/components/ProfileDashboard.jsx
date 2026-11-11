@@ -1597,7 +1597,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   (`PATCH /backoffice/founders/{id}` -> `Proveedor.fundador`, que viaja
                   en `TiendaResponseDTO.founder`). Antes salía para TODO vendedor, así
                   que cualquiera creía tener el beneficio.
-                  Marcha blanca (2026-10-18): servicio 0% por 2 meses desde la aprobación;
+                  Marcha blanca (2026-10-18): servicio 0% desde la aprobación (2 meses si postulo hasta el 10-nov, 1 mes desde el 11-nov);
                   `founderUntil` (puede venir null) alimenta el contador de días. Con 7 días
                   o menos el chip sube un poco el tono (`is-ending`). */}
               {isSeller && storeInfo?.founder && (() => {

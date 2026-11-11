@@ -153,7 +153,7 @@ export default function SellerChargesBreakdownModal({
 
         <p className="commission-footer-note">
           La tarifa de servicio estándar de RepuesTop es 7% + IVA sobre cada venta, sin tramos ni tope.
-          Las Tiendas Fundadoras tienen 2 meses de marcha blanca con tarifa 0% desde su aprobación
+          Las Tiendas Fundadoras tienen una marcha blanca con tarifa 0% desde su aprobación (1 mes si postularon desde el 11 de noviembre de 2026; 2 meses si postularon antes)
           (solo pagan Flow); después rige el 7% + IVA.
         </p>
 

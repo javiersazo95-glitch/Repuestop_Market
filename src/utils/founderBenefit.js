@@ -1,10 +1,10 @@
 // Las tasas de los textos se leen al momento (`standardRateLabel()`, `flowRateLabel()`): vienen
 // del Mantenedor comun y una constante de modulo dejaria el copy con la tasa vieja.
-import { FOUNDER_FREE_MONTHS, calculateSellerEarnings, flowRateLabel, standardRateLabel } from './pricing';
+import { calculateSellerEarnings, flowRateLabel, founderFreeMonths, founderMonthsLabel, standardRateLabel } from './pricing';
 
 /**
  * Marcha blanca de Tienda Fundadora: tarifa de servicio RepuesTop 0% durante los primeros
- * 2 meses desde la aprobacion. El backend manda `founderUntil` (ISO-8601 OffsetDateTime,
+ * 1 mes desde la aprobacion (2 si postulo hasta el 10-nov). El backend manda `founderUntil` (ISO-8601 OffsetDateTime,
  * puede venir null) en login, registro y `GET /proveedores/{id}/tienda`; aca se traduce a
  * dias restantes y a los textos que ven el vendedor y el perfil.
  *
@@ -65,7 +65,8 @@ export function founderAfterLabel() {
  */
 export function founderBenefitTooltip(founderUntil) {
   const until = founderEndsAtDateLabel(founderUntil);
-  const span = `tu marcha blanca de ${FOUNDER_FREE_MONTHS} meses${until ? ` (hasta ${until})` : ''}`;
+  // Solo se conoce el termino: no se dicen meses (1 o 2 segun cuando postulo la tienda).
+  const span = `tu marcha blanca${until ? ` (hasta ${until})` : ''}`;
   return `0% de tarifa de servicio RepuesTop durante ${span}. Solo pagas Flow ${flowRateLabel()} + IVA. ${founderAfterLabel()}`;
 }
 
@@ -80,6 +81,7 @@ const clp = (value) => `$${Math.round(value).toLocaleString('es-CL')}`;
  */
 export function founderBenefitDetails(founderSince, founderUntil, now = new Date()) {
   const { daysLeft, isExpired, endsAt } = founderDaysLeft(founderUntil, now);
+  const plazo = founderMonthsLabel(founderFreeMonths(founderSince, founderUntil));
   const since = founderEndsAtDateLabel(founderSince);
   const until = founderEndsAtDateLabel(founderUntil);
   const status = !endsAt
@@ -93,7 +95,7 @@ export function founderBenefitDetails(founderSince, founderUntil, now = new Date
     sections: [
       {
         title: '¿En qué consiste el servicio gratis?',
-        text: `Por ser de las primeras tiendas de RepuesTop, durante tu marcha blanca de ${FOUNDER_FREE_MONTHS} meses no pagas comisión por venta a RepuesTop (0%). Solo se descuenta el costo de Flow, la pasarela de pago.`,
+        text: `Por ser de las primeras tiendas de RepuesTop, durante tu marcha blanca de ${plazo} no pagas comisión por venta a RepuesTop (0%). Solo se descuenta el costo de Flow, la pasarela de pago.`,
       },
       {
         title: '¿Qué es la comisión por venta?',
@@ -111,7 +113,7 @@ export function founderBenefitDetails(founderSince, founderUntil, now = new Date
         title: '¿Cuándo termina?',
         text: until
           ? `${isExpired ? 'Terminó' : 'Termina'} el ${until}. Desde esa fecha rige la comisión estándar de ${standardRateLabel()} + IVA por venta.`
-          : `${FOUNDER_FREE_MONTHS} meses después de la aprobación. Desde ahí rige la comisión estándar de ${standardRateLabel()} + IVA por venta.`,
+          : `${plazo[0].toUpperCase()}${plazo.slice(1)} después de la aprobación. Desde ahí rige la comisión estándar de ${standardRateLabel()} + IVA por venta.`,
       },
     ],
     example: {

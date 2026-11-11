@@ -831,7 +831,7 @@
   :root .repuestop-about-page .founder-reg-aside { padding: 18px 16px; }
   :root .repuestop-about-page .founder-reg-ribbon { font-size: 11px; }
   :root .repuestop-about-page .founder-reg-aside h1 { font-size: 22px; line-height: 1.2; margin: 8px 0 6px; }
-  /* Sin recorte: desde la marcha blanca (18-oct) este texto dice la tarifa 0%, los 2 meses y lo
+  /* Sin recorte: desde la marcha blanca (18-oct) este texto dice la tarifa 0%, el plazo y lo
      que se cobra despues, y con 3 lineas quedaba cortado en "tarifa de servicio RepuesTop...". */
   :root .repuestop-about-page .founder-reg-lead {
     margin-bottom: 14px;

@@ -180,7 +180,7 @@ export const HELP_CATEGORIES = [
       },
       {
         q: '¿Qué es la marcha blanca de Tienda Fundadora?',
-        a: 'Es el beneficio de las primeras 100 tiendas aprobadas en RepuesTop: tarifa de servicio 0% (gratis) durante sus primeros 2 meses desde la aprobación. En ese período solo pagas la pasarela Flow (2,89% + IVA). Después rige la tarifa estándar de 7% + IVA por venta; el costo de Flow se mantiene. Si tu cuenta lo tiene activo, verás la insignia con los días que te quedan en la cabecera de tu perfil y tus pedidos de ese período se liquidan sin tarifa RepuesTop.',
+        a: 'Es el beneficio de las primeras 100 tiendas aprobadas en RepuesTop: tarifa de servicio 0% (gratis) durante su primer mes desde la aprobación (las tiendas que postularon hasta el 10 de noviembre de 2026 conservan 2 meses). En ese período solo pagas la pasarela Flow (2,89% + IVA). Después rige la tarifa estándar de 7% + IVA por venta; el costo de Flow se mantiene. Si tu cuenta lo tiene activo, verás la insignia con los días que te quedan en la cabecera de tu perfil y tus pedidos de ese período se liquidan sin tarifa RepuesTop.',
         roles: [HELP_ROLES.SELLER],
         topicId: 'seller-orders',
       },
