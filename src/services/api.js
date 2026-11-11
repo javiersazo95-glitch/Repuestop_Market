@@ -1084,6 +1084,30 @@ export async function getConversationQuoteApi(conversationId) {
   return result && typeof result === 'object' ? result : null;
 }
 
+/**
+ * Pregunta de disponibilidad (Repuestín, conversación `consulta_repuesto`): la tienda ofrece un repuesto
+ * suyo como el principal de la pregunta (o lo cambia). Devuelve la conversación ya con el producto.
+ */
+export async function offerInquiryProductApi(conversationId, productoId) {
+  return fetchApi(`/conversaciones/${conversationId}/producto`, {
+    method: 'PUT',
+    body: JSON.stringify({ productoId: Number(productoId) }),
+  });
+}
+
+/** Otro repuesto del inventario ofrecido como mensaje del chat de la pregunta. Devuelve el mensaje. */
+export async function offerInquiryExtraProductApi(conversationId, productoId) {
+  return fetchApi(`/conversaciones/${conversationId}/repuestos-ofrecidos`, {
+    method: 'POST',
+    body: JSON.stringify({ productoId: Number(productoId) }),
+  });
+}
+
+/** La tienda responde "no lo tengo": queda como estado de la pregunta y el comprador recibe el aviso. */
+export async function markInquiryNoStockApi(conversationId) {
+  return fetchApi(`/conversaciones/${conversationId}/sin-repuesto`, { method: 'PUT' });
+}
+
 export async function markConversationReadApi(conversationId) {
   return fetchApi(`/conversaciones/${conversationId}/leidos`, { method: 'PUT' });
 }

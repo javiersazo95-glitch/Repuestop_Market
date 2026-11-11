@@ -5,6 +5,10 @@ import usePagedList from '../hooks/usePagedList';
 import ListPager from './ListPager';
 import { EmptyState } from './ProfileDashboard';
 import { isConversationPaused } from '../utils/quoteFlow';
+import InquiryCard, { RepuestinAvatar } from './inquiry/InquiryCard';
+import {
+  countInquiryNews, inquiryBuyerState, inquirySellerState, isInquiryConversation, isQuotesMenuConversation,
+} from '../utils/inquiry';
 
 /**
  * Pestaña "Cotizaciones"/"Mis cotizaciones" del panel de perfil. Extraida de
@@ -16,7 +20,9 @@ import { isConversationPaused } from '../utils/quoteFlow';
 // Vista del comprador (igual que `mobile/app/(buyer)/messages.tsx`): cada conversación es una solicitud, una cotización
 // recibida (también si pidió una modificación) o un acuerdo (conversación cerrada).
 const BUYER_FILTERS = [['all', 'Todos'], ['requests', 'Solicitudes'], ['quotes', 'Cotizaciones recibidas'], ['agreements', 'Acuerdos']];
+// Las preguntas de disponibilidad de Repuestín (`consulta_repuesto`) van en esta misma lista, como en la app.
 const buyerThreadState = (conversation) => {
+  if (isInquiryConversation(conversation)) return inquiryBuyerState(conversation);
   if (conversation.estado === 'CERRADA') return 'agreements';
   return conversation.cotizacion ? 'quotes' : 'requests';
 };
@@ -25,6 +31,7 @@ const buyerThreadState = (conversation) => {
 // respondidas (cotización enviada vigente) y cerradas.
 const SELLER_FILTERS = [['all', 'Todas'], ['pending', 'Sin responder'], ['sent', 'Respondidas'], ['closed', 'Cerradas']];
 const sellerThreadState = (conversation) => {
+  if (isInquiryConversation(conversation)) return inquirySellerState(conversation);
   if (conversation.estado === 'CERRADA') return 'closed';
   return !conversation.cotizacion || isConversationPaused(conversation) ? 'pending' : 'sent';
 };
@@ -44,7 +51,7 @@ export default function ProfileQuotesPanel({
   const quoteConversations = useMemo(() => {
     const query = quoteSearch.trim().toLowerCase();
     return (activeQuoteSource || [])
-      .filter((conversation) => !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion')
+      .filter(isQuotesMenuConversation)
       .filter((conversation) => {
         // Una modificación pendiente vuelve a dejar la conversación "sin responder".
         if (quotesAsBuyer && ['requests', 'quotes', 'agreements'].includes(quoteFilter)) return buyerThreadState(conversation) === quoteFilter;
@@ -54,23 +61,30 @@ export default function ProfileQuotesPanel({
       })
       .filter((conversation) => {
         if (!query) return true;
-        return [conversation.id, conversation.otroParticipanteNombre, conversation.productoNombre, conversation.productoSku, conversation.sku, conversation.ultimoMensaje]
+        return [conversation.id, conversation.otroParticipanteNombre, conversation.productoNombre, conversation.productoSku, conversation.sku, conversation.ultimoMensaje, conversation.consultaRepuesto, conversation.consultaVehiculo]
           .some((value) => String(value || '').toLowerCase().includes(query));
       })
       .sort((left, right) => {
+        // La tienda ve primero las preguntas de Repuestín con novedades: son las que piden más atención.
+        if (!quotesAsBuyer) {
+          const leftNews = isInquiryConversation(left) && Number(left.mensajesNoLeidos || 0) > 0 ? 1 : 0;
+          const rightNews = isInquiryConversation(right) && Number(right.mensajesNoLeidos || 0) > 0 ? 1 : 0;
+          if (leftNews !== rightNews) return rightNews - leftNews;
+        }
         const leftTime = new Date(left.ultimoMensajeFecha || left.updatedAt || 0).getTime() || 0;
         const rightTime = new Date(right.ultimoMensajeFecha || right.updatedAt || 0).getTime() || 0;
         return quoteSort === 'newest' ? rightTime - leftTime : leftTime - rightTime;
       });
   }, [activeQuoteSource, quoteFilter, quoteSearch, quoteSort, quotesAsBuyer]);
   const sellerCounts = useMemo(() => {
-    const quoteOnly = (activeQuoteSource || []).filter((conversation) => !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion');
+    const quoteOnly = (activeQuoteSource || []).filter(isQuotesMenuConversation);
     return SELLER_FILTERS.reduce((counts, [value]) => ({ ...counts, [value]: value === 'all' ? quoteOnly.length : quoteOnly.filter((conversation) => sellerThreadState(conversation) === value).length }), {});
   }, [activeQuoteSource]);
   const buyerCounts = useMemo(() => {
-    const quoteOnly = (activeQuoteSource || []).filter((conversation) => !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion');
+    const quoteOnly = (activeQuoteSource || []).filter(isQuotesMenuConversation);
     return BUYER_FILTERS.reduce((counts, [value]) => ({ ...counts, [value]: value === 'all' ? quoteOnly.length : quoteOnly.filter((conversation) => buyerThreadState(conversation) === value).length }), {});
   }, [activeQuoteSource]);
+  const inquiryNews = useMemo(() => (quotesAsBuyer ? 0 : countInquiryNews(activeQuoteSource)), [activeQuoteSource, quotesAsBuyer]);
   const { pageItems, pagerProps } = usePagedList(quoteConversations, JSON.stringify([quoteFilter, quoteSearch, quoteSort, quotesAsBuyer]));
 
   return (
@@ -95,6 +109,13 @@ export default function ProfileQuotesPanel({
         <article><Inbox size={18} /><span><strong>{sellerCounts.closed}</strong>Cerradas</span></article>
       </div>}
 
+      {inquiryNews > 0 && (
+        <div className="inq-inbox-banner" role="status">
+          <RepuestinAvatar size={32} />
+          <span><strong>{inquiryNews === 1 ? 'Tienes 1 pregunta de disponibilidad nueva' : `Tienes ${inquiryNews} preguntas de disponibilidad nuevas`}</strong> de compradores que Repuestín te recomendó. Respóndelas primero: van arriba de la lista.</span>
+        </div>
+      )}
+
       <div className="seller-quotes-toolbar">
         <label className="seller-quotes-search"><Search size={15} /><input value={quoteSearch} onChange={(event) => setQuoteSearch(event.target.value)} placeholder={quotesAsBuyer ? 'Buscar vendedor, repuesto o SKU' : 'Buscar comprador, producto o cotización...'} />{quoteSearch && <button type="button" onClick={() => setQuoteSearch('')} aria-label="Limpiar búsqueda"><X size={13} /></button>}</label>
         <div className="seller-quotes-filters" role="group" aria-label="Filtrar cotizaciones">
@@ -111,7 +132,9 @@ export default function ProfileQuotesPanel({
       ) : (
         <>
         <div className="profile-orders-cards-grid seller-quotes-grid">
-          {pageItems.map((c) => (
+          {pageItems.map((c) => (isInquiryConversation(c) ? (
+            <InquiryCard key={c.id} conversation={c} mode={quotesAsBuyer ? 'buyer' : 'seller'} onOpen={onSelectQuote} />
+          ) : (
             <QuoteCard
               key={c.id}
               quote={c}
@@ -120,7 +143,7 @@ export default function ProfileQuotesPanel({
               onQuickRespond={onSelectQuote}
               onOpenReport={(conversation) => onSelectQuote(conversation, { openReport: true })}
             />
-          ))}
+          )))}
         </div>
         <ListPager pagerProps={pagerProps} itemLabel="cotizaciones" />
         </>

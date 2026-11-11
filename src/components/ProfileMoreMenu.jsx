@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import { ROUTES } from '../routes/paths';
+import '../styles/inquiry.css';
 
 /**
  * Menú de la pestaña "Más" de la intranet del celular: es `app/(buyer)/account.tsx`, `app/(seller)/mas.tsx` y
@@ -110,7 +111,7 @@ const MENUS = {
 };
 
 export default function ProfileMoreMenu({
-  profile, displayName, email, avatarUrl, initials, stats = [], availableTabs, activeTab, storeLink = null, hints = {},
+  profile, displayName, email, avatarUrl, initials, stats = [], availableTabs, activeTab, storeLink = null, hints = {}, counts = {},
   onTab, onTo, onFeedback, onProfile, onDeleteAccount, onLogout, onClose, capturer = null,
 }) {
   // Botón «Mi reclutador» del encabezado del taller (como la app): abre los datos de quien lo captó.
@@ -178,10 +179,15 @@ export default function ProfileMoreMenu({
                 {items.map((item) => {
                   const Icon = item.icon;
                   const active = item.tab && activeTab === item.tab;
+                  // Novedades de la sección (p. ej. preguntas de disponibilidad nuevas en «Cotizaciones»).
+                  const count = item.tab ? Number(counts[item.tab] || 0) : 0;
+                  const label = count > 0 ? `${item.label} (${count} ${count === 1 ? 'nueva' : 'nuevas'})` : item.tab && hints[item.tab] ? `${item.label} (${hints[item.tab]})` : item.label;
                   return (
-                    <button key={`${title}-${item.label}`} type="button" className={active ? 'is-active' : ''} onClick={() => open(item)} aria-label={item.tab && hints[item.tab] ? `${item.label} (${hints[item.tab]})` : item.label}>
+                    <button key={`${title}-${item.label}`} type="button" className={active ? 'is-active' : ''} onClick={() => open(item)} aria-label={label}>
                       <span className="pmm-tile-icon" style={{ background: `${item.color}1F`, color: item.color }}><Icon size={20} />
-                        {item.tab && hints[item.tab] && <em className="pmm-tile-hint">{hints[item.tab]}</em>}
+                        {count > 0
+                          ? <em className="pmm-tile-count">{count > 99 ? '99+' : count}</em>
+                          : item.tab && hints[item.tab] && <em className="pmm-tile-hint">{hints[item.tab]}</em>}
                       </span>
                       <span className="pmm-tile-label">{item.label}</span>
                     </button>

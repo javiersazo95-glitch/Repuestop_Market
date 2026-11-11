@@ -58,6 +58,8 @@ import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import ProductTopManagementModal from './ProductTopManagementModal';
 import QuoteDetailModal from './QuoteDetailModal';
+import InquiryChatModal from './inquiry/InquiryChatModal';
+import { countInquiryNews, inquirySellerState, isInquiryConversation, isQuotesMenuConversation } from '../utils/inquiry';
 import ProfileSupportPanel from './ProfileSupportPanel';
 import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
 import SellerChatsView from './SellerChatsView';
@@ -659,6 +661,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     queryFn: ({ signal }) => isSeller ? getSellerConversationsApi(effectiveSellerId, { signal }) : getBuyerConversationsApi(effectiveUserId, { signal }),
     enabled: Boolean(isSeller ? effectiveSellerId : effectiveUserId),
     staleTime: 60 * 1000,
+    // La tienda se entera sola de una pregunta de disponibilidad nueva de Repuestín (contador del menú).
+    refetchInterval: isSeller ? 30 * 1000 : false,
   });
 
   // "Mis cotizaciones" del vendedor: las conversaciones de cotizacion donde el es el
@@ -1048,17 +1052,23 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   };
 
   const quoteSummary = useMemo(() => {
-    const quoteOnly = (activeQuoteSource || []).filter((conversation) => (
-      !conversation.tipo || String(conversation.tipo).toLowerCase() === 'cotizacion'
-    ));
+    // Las preguntas de disponibilidad de Repuestín también son del menú Cotizaciones (como en la app).
+    const quoteOnly = (activeQuoteSource || []).filter(isQuotesMenuConversation);
+    const isPending = (conversation) => (isInquiryConversation(conversation)
+      ? inquirySellerState(conversation) === 'pending'
+      : !conversation.cotizacion || isConversationPaused(conversation));
     return {
       total: quoteOnly.length,
       // Con una modificación pendiente la cotización está en pausa: vuelve a "por responder".
-      pending: quoteOnly.filter((conversation) => !conversation.cotizacion || isConversationPaused(conversation)).length,
-      sent: quoteOnly.filter((conversation) => Boolean(conversation.cotizacion) && !isConversationPaused(conversation)).length,
+      pending: quoteOnly.filter(isPending).length,
+      sent: quoteOnly.filter((conversation) => !isPending(conversation) && (isInquiryConversation(conversation) || Boolean(conversation.cotizacion))).length,
       unread: quoteOnly.reduce((total, conversation) => total + Number(conversation.mensajesNoLeidos || 0), 0),
     };
   }, [activeQuoteSource]);
+
+  // Contador del menú «Cotizaciones» de la tienda: solo preguntas de disponibilidad de Repuestín con novedades.
+  const inquiryNewsCount = useMemo(() => (isSeller ? countInquiryNews(conversations) : 0), [isSeller, conversations]);
+  const menuCounts = useMemo(() => ({ cotizaciones: inquiryNewsCount }), [inquiryNewsCount]);
 
   const handleCatalogSearchSubmit = (e) => {
     e.preventDefault();
@@ -1769,6 +1779,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                       >
                         <Icon size={17} />
                         <span>{tab.label}</span>
+                        {menuCounts[tab.id] > 0 && (
+                          <em className="inq-menu-count" aria-label={`${menuCounts[tab.id]} preguntas de disponibilidad nuevas`}>{menuCounts[tab.id] > 99 ? '99+' : menuCounts[tab.id]}</em>
+                        )}
                       </button>
                     );
                   })}
@@ -2096,8 +2109,11 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           aria-expanded={profileNavOpen}
           aria-controls="profile-more-sheet"
           onClick={() => setProfileNavOpen(true)}
+          aria-label={inquiryNewsCount > 0 ? `Más, ${inquiryNewsCount} preguntas de disponibilidad nuevas` : undefined}
+          style={inquiryNewsCount > 0 ? { position: 'relative' } : undefined}
         >
           <Menu size={22} />
+          {inquiryNewsCount > 0 && <em className="inq-tab-count" aria-hidden="true">{inquiryNewsCount > 99 ? '99+' : inquiryNewsCount}</em>}
           <span>Más</span>
         </button>
       </nav>
@@ -2114,6 +2130,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               initials={initialsFromName(displayName)}
               availableTabs={new Set([...sidebarItems.map((item) => item.id), 'repuestos', 'buscan'])}
               activeTab={activeTab}
+              counts={menuCounts}
               hints={isSeller ? {
                 tienda_envios: storeInfo && !String(storeInfo.shippingMethods || '').trim() ? 'Falta' : null,
                 tienda_bancarios: bankAccountQuery.isSuccess && !isCompleteBankAccount(bankAccountQuery.data) ? 'Falta' : null,
@@ -2161,7 +2178,22 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         />
       )}
 
-      {selectedQuote && (
+      {selectedQuote && isInquiryConversation(selectedQuote) && (
+        <InquiryChatModal
+          conversation={selectedQuote}
+          mode={quotesAsBuyer ? 'buyer' : 'seller'}
+          isFounder={isSellerFounder}
+          user={user}
+          onClose={() => {
+            setSelectedQuote(null);
+            openedQuoteDeepLinkRef.current = null;
+            onClearDeepLink?.('cotizacion');
+          }}
+          onChanged={handleQuoteMarkedRead}
+          onMarkedRead={handleQuoteMarkedRead}
+        />
+      )}
+      {selectedQuote && !isInquiryConversation(selectedQuote) && (
         <QuoteDetailModal
           quote={selectedQuote}
           initialReport={quoteOpenReport}
