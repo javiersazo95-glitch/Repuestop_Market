@@ -432,3 +432,42 @@
 .catalog-count-line .ra-entry-link { padding: 0; font-size: 12.5px; font-weight: 600; color: var(--ak-text-muted, #5a6b7a); gap: 5px; }
 .catalog-count-line .ra-entry-link:hover { color: var(--ak-primary, #0066ff); text-decoration: none; }
 .catalog-count-line .ra-entry-link .ra-repuestin { opacity: .9; }
+
+/* «¿No encuentras tu repuesto?» del catálogo: botón con fondo, borde y flecha para que se lea como algo que se toca. */
+.ra-entry-cta {
+  position: relative; display: inline-flex; align-items: center; gap: 10px; min-width: 0; max-width: 100%;
+  padding: 7px 12px 7px 7px; border: 1.5px solid var(--ak-primary, #0066ff); border-radius: 999px;
+  background: linear-gradient(135deg, #eef5ff 0%, #e3eeff 100%); color: var(--ak-text, #243442);
+  font: inherit; text-align: left; cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 102, 255, .14);
+  transition: transform .15s ease, box-shadow .15s ease, background .15s ease;
+}
+.ra-entry-cta:hover { transform: translateY(-1px); box-shadow: 0 8px 18px rgba(0, 102, 255, .22); background: #dfeaff; }
+.ra-entry-cta:active { transform: translateY(0); }
+.ra-entry-cta:focus-visible { outline: 3px solid rgba(0, 102, 255, .45); outline-offset: 3px; }
+.ra-entry-cta-avatar {
+  position: relative; display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 auto;
+  border-radius: 50%; background: #fff; box-shadow: 0 0 0 2px rgba(0, 102, 255, .18);
+}
+/* Un pulso suave alrededor de Repuestín llama la atención unas veces y se detiene (sin molestar). */
+.ra-entry-cta-avatar::after {
+  content: ''; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--ak-primary, #0066ff);
+  opacity: 0; animation: ra-entry-ping 1.8s ease-out .6s 4;
+}
+@keyframes ra-entry-ping { 0% { transform: scale(1); opacity: .55; } 100% { transform: scale(1.55); opacity: 0; } }
+.ra-entry-cta-copy { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
+.ra-entry-cta-copy strong { font-size: 14px; font-weight: 800; color: var(--ak-primary, #0066ff); }
+.ra-entry-cta-copy small { font-size: 12px; font-weight: 500; color: var(--ak-text-muted, #5a6b7a); }
+.ra-entry-cta-arrow { flex: 0 0 auto; margin-left: 2px; color: var(--ak-primary, #0066ff); transition: transform .15s ease; }
+.ra-entry-cta:hover .ra-entry-cta-arrow { transform: translateX(3px); }
+@media (max-width: 768px) {
+  /* En el celular ocupa todo el ancho, como una tarjeta bajo el contador de resultados. */
+  .catalog-count-line { width: 100%; }
+  .ra-entry-cta { width: 100%; border-radius: 14px; padding: 10px 12px 10px 10px; }
+  .ra-entry-cta-copy { flex: 1; }
+  .ra-entry-cta-copy strong { font-size: 15px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ra-entry-cta, .ra-entry-cta-arrow { transition: none; }
+  .ra-entry-cta-avatar::after { animation: none; }
+}

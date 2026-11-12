@@ -1500,8 +1500,14 @@ export default function PartsCatalogView({
                   )}
                 </div>
                 {!lockedStoreId && partAssistant.canAsk && (
-                  <button type="button" className="ra-entry-link" onClick={openAssistant} aria-label="¿No encuentras tu repuesto? Abrir el asistente">
-                    <RepuestinAvatar size={16} /> ¿No encuentras tu repuesto?
+                  // Botón con presencia (no un enlace gris): antes la persona no notaba que se podía tocar y seguía de largo.
+                  <button type="button" className="ra-entry-cta" onClick={openAssistant} aria-label="¿No encuentras tu repuesto? Pregúntale a Repuestín">
+                    <span className="ra-entry-cta-avatar"><RepuestinAvatar size={26} /></span>
+                    <span className="ra-entry-cta-copy">
+                      <strong>¿No encuentras tu repuesto?</strong>
+                      <small>Pregúntale a Repuestín y te ayuda a conseguirlo</small>
+                    </span>
+                    <ChevronRight size={18} className="ra-entry-cta-arrow" aria-hidden="true" />
                   </button>
                 )}
               </div>
