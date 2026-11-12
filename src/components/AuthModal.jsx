@@ -82,15 +82,12 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
   const [loginMode, setLoginMode] = useState('email'); // 'email' | 'taxId'
   const [taxId, setTaxId] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  // Cómo entra la persona: «Con Google» (izquierda) o «manualmente» con sus datos (derecha). Se recuerda la última
-  // elección en este navegador. El perfil (comprador, tienda o taller) NO se elige: lo decide la cuenta.
-  const [loginMethod, setLoginMethodState] = useState(() => {
-    try { return localStorage.getItem('repuestop_login_method') === 'google' ? 'google' : 'manual'; } catch { return 'manual'; }
-  });
+  // Cómo entra la persona: «Con Google» (izquierda) o «manualmente» con sus datos (derecha). Siempre parte en
+  // Google, en escritorio y en móvil. El perfil (comprador, tienda o taller) NO se elige: lo decide la cuenta.
+  const [loginMethod, setLoginMethodState] = useState('google');
   const setLoginMethod = (method) => {
     setLoginMethodState(method);
     setErrorMessage(null);
-    try { localStorage.setItem('repuestop_login_method', method); } catch { /* sin almacenamiento */ }
   };
   
   // Buyer Register Extra State
@@ -142,6 +139,8 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
         setSelectedRole('BUYER');
       }
       resetCaptadorReferral(getStoredCaptadorReferral());
+      // Cada vez que se abre, el login parte en «Iniciar con Google».
+      setLoginMethodState('google');
     }
   }, [isOpen, modalOptions, resetCaptadorReferral]);
   
@@ -956,6 +955,13 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
             </>
           )}
 
+          {step === 'google_register' && (
+            <>
+              <h2>Crea tu cuenta con Google</h2>
+              <p>Elige tu cuenta de Google y luego el tipo de cuenta: comprador, tienda o taller.</p>
+            </>
+          )}
+
           {step === 'google_signup' && (
             <>
               <h2>Crea tu cuenta con Google</h2>
@@ -988,6 +994,33 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
           <div className="auth-alert alert-success">
             <CheckCircle2 size={18} />
             <span>{successMessage}</span>
+          </div>
+        )}
+
+        {/* ALTA DESDE LA PESTAÑA GOOGLE: primero la cuenta de Google; si ya existe entra directo,
+            si no, sigue a «google_role» (comprador, tienda o taller) con los datos de Google. */}
+        {step === 'google_register' && (
+          <div className="auth-modal-body">
+            <div className="auth-google-panel">
+              <GoogleSignInButton onCredential={handleGoogleCredential} disabled={isSubmitting} text="signup_with" />
+              <small className="auth-method-note">Si ese correo ya tiene cuenta en RepuesTop, entrarás directamente.</small>
+            </div>
+            <div className="auth-footer-switch">
+              <p>
+                ¿Ya tienes cuenta?{' '}
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => {
+                    setErrorMessage(null);
+                    setIsRegistrationFlow(false);
+                    setStep('login_form');
+                  }}
+                >
+                  Iniciar sesión
+                </button>
+              </p>
+            </div>
           </div>
         )}
 
@@ -1336,7 +1369,9 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                 onClick={() => {
                   setErrorMessage(null);
                   setIsRegistrationFlow(true);
-                  setStep('select_role');
+                  // Sigue la pestaña activa: en «Iniciar con Google» la cuenta se crea con Google;
+                  // en «Iniciar manualmente» sigue el alta de siempre (elegir tipo de cuenta y formulario).
+                  setStep(loginMethod === 'google' ? 'google_register' : 'select_role');
                 }}
               >
                 <UserPlus size={17} /> Crear cuenta

@@ -28,7 +28,8 @@ function initializeGoogleIdentity(onCredential) {
 }
 
 /** Boton «Continuar con Google»: entrega el idToken a `onCredential`. */
-export default function GoogleSignInButton({ onCredential, disabled }) {
+/** `text`: 'continue_with' (por defecto) o 'signup_with' para el alta. */
+export default function GoogleSignInButton({ onCredential, disabled, text = 'continue_with' }) {
   const containerRef = useRef(null);
   const credentialHandlerRef = useRef(onCredential);
 
@@ -51,7 +52,7 @@ export default function GoogleSignInButton({ onCredential, disabled }) {
         theme: 'outline',
         size: 'large',
         shape: 'pill',
-        text: 'continue_with',
+        text,
         logo_alignment: 'left',
         width: currentContainer.offsetWidth || 360,
       });
@@ -84,7 +85,7 @@ export default function GoogleSignInButton({ onCredential, disabled }) {
       }
       currentContainer.replaceChildren();
     };
-  }, [disabled]);
+  }, [disabled, text]);
 
   if (disabled) {
     return (
