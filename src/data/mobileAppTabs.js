@@ -24,7 +24,9 @@ export const MOBILE_APP_TABS = {
   ],
   workshop: [
     { key: 'inicio', label: 'Inicio', icon: Gauge, tab: 'resumen' },
-    { key: 'fallas', label: 'Fallas', icon: EngineIcon, tab: 'fallas_taller' },
+    // `fallas_taller` no está en el menú lateral (ahí va «Fallas automotrices» como enlace al mural): `virtual` evita que
+    // el panel la descarte al armar la barra, que es lo que la hacía desaparecer en la intranet del taller.
+    { key: 'fallas', label: 'Fallas', icon: EngineIcon, tab: 'fallas_taller', virtual: true },
     { key: 'repuestos', label: 'Repuestos', icon: Cog, tab: 'repuestos', virtual: true },
     { key: 'busco', label: 'Encargar', icon: Search, tab: 'subastas' },
   ],

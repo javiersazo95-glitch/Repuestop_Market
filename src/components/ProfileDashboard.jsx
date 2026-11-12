@@ -761,6 +761,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   const mobileSectionTitle = useMemo(() => {
     if (activeTab === 'feedback') return 'Dejar feedback';
     if (activeTab === 'repuestos') return 'Repuestos';
+    if (activeTab === 'fallas_taller') return 'Fallas automotrices';
     if (activeTab === 'buscan') return 'Atender encargos';
     if (SELLER_SETTINGS[activeTab]) return SELLER_SETTINGS[activeTab].title;
     return sidebarItems.find((item) => item.id === activeTab)?.label || 'Mi cuenta';
