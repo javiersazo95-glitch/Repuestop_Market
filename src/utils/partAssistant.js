@@ -19,6 +19,8 @@ export const EMPTY_ASSISTANT_CONTEXT = {
   version: '',
   chasis: '',
   catalogoId: '',
+  // Sin subcategoría (el repuesto no existe en el catálogo): la más parecida, para sugerir casas que trabajan algo similar.
+  subcategoriaParecidaId: '',
 };
 
 /** Normaliza lo que llega de afuera (catálogo, burbuja guardada): todo string, nada undefined. */
@@ -66,13 +68,18 @@ export function vehicleLabel(ctx) {
   return [ctx.marca, ctx.modelo, ctx.anio, ctx.version].map((part) => String(part || '').trim()).filter(Boolean).join(' ');
 }
 
+/** «Filtro de Aire» → «filtro de aire» dentro de una frase; las siglas («EGR», «CVVT») se respetan. */
+export function inSentence(text) {
+  return String(text || '').trim().split(' ').map((word) => (word.length > 1 && word === word.toUpperCase() ? word : word.toLowerCase())).join(' ');
+}
+
 /** Mensaje que ve la casa de repuestos (sin teléfonos ni enlaces: el chat los rechaza). */
 export function buildBroadcastText(ctx) {
   // Solo marca, modelo y año: la patente es privada y el chasis viaja aparte, en la ficha de la pregunta.
   const vehicle = [ctx.marca, ctx.modelo, ctx.anio].map((part) => String(part || '').trim()).filter(Boolean).join(' ');
   const detail = ctx.descripcion.trim();
   return [
-    `Hola, ¿tienen o pueden conseguir ${ctx.repuesto.trim()}${vehicle ? ` para ${vehicle}` : ''}?`,
+    `Hola, ¿tienen o pueden conseguir ${inSentence(ctx.repuesto)}${vehicle ? ` para ${vehicle}` : ''}?`,
     detail ? `Detalle: ${detail}` : '',
   ].filter(Boolean).join(' ');
 }

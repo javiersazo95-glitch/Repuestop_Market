@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Barcode, Bike, CheckCircle2, Circle, List, Megaphone, Search, Send, Store, X } from 'lucide-react';
 import { getAddressesApi, searchVehicleByPatenteApi } from '../../services/api';
 import { createAuction, uploadAuctionPhoto } from '../../services/auctionApi';
-import { getAssistantAvailability, loadAssistantSubcategories, sendPartBroadcast } from '../../services/assistantApi';
+import { getAssistantAvailability, loadAssistantSubcategories, reportMissingPart, sendPartBroadcast } from '../../services/assistantApi';
+import { capitalize, suggestionQuery, understandPart } from '../../utils/partUnderstanding';
+import {
+  askVehicle, checkingLine, detailAck, missingPartLine, partAck, productsFoundLine, smallTalkReply, storesIntroLine,
+} from '../../utils/repuestinLines';
 import { isValidPlate, lookupVehicleByPlate, normalizePlate } from '../../utils/vehicleLookup';
 import {
   EMPTY_ASSISTANT_CONTEXT, MAX_ORDER_ITEMS, MAX_ORDER_PHOTOS, NUDGE_AFTER_MS, URGENCY_OPTIONS, addressLabel, auctionTrackingCode,
@@ -117,6 +121,11 @@ export default function PartAssistantSheet({
   const [draft, setDraft] = useState(() => emptyOrderDraft(EMPTY_ASSISTANT_CONTEXT));
   const orderItem = useRef(0);
   const orderMode = useRef(false);
+  // Lo que dijo del vehículo en la misma frase del repuesto («para la hilux») y la subcategoría más parecida.
+  const vehicleHint = useRef('');
+  const similarName = useRef('');
+  // El repuesto escrito no existe como subcategoría (Repuestín ya lo dijo y avisó a soporte).
+  const partMissing = useRef(false);
   const photoThanked = useRef(false);
   const [addresses, setAddresses] = useState([]);
   const [addressesLoading, setAddressesLoading] = useState(false);
@@ -133,10 +142,16 @@ export default function PartAssistantSheet({
   const [lookingPlate, setLookingPlate] = useState(false);
 
   const partValue = partText.trim();
+  // Se sugiere con el texto sin relleno: «ando buscando filtro» ya propone los filtros.
   const suggestions = useMemo(
-    () => (selectedSub && normalizeText(selectedSub.nombre) === normalizeText(partText) ? [] : suggestSubcategories(subOptions, partText)),
+    () => (selectedSub && normalizeText(selectedSub.nombre) === normalizeText(partText) ? [] : suggestSubcategories(subOptions, suggestionQuery(partText))),
     [subOptions, partText, selectedSub],
   );
+  // Lo que Repuestín entiende mientras la persona escribe como le hablaría a un vendedor.
+  const liveMatch = useMemo(() => {
+    if (selectedSub || partText.trim().length < 3 || subOptions.length === 0) return null;
+    return understandPart(partText, subOptions).match;
+  }, [selectedSub, partText, subOptions]);
 
   const push = useCallback((from, text, images) => {
     lineSeq.current += 1;
@@ -199,7 +214,7 @@ export default function PartAssistantSheet({
 
   const check = useCallback(async (next) => {
     setStep('checking');
-    const thinking = botSay('¡Manos a la obra! Déjame revisar el taller… 🔍');
+    const thinking = botSay(checkingLine());
     let result;
     try {
       [result] = await Promise.all([getAssistantAvailability(next, { comuna }), thinking]);
@@ -209,10 +224,18 @@ export default function PartAssistantSheet({
     setAvailability(result);
     const outcome = pickOutcome(result);
     if (outcome === 'products') {
-      goTo('products', botSay(`¡Buenas noticias! 🎉 Encontré ${result.productCount === 1 ? '1 repuesto publicado' : `${result.productCount} repuestos publicados`} que podrían servirte.`));
+      goTo('products', botSay(productsFoundLine(result.productCount)));
     } else if (outcome === 'stores') {
       const marca = next.marca.trim();
-      offerStores(next, result, `Revisé las ${result.totalStores} casas de repuestos de RepuesTop y estas ${result.stores.length === 1 ? 'es la' : `${result.stores.length} son las`} con más probabilidad de tener ${next.repuesto.trim()}${marca ? ` para ${marca}` : ''}. Las ordené de la más a la menos probable: miro especialidad, lo que ya publican de ese rubro y su valoración.`);
+      offerStores(next, result, storesIntroLine({
+        total: result.totalStores,
+        shown: result.stores.length,
+        part: next.repuesto,
+        marca,
+        // Sin subcategoría (no existe en el catálogo): las casas son las que trabajan algo parecido o la marca.
+        missing: !next.subcategoriaId.trim() && partMissing.current,
+        similarName: similarName.current,
+      }));
     } else {
       void botSay('Hoy no encontré casas de repuestos que coincidan… ¡pero tengo un plan B! 💪');
       goTo('order', botSay('Publícalo como encargo y todas las casas de repuestos podrán ofertarte. Lo armamos aquí mismo en un minuto 😉'));
@@ -220,11 +243,13 @@ export default function PartAssistantSheet({
   }, [botSay, goTo, offerStores, comuna]);
 
   const beginOrderRef = useRef(null);
-  const advance = useCallback((next) => {
+  /** `ack`: cómo acusa recibo del repuesto (por defecto, su nombre corto); `false` si ya lo dijo antes. */
+  const advance = useCallback((next, { ack } = {}) => {
     setCtx(next);
     const question = nextQuestion(next);
     if (question === 'vehicle') {
-      goTo('vehicle', botSay(`Anotado: ${next.repuesto.trim()} ✍️ ¿Para qué vehículo es? Escríbeme la patente y detecto la marca, el modelo, el año y el chasis. Si prefieres, dime marca y modelo.`));
+      const said = ack === false ? '' : `${ack ?? partAck(next.repuesto)} `;
+      goTo('vehicle', botSay(`${said}${askVehicle(vehicleHint.current)}`));
     } else if (orderMode.current) {
       beginOrderRef.current(next);
     } else {
@@ -268,6 +293,9 @@ export default function PartAssistantSheet({
     orderItem.current = 0;
     orderMode.current = false;
     photoThanked.current = false;
+    vehicleHint.current = '';
+    similarName.current = '';
+    partMissing.current = false;
     setAddresses([]);
     setAddressesLoading(false);
     setUploadingPhoto(false);
@@ -439,9 +467,74 @@ export default function PartAssistantSheet({
       startOrder();
       return;
     }
-    const sub = selectedSub ?? findSubcategory(subOptions, { name: partValue });
     push('me', partValue);
-    advance({ ...ctx, repuesto: sub ? sub.nombre : partValue, subcategoriaId: sub ? String(sub.id) : '', categoriaId: sub ? String(sub.categoriaId) : '' });
+    vehicleHint.current = '';
+    similarName.current = '';
+    partMissing.current = false;
+    const fromList = selectedSub ?? findSubcategory(subOptions, { name: partValue });
+    if (fromList) {
+      advance({ ...ctx, repuesto: fromList.nombre, subcategoriaId: String(fromList.id), categoriaId: String(fromList.categoriaId), subcategoriaParecidaId: '' });
+      return;
+    }
+    // Sin la lista de subcategorías no se puede saber si existe: se busca tal cual, sin decir que falta.
+    if (subOptions.length === 0) {
+      advance({ ...ctx, repuesto: capitalize(suggestionQuery(partValue)) || partValue, subcategoriaId: '', categoriaId: '', subcategoriaParecidaId: '' });
+      return;
+    }
+    // Escribe como le hablaría a un vendedor («ando buscando un filtro de aire porfa»): se separa el relleno del repuesto.
+    const understood = understandPart(partValue, subOptions);
+    if (understood.smallTalk) {
+      setPartText('');
+      setSelectedSub(null);
+      void botSay(smallTalkReply(understood.smallTalk, { vehicle: vehicleLabel(ctx) }));
+      if (understood.smallTalk === 'unknownName') setPickerOpen(true);
+      return;
+    }
+    vehicleHint.current = understood.vehicleHint;
+    if (understood.vehicleHint && !ctx.marca.trim()) prefillVehicle(understood.vehicleHint);
+    if (understood.match) {
+      const detail = understood.detail ? capitalize(understood.detail) : '';
+      advance(
+        {
+          ...ctx,
+          repuesto: understood.match.nombre,
+          subcategoriaId: String(understood.match.id),
+          categoriaId: String(understood.match.categoriaId),
+          subcategoriaParecidaId: '',
+          descripcion: detail || ctx.descripcion,
+        },
+        { ack: `${partAck(understood.match.nombre)}${detailAck(understood.detail)}` },
+      );
+      return;
+    }
+    // No existe en el catálogo: se avisa a soporte y se buscan casas que trabajan algo parecido o la marca.
+    const parecida = understood.similar[0];
+    similarName.current = parecida?.nombre || '';
+    partMissing.current = true;
+    const next = {
+      ...ctx,
+      repuesto: understood.part,
+      subcategoriaId: '',
+      categoriaId: '',
+      subcategoriaParecidaId: parecida ? String(parecida.id) : '',
+    };
+    void botSay(reportMissingPart(next).then((reported) => missingPartLine(understood.part, understood.similar, reported)), TYPING_MS + 200);
+    advance(next, { ack: false });
+  };
+
+  /** «Para toyota yaris 2015»: deja marca, modelo y año escritos por si prefiere no usar la patente. */
+  const prefillVehicle = (hint) => {
+    const words = hint.split(/\s+/).filter(Boolean);
+    const yearIndex = words.findIndex((word) => /^(19|20)\d{2}$/.test(word));
+    const year = yearIndex >= 0 ? words.splice(yearIndex, 1)[0] : '';
+    const nice = (word) => capitalize(word);
+    if (words.length >= 2) {
+      setMarcaInput(nice(words[0]));
+      setModeloInput(words.slice(1).map(nice).join(' '));
+    } else if (words.length === 1) {
+      setModeloInput(nice(words[0]));
+    }
+    if (year) setAnioInput(year);
   };
 
   const submitPlate = async () => {
@@ -697,7 +790,10 @@ export default function PartAssistantSheet({
   /** Otro repuesto para el mismo vehículo: se conservan patente, marca, modelo, año y chasis. */
   const searchAnother = () => {
     push('me', 'Quiero buscar otro repuesto');
-    const next = { ...ctx, repuesto: '', subcategoriaId: '', categoriaId: '', descripcion: '' };
+    const next = { ...ctx, repuesto: '', subcategoriaId: '', categoriaId: '', descripcion: '', subcategoriaParecidaId: '' };
+    vehicleHint.current = '';
+    similarName.current = '';
+    partMissing.current = false;
     setCtx(next);
     setSelectedSub(null);
     setPartText('');
@@ -862,8 +958,10 @@ export default function PartAssistantSheet({
               )}
               {selectedSub ? (
                 <div className="ra-matched"><CheckCircle2 size={15} /> <span>{selectedSub.categoriaNombre ? `${selectedSub.categoriaNombre} › ${selectedSub.nombre}` : selectedSub.nombre}</span></div>
+              ) : liveMatch && normalizeText(liveMatch.nombre) !== normalizeText(partText) ? (
+                <div className="ra-matched"><CheckCircle2 size={15} /> <span>Entendí: {liveMatch.categoriaNombre ? `${liveMatch.categoriaNombre} › ${liveMatch.nombre}` : liveMatch.nombre}</span></div>
               ) : partValue.length >= 3 && suggestions.length === 0 && !subLoading ? (
-                <small className="ra-caption">No encontré una categoría igual: lo busco tal como lo escribiste 👍</small>
+                <small className="ra-caption">Escríbelo como te salga, yo le entiendo 😉</small>
               ) : null}
               {!orderMode.current && isLoggedIn && (
                 <QuickReplies options={[{ key: 'order', label: 'Prefiero publicar un encargo', icon: 'megaphone' }]} onPick={askForOrder} />

@@ -46,7 +46,11 @@ async function countMatchingProducts(ctx) {
 async function fetchSuggestedStores(ctx, comuna) {
   const query = new URLSearchParams();
   if (ctx.subcategoriaId.trim()) query.set('subcategoriaId', ctx.subcategoriaId.trim());
-  else if (ctx.repuesto.trim()) query.set('texto', ctx.repuesto.trim());
+  else {
+    // Repuesto que no está en el catálogo: se rankea por lo escrito, por la subcategoría más parecida y por la marca.
+    if (ctx.repuesto.trim()) query.set('texto', ctx.repuesto.trim());
+    if (ctx.subcategoriaParecidaId?.trim()) query.set('subcategoriaId', ctx.subcategoriaParecidaId.trim());
+  }
   if (ctx.marca.trim()) query.set('marca', ctx.marca.trim());
   // La comuna del comprador: suma a las tiendas cercanas y a las que despachan hasta ahí.
   if (comuna) query.set('comuna', comuna);
@@ -83,6 +87,22 @@ export async function getAssistantAvailability(ctx, { comuna } = {}) {
     }))
     .filter((store) => Number.isFinite(store.proveedorId));
   return { productCount, stores, totalStores: Math.max(suggested.totalTiendas, stores.length) };
+}
+
+/**
+ * El repuesto no calza con ninguna subcategoría: se avisa al equipo de soporte para que revise el catálogo.
+ * Devuelve si quedó avisado; Repuestín solo dice «se lo envié al equipo» cuando es verdad.
+ */
+export async function reportMissingPart(ctx) {
+  try {
+    const data = await fetchApi('/asistente/repuesto-sin-categoria', {
+      method: 'POST',
+      body: JSON.stringify({ texto: ctx.repuesto.trim(), marca: ctx.marca.trim() || undefined, modelo: ctx.modelo.trim() || undefined }),
+    });
+    return Boolean(data?.avisado);
+  } catch {
+    return false;
+  }
 }
 
 /** Deja el mensaje a varias casas de repuestos; el backend revalida que sigan activas. */
