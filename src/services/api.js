@@ -1016,6 +1016,11 @@ export async function createConversationApi(proveedorId, productoId, { forceNew 
   });
 }
 
+/** Una conversación del participante (comprador o tienda): el chat la relee para ver el repuesto ofrecido en vivo. */
+export async function getConversationApi(conversationId) {
+  return fetchApi(`/conversaciones/${conversationId}`, { method: 'GET' });
+}
+
 export async function getConversationMessagesApi(conversationId) {
   return fetchApi(`/conversaciones/${conversationId}/mensajes`, { method: 'GET' });
 }

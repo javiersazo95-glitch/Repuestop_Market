@@ -154,6 +154,15 @@
 .inq-modal-title { display: flex; flex-direction: column; min-width: 0; flex: 1; }
 .inq-modal-title strong { font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .inq-modal-title small { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--ak-primary, #0066ff); }
+.inq-modal-name-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.inq-modal-name-row strong { min-width: 0; }
+.inq-profile-link {
+  display: inline-flex; align-items: center; gap: 1px; flex: 0 0 auto; padding: 0; border: 0; background: none;
+  font-size: 12px; font-weight: 700; color: var(--ak-primary, #0066ff); cursor: pointer;
+}
+.inq-profile-link:hover { text-decoration: underline; }
+.inq-avatar-btn { padding: 0; border: 0; cursor: pointer; }
+.inq-avatar-btn:focus-visible, .inq-profile-link:focus-visible { outline: 3px solid rgba(0, 102, 255, .45); outline-offset: 2px; }
 .inq-nudge-icon {
   position: relative; display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 auto;
   border: 0; border-radius: 50%; background: var(--ak-success-bg, #eafbf1); color: var(--ak-success-text, #0e7038); cursor: pointer;

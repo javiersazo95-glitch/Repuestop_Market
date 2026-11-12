@@ -31,7 +31,7 @@ const NEWS_POLL_MS = 15_000;
 /** Pantallas donde la burbuja estorba: registro de tienda o taller. */
 const HIDDEN_PATHS = ['/vender', '/taller/registro'];
 
-const noop = { open: () => undefined, markResolved: () => undefined, hasPending: false, canAsk: false };
+const noop = { open: () => undefined, markResolved: () => undefined, setOpenChatId: () => undefined, hasPending: false, canAsk: false };
 const PartAssistantContext = createContext(noop);
 
 /** Fuera del proveedor no hace nada, en vez de fallar. */
@@ -92,6 +92,9 @@ export function PartAssistantProvider({ children }) {
   const [newsOpen, setNewsOpen] = useState(false);
   const [orderForm, setOrderForm] = useState(null);
   const [comuna, setComuna] = useState('');
+  // Chat de consulta abierto como ventana (desde la lista, sin `?cotizacion=` en la URL): lo avisa el propio chat.
+  const [openChatModalId, setOpenChatModalId] = useState(null);
+  const setOpenChatId = useCallback((id) => setOpenChatModalId(id == null ? null : String(id)), []);
   const lastBump = useRef(Date.now());
 
   useEffect(() => {
@@ -181,7 +184,8 @@ export function PartAssistantProvider({ children }) {
   const closeSheet = useCallback(() => setSheetOpen(false), []);
 
   // La burbuja salta siempre, salvo por los avisos del chat que la persona tiene abierto en este momento.
-  const openChatId = location.pathname.startsWith('/perfil') ? new URLSearchParams(location.search).get('cotizacion') : null;
+  const openChatId = openChatModalId
+    ?? (location.pathname.startsWith('/perfil') ? new URLSearchParams(location.search).get('cotizacion') : null);
   const visibleNews = useMemo(
     () => (openChatId ? news.filter((item) => String(item.targetParams?.quoteId ?? '') !== String(openChatId)) : news),
     [news, openChatId],
@@ -305,7 +309,10 @@ export function PartAssistantProvider({ children }) {
   }, [pending]);
 
   const newsItems = useMemo(() => visibleNews.map(toAssistantNewsItem), [visibleNews]);
-  const value = useMemo(() => ({ open, markResolved, hasPending: Boolean(pending), canAsk }), [open, markResolved, pending, canAsk]);
+  const value = useMemo(
+    () => ({ open, markResolved, setOpenChatId, hasPending: Boolean(pending), canAsk }),
+    [open, markResolved, setOpenChatId, pending, canAsk],
+  );
 
   return (
     <PartAssistantContext.Provider value={value}>

@@ -5,11 +5,11 @@ import {
   Search, Send, Store, Tags, TrendingUp, User, X, Repeat2,
 } from 'lucide-react';
 import {
-  getConversationMessagesApi, getSellerFullInventoryApi, markConversationReadApi, markInquiryNoStockApi, offerInquiryExtraProductApi,
+  getConversationApi, getConversationMessagesApi, getSellerFullInventoryApi, markConversationReadApi, markInquiryNoStockApi, offerInquiryExtraProductApi,
   offerInquiryProductApi, resolveMediaUrl, sendConversationMessageApi, uploadConversationImageApi,
 } from '../../services/api';
 import { compressImageFile } from '../../utils/imageCompression';
-import { productPath, profileOrderPath, profilePath } from '../../routes/paths';
+import { productPath, profileOrderPath, profilePath, storePath } from '../../routes/paths';
 import {
   INQUIRY_KIND_LABEL, formatInquiryPrice, inquiryEventLabel, inquiryStage, inquiryStageLabel, inquiryVehicleIds,
 } from '../../utils/inquiry';
@@ -17,10 +17,13 @@ import { InquiryStageBadge, RepuestinAvatar } from './InquiryCard';
 import NewCatalogProductModal from '../NewCatalogProductModal';
 import ChatImagePreview from '../ChatImagePreview';
 import { useIsMobile } from '../../hooks/useIsMobile';
+import { usePartAssistant } from '../../context/PartAssistantContext';
 import '../../styles/inquiry.css';
 
 const MAX_CHAT_MESSAGE = 500;
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+/** Cada cuánto se releen los mensajes y la conversación (repuesto ofrecido, "no lo tengo", compra), como la app. */
+const REFRESH_MS = 6000;
 
 const HINTS = {
   buyer: {
@@ -283,12 +286,27 @@ export default function InquiryChatModal({ conversation: initialConversation, mo
 
   useEffect(() => { setConversation(initialConversation); }, [initialConversation]);
 
+  // Como en la app: mientras este chat está abierto, sus avisos no hacen saltar la burbuja de Repuestín (los de otros chats sí).
+  const { setOpenChatId } = usePartAssistant();
+  useEffect(() => {
+    setOpenChatId(conversation.id);
+    return () => setOpenChatId(null);
+  }, [conversation.id, setOpenChatId]);
+
+  // Además de los mensajes se relee la conversación (`app/quote-chat.tsx`): así el repuesto que ofrece la tienda,
+  // su "no lo tengo" o la compra aparecen en vivo en la cabecera, sin cerrar y volver a abrir el chat.
   const reloadMessages = useCallback(async () => {
-    const items = await getConversationMessagesApi(conversation.id).catch(() => null);
+    const [items, updated] = await Promise.all([
+      getConversationMessagesApi(conversation.id).catch(() => null),
+      getConversationApi(conversation.id).catch(() => null),
+    ]);
     if (Array.isArray(items)) {
       setMessages((previous) => (
         previous.length === items.length && previous[previous.length - 1]?.id === items[items.length - 1]?.id ? previous : items
       ));
+    }
+    if (updated && typeof updated === 'object' && updated.id) {
+      setConversation((previous) => ({ ...previous, ...updated }));
     }
   }, [conversation.id]);
 
@@ -303,7 +321,7 @@ export default function InquiryChatModal({ conversation: initialConversation, mo
       })
       .catch((error) => { if (!cancelled) setStatus({ type: 'error', text: error.message || 'No se pudo cargar la conversación.' }); })
       .finally(() => { if (!cancelled) setLoading(false); });
-    const interval = window.setInterval(reloadMessages, 8000);
+    const interval = window.setInterval(() => { if (document.visibilityState === 'visible') reloadMessages(); }, REFRESH_MS);
     return () => { cancelled = true; window.clearInterval(interval); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation.id]);
@@ -446,7 +464,8 @@ export default function InquiryChatModal({ conversation: initialConversation, mo
 
   const panel = (
     <InquiryPanel
-      key={isMobile ? 'mobile' : 'desktop'}
+      // Al cambiar la etapa se vuelve a montar: si la tienda ofrece el repuesto mientras el chat está abierto, se despliega.
+      key={`${isMobile ? 'mobile' : 'desktop'}-${stage}`}
       viewer={viewer}
       stage={stage}
       conversation={conversation}
@@ -464,17 +483,36 @@ export default function InquiryChatModal({ conversation: initialConversation, mo
   );
 
   const buyerId = Number(conversation.usuarioId);
+  // La foto y el nombre de la tienda abren su perfil: el comprador ve la casa de repuestos y todo lo que ofrece.
+  const storeId = conversation.proveedorId;
+  const openStoreProfile = !isSeller && storeId
+    ? () => { onClose(); navigate(storePath({ id: storeId, nombre: participantName })); }
+    : undefined;
+  const storeLabel = `Ver el perfil de ${participantName}`;
 
   return (
     <div className="inq-modal-backdrop" role="presentation" onClick={(event) => { if (event.target === event.currentTarget && !isMobile) onClose(); }}>
       <div className="inq-modal" role="dialog" aria-modal="true" aria-label={`${INQUIRY_KIND_LABEL} con ${participantName}`}>
         <header className="inq-modal-top">
           <button type="button" className="inq-icon-btn inq-back" onClick={onClose} aria-label="Volver"><ArrowLeft size={20} /></button>
-          <span className="inq-avatar inq-avatar-lg">
-            {participantPhoto ? <img src={participantPhoto} alt="" referrerPolicy="no-referrer" /> : (isSeller ? <User size={18} /> : <Store size={18} />)}
-          </span>
+          {openStoreProfile ? (
+            <button type="button" className="inq-avatar inq-avatar-lg inq-avatar-btn" onClick={openStoreProfile} aria-label={storeLabel} title={storeLabel}>
+              {participantPhoto ? <img src={participantPhoto} alt="" referrerPolicy="no-referrer" /> : <Store size={18} />}
+            </button>
+          ) : (
+            <span className="inq-avatar inq-avatar-lg">
+              {participantPhoto ? <img src={participantPhoto} alt="" referrerPolicy="no-referrer" /> : (isSeller ? <User size={18} /> : <Store size={18} />)}
+            </span>
+          )}
           <span className="inq-modal-title">
-            <strong>{participantName}</strong>
+            <span className="inq-modal-name-row">
+              <strong>{participantName}</strong>
+              {openStoreProfile && (
+                <button type="button" className="inq-profile-link" onClick={openStoreProfile} aria-label={storeLabel}>
+                  Ver perfil <ChevronRight size={13} />
+                </button>
+              )}
+            </span>
             <small><RepuestinAvatar size={16} /> {INQUIRY_KIND_LABEL}</small>
           </span>
           {isSeller && (
@@ -500,6 +538,11 @@ export default function InquiryChatModal({ conversation: initialConversation, mo
                 if (offered) {
                   return (
                     <div key={message.id ?? index} className={`inq-row ${mine ? 'mine' : ''}`}>
+                      {openStoreProfile && (
+                        <button type="button" className="inq-avatar inq-avatar-sm inq-avatar-btn" onClick={openStoreProfile} aria-label={storeLabel} title={storeLabel}>
+                          {participantPhoto ? <img src={participantPhoto} alt="" referrerPolicy="no-referrer" /> : <Store size={14} />}
+                        </button>
+                      )}
                       <OfferedProductMessage product={offered} viewer={viewer} onOpen={() => openProduct(offered.productoId, offered.nombre)} />
                     </div>
                   );
