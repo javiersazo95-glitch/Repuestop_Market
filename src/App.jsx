@@ -3,6 +3,7 @@ import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { MarketplaceProvider } from './context/MarketplaceContext';
+import { PartAssistantProvider } from './context/PartAssistantContext';
 import AppRoutes from './routes/AppRoutes';
 import TermsReacceptanceModal from './components/TermsReacceptanceModal';
 import SellerAdhesionModal from './components/SellerAdhesionModal';
@@ -77,6 +78,9 @@ export default function App() {
           <BrowserRouter>
             <AuthProvider>
               <MarketplaceProvider>
+                {/* Repuestín (chat, burbuja y novedades) va sobre las rutas: el perfil vive fuera de AppLayout y la
+                    burbuja tiene que seguir a la persona también ahí, como en la app. */}
+                <PartAssistantProvider>
                 {/* Los montajes globales se pueden apagar desde el mantenedor (`market.global.*`);
                     sin bootstrap el flag vale `true` y todo se monta como siempre. */}
                 <Feature flag="market.global.aviso-app-movil"><MobileAppNotice /></Feature>
@@ -89,6 +93,7 @@ export default function App() {
                 {/* Taller con citas terminadas sin resultado: aviso al centro, también en el perfil (fuera de AppLayout). */}
                 <PendingResultsPrompt />
                 <Feature flag="market.global.cookie-banner"><CookieConsentBanner /></Feature>
+                </PartAssistantProvider>
               </MarketplaceProvider>
             </AuthProvider>
           </BrowserRouter>

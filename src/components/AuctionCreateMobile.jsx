@@ -72,11 +72,12 @@ function ItemVehicle({ itemKey, patente, onChange, onVehicle }) {
  * condiciones con listas desplegables) y un botón para volver. Solo crea; editar usa el formulario de escritorio.
  */
 /** `template`: "Publicar de nuevo" una búsqueda vencida o cancelada (precarga sus datos y publica una nueva). */
-export default function AuctionCreateMobile({ onClose, onSuccess, auction = null, template = null, initialPatente = '' }) {
+export default function AuctionCreateMobile({ onClose, onSuccess, auction = null, template = null, prefill = null, initialPatente = '' }) {
   const isEditing = Boolean(auction);
   // Con ofertas ya vistas por el comprador, vehículo, repuestos y comuna quedan fijos (el servidor lo valida igual).
   const locked = isEditing && Boolean(auction?.motivoEdicionMayor);
-  const source = auction || template;
+  // `prefill`: lo que ya se le contó a Repuestín (repuestos, vehículo, fotos y entrega) para ajustarlo aquí.
+  const source = auction || template || prefill;
   const [patente, setPatente] = useState(() => source?.patente || initialPatente);
   const { vehicle: plateVehicle, error: plateError, looking } = usePlateLookup(patente);
   // Últimas patentes consultadas en este navegador: un toque y se completa la patente.

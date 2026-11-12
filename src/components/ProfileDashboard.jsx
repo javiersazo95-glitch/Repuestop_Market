@@ -12,6 +12,11 @@ import {
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import ProfileMoreMenu from './ProfileMoreMenu';
+import AssistantVisibilityScreen from './assistant/visibility/AssistantVisibilityScreen';
+import { AssistantMissingPopup, AssistantReminderIcon, AssistantVisibilityCard } from './assistant/visibility/AssistantReminder';
+import { useAssistantReminder } from '../utils/assistantReminder';
+import '../styles/assistant.css';
+import '../styles/assistant-visibility.css';
 import { MOBILE_APP_TABS } from '../data/mobileAppTabs';
 import VideoTutorialModal from './VideoTutorialModal';
 import { useAuth } from '../context/AuthContext';
@@ -172,6 +177,8 @@ const SELLER_SIDEBAR_GROUPS = [
     title: 'CONFIGURACIÓN',
     flag: 'market.perfil.vendedor.mi-tienda',
     items: [
+      // «Que Repuestín te recomiende»: primer acceso de Configuración, como en el menú Más de la app.
+      { id: 'tienda_asistente', label: 'Que Repuestín te recomiende', icon: Sparkles },
       { id: 'tienda_redes', label: 'Redes sociales', icon: Share2 },
       { id: 'tienda_documentos', label: 'Documentos', icon: FolderOpen },
       { id: 'tienda_envios', label: 'Métodos de envío', icon: Truck },
@@ -207,6 +214,7 @@ const SELLER_REMOVED_TABS = ['compras', 'mis_cotizaciones', 'mis_preguntas', 'ch
 // propias compras) no cambian: la suspension de la tienda no le impide comprar.
 const SELLER_BLOCKED_HIDDEN_TABS = [
   'productos',
+  'tienda_asistente',
   'cotizaciones',
   'gestion_subastas',
   'preguntas_productos',
@@ -702,6 +710,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     suspension: sellerSuspension,
   } = useSellerBlocked();
   const { isBlocked: isBuyerBlocked, blockReason: buyerBlockReason, suspension: buyerSuspension } = useBuyerBlocked();
+  // «Que Repuestín te recomiende» (como el layout de la app): la tienda que aún no registra qué trabaja ve el aviso
+  // «Estás perdiendo clientes» una vez y después un ícono de advertencia junto a la campana, hasta que registre.
+  const assistantReminder = useAssistantReminder(effectiveSellerId, Boolean(isSeller && !isSellerBlocked));
+  const openAssistantScreen = useCallback(() => setActiveTab('tienda_asistente'), [setActiveTab]);
   // Un usuario esta bloqueado por un lado u otro, nunca ambos a la vez en la
   // practica (son dos suspensiones independientes en el backend).
   const blockReason = isSellerBlocked ? sellerBlockReason : buyerBlockReason;
@@ -784,7 +796,9 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     const citasDeTaller = activeTab === 'citas_taller' && !isWorkshop;
     // La cuenta vendedora es solo vendedora: no compra ni tiene taller, citas ni favoritos de comprador.
     const soloNoVendedor = isSeller && SELLER_REMOVED_TABS.includes(activeTab);
-    if ((soloTaller && !isWorkshop) || (soloComprador && isWorkshop) || citasDeTaller || soloNoVendedor) {
+    // «Que Repuestín te recomiende» es de la tienda: un comprador o taller con el enlace vuelve al resumen.
+    const soloVendedor = activeTab === 'tienda_asistente' && !isSeller;
+    if ((soloTaller && !isWorkshop) || (soloComprador && isWorkshop) || citasDeTaller || soloNoVendedor || soloVendedor) {
       setActiveTabState('resumen');
       onTabChange?.('resumen', { replace: true });
     }
@@ -1526,6 +1540,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             <HeaderWalletButton variant="topbar" />
             {/* Las citas son de compradores y talleres; una tienda no las pide ni las recibe. */}
             {!isSeller && <ProfileAppointmentsButton user={user} />}
+            {assistantReminder.showHeaderIcon && activeTab !== 'tienda_asistente' && <AssistantReminderIcon onPress={openAssistantScreen} />}
             <ProfileNotificationsBell user={user} />
             <button className="btn-topbar-logout" onClick={handleLogout}>
               <LogOut size={15} />
@@ -1848,6 +1863,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   onOpenService={() => setActiveTab('diagnostico')}
                 />
               )}
+              {/* Arriba de todo mientras el perfil para Repuestín esté incompleto (como el inicio de la tienda en la app). */}
+              {activeTab === 'resumen' && isSeller && !isSellerBlocked && !isBuyerBlocked && (
+                <AssistantVisibilityCard sellerId={effectiveSellerId} onOpen={openAssistantScreen} />
+              )}
               {activeTab === 'resumen' && isSeller && isMobileView && !isSellerBlocked && !isBuyerBlocked && (
                 <SellerHomeSummary
                   sellerId={effectiveSellerId}
@@ -2013,6 +2032,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 />
               )}
 
+              {activeTab === 'tienda_asistente' && isSeller && !isSellerBlocked && (
+                <AssistantVisibilityScreen
+                  sellerId={effectiveSellerId}
+                  storeName={storeInfo?.storeName || user?.storeName}
+                  storePhoto={user?.userProfileUrl || storeInfo?.logoUrl || null}
+                  isMobile={isMobileView}
+                  onOpenTab={setActiveTab}
+                  onOpenFiltered={openFilteredTab}
+                />
+              )}
               {activeTab === 'mi_taller' && <MiTallerSection />}
               {activeTab === 'citas_taller' && (isWorkshop || isSeller) && <WorkshopAppointmentsSection />}
               {activeTab === 'invitar_compradores' && isWorkshop && <WorkshopReferralsPanel />}
@@ -2117,6 +2146,14 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
           <span>Más</span>
         </button>
       </nav>
+
+      <AssistantMissingPopup
+        open={assistantReminder.showPopup && activeTab !== 'tienda_asistente'}
+        storeName={storeInfo?.storeName || user?.storeName}
+        storePhoto={user?.userProfileUrl || storeInfo?.logoUrl || null}
+        onRegister={() => { assistantReminder.dismiss(); openAssistantScreen(); }}
+        onExit={assistantReminder.dismiss}
+      />
 
       {profileNavOpen && (
         <>

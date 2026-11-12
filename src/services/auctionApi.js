@@ -1,4 +1,5 @@
 import { fetchApi } from './api';
+import { notifyAuctionCreated } from './assistantApi';
 
 /**
  * Consulta el listado público de subastas de repuestos / búsquedas de repuestos.
@@ -29,10 +30,13 @@ export async function getAuctionDetail(id) {
  * Publica una nueva búsqueda de repuestos.
  */
 export async function createAuction(payload) {
-  return fetchApi('/necesidades-compra', {
+  const created = await fetchApi('/necesidades-compra', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  // La burbuja de Repuestín escucha este aviso: un encargo creado por cualquier vía resuelve la búsqueda.
+  notifyAuctionCreated();
+  return created;
 }
 
 /**

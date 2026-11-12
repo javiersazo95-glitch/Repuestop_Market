@@ -98,6 +98,8 @@ export const PROFILE_TABS = [
   'mi_taller', 'feedback',
   // Configuración del vendedor: una pantalla por acceso del menú Más (como `app/(seller)/tienda-*.tsx`).
   'tienda_redes', 'tienda_documentos', 'tienda_envios', 'tienda_bancarios', 'tienda_marcas', 'cambiar_clave',
+  // «Que Repuestín te recomiende» (`app/(seller)/tienda-asistente.tsx`): lo que la tienda trabaja para el asistente.
+  'tienda_asistente',
   // Subpantallas de «Mis datos y perfil» del comprador y del taller (como `app/addresses.tsx` y `notification-settings.tsx`).
   'mis_direcciones', 'notificaciones',
   // "Chats con vendedor" (sección Mis compras) y "Chats con compradores" (sección Ventas):

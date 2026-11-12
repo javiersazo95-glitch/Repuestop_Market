@@ -160,11 +160,12 @@ function itemsFromAuction(auction) {
  * `auction`: editar esa búsqueda. `template`: "Publicar de nuevo" una búsqueda vencida o cancelada; el formulario
  * parte con sus datos (vehiculo, repuestos, fotos, entrega) pero publica una búsqueda nueva.
  */
-function CreateAuctionModalContent({ onClose, onSuccess, auction = null, template = null, initialPatente = '' }) {
+function CreateAuctionModalContent({ onClose, onSuccess, auction = null, template = null, prefill = null, initialPatente = '' }) {
   const isEditing = Boolean(auction);
   // Con ofertas ya vistas por el comprador, vehículo, repuestos y comuna quedan fijos (el servidor lo valida igual).
   const locked = isEditing && Boolean(auction?.motivoEdicionMayor);
-  const source = auction || template;
+  // `prefill`: lo que ya se le contó a Repuestín (repuestos, vehículo, fotos y entrega) para ajustarlo aquí.
+  const source = auction || template || prefill;
   const { user } = useAuth();
 
   const userId = user?.userId ?? user?.id;
@@ -643,7 +644,7 @@ export default function CreateAuctionModal(props) {
   if (!props.isOpen) return null;
   // En el celular, publicar y editar usan el formulario idéntico al de la app.
   const view = isMobile
-    ? <AuctionCreateMobile auction={props.auction || null} template={props.template || null} initialPatente={props.initialPatente || ''} onClose={props.onClose} onSuccess={props.onSuccess} />
+    ? <AuctionCreateMobile auction={props.auction || null} template={props.template || null} prefill={props.prefill || null} initialPatente={props.initialPatente || ''} onClose={props.onClose} onSuccess={props.onSuccess} />
     : <CreateAuctionModalContent {...props} />;
   // Fuera del panel del perfil: los contenedores del intranet (scroll, apilado) recortaban el popup y dejaban
   // el menú y la barra superior encima de los campos.

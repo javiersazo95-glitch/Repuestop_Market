@@ -33,6 +33,9 @@ import { SIN_SUBCATEGORIA, SIN_SUBCATEGORIA_ID, SIN_SUBCATEGORIA_LABEL } from '.
 import CategoryBrowserMobile from './CategoryBrowserMobile';
 import CategoryBrowserWeb from './CategoryBrowserWeb';
 import { auctionDetailPath, ROUTES } from '../routes/paths';
+import { usePartAssistant } from '../context/PartAssistantContext';
+import { RepuestinAvatar } from './assistant/AssistantBits';
+import { orderPrefill, toAssistantContext } from '../utils/partAssistant';
 import '../styles/catalog-app-mobile.css';
 
 const CreateAuctionModal = lazy(() => import('./CreateAuctionModal'));
@@ -297,7 +300,7 @@ export default function PartsCatalogView({
     setCurrentPage(1);
   };
 
-  const { user, isLoggedIn, role } = useAuth();
+  const { user, isLoggedIn } = useAuth();
   const navigate = useNavigate();
   const [needModalOpen, setNeedModalOpen] = useState(false);
   const { isFavorite, toggleFavorite } = useFavorites(user?.userId ?? user?.id);
@@ -678,9 +681,9 @@ export default function PartsCatalogView({
     || selectedCategory !== 'TODAS'
     || activeCategoryId
     || activeComunaId
-    // En escritorio la patente sola no pide resultados: acota los contadores del explorador de categorías y el comprador
-    // elige la subcategoría (así no se consulta todo lo compatible). En el celular sigue mostrando lo compatible.
-    || (isMobileLayout && onlyCompatible && activeVehicle)
+    // Con una patente (o vehículo) activo se muestran de inmediato los repuestos compatibles, también en escritorio.
+    // La consulta va paginada desde el servidor (12/24/36 por página): nunca se trae todo de una vez.
+    || (onlyCompatible && activeVehicle)
     || onlyQuoteOnly
     || selectedCondition
     || selectedOrigin
@@ -1011,6 +1014,41 @@ export default function PartsCatalogView({
    * contador de arriba y los resultados dejan de coincidir apenas hay más de una página.
    */
   const displayedProducts = products;
+
+  // Repuestín, el asistente "¿No encuentras tu repuesto?" (como `app/(buyer)/categories.tsx`): se abre solo, una vez por
+  // búsqueda, cuando no hay resultados; también a mano desde el catálogo. Parte con lo que ya se sabe: la subcategoría
+  // elegida (o el texto buscado) y el vehículo (patente o filtro avanzado), para no volver a preguntarlo.
+  const partAssistant = usePartAssistant();
+  const assistantAutoKeyRef = useRef(null);
+  const vehicleForAssistant = activeVehicle && onlyCompatible ? activeVehicle : null;
+  const hasSubcategoryForAssistant = Boolean(activeSubcategoryId) && String(activeSubcategoryId) !== String(SIN_SUBCATEGORIA_ID);
+  const subcategoryNameForAssistant = selectedSubcategory !== 'TODAS' && selectedSubcategory !== SIN_SUBCATEGORIA
+    ? selectedSubcategory
+    : (initialCatalogFilter?.subcategory || '');
+  const assistantInitial = useMemo(() => ({
+    repuesto: hasSubcategoryForAssistant && subcategoryNameForAssistant ? subcategoryNameForAssistant : String(deferredSearchQuery || '').trim(),
+    subcategoriaId: hasSubcategoryForAssistant ? String(activeSubcategoryId) : '',
+    categoriaId: hasSubcategoryForAssistant && activeCategoryId ? String(activeCategoryId) : '',
+    catalogoId: vehicleForAssistant?.catalogoId ? String(vehicleForAssistant.catalogoId) : '',
+    patente: vehicleForAssistant?.patente && vehicleForAssistant.patente !== 'MANUAL' ? String(vehicleForAssistant.patente) : '',
+    marca: String((vehicleForAssistant ? vehicleForAssistant.marca : vehicleBrandName) || ''),
+    modelo: String((vehicleForAssistant ? vehicleForAssistant.modelo : vehicleModel) || ''),
+    anio: String((vehicleForAssistant ? vehicleForAssistant.anio : vehicleYear) || ''),
+    version: String(vehicleForAssistant?.version || ''),
+  }), [hasSubcategoryForAssistant, subcategoryNameForAssistant, deferredSearchQuery, activeSubcategoryId, activeCategoryId, vehicleForAssistant, vehicleBrandName, vehicleModel, vehicleYear]);
+  // Solo con la consulta ya resuelta: antes de eso `products` está vacío sin que signifique "no hay resultados".
+  const noResultsForAssistant = hasActiveContext && filtersResolved && !lockedStoreId && partAssistant.canAsk && !onlyQuoteOnly && !productsLoading && !productsError && displayedProducts.length === 0;
+  useEffect(() => {
+    if (!noResultsForAssistant) return undefined;
+    const key = JSON.stringify([assistantInitial, activeCategoryId, selectedCondition, selectedOrigin, partBrandId, selectedComunaId, minPrice, maxPrice]);
+    if (assistantAutoKeyRef.current === key) return undefined;
+    const timer = setTimeout(() => {
+      assistantAutoKeyRef.current = key;
+      partAssistant.open(assistantInitial);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [noResultsForAssistant, assistantInitial, activeCategoryId, selectedCondition, selectedOrigin, partBrandId, selectedComunaId, minPrice, maxPrice, partAssistant]);
+  const openAssistant = () => partAssistant.open(assistantInitial);
 
   // Una URL con `?pagina=9999` (o bajar de 36 a 12 por página) puede dejar la página actual
   // fuera del tope navegable; se devuelve al último rango con resultados.
@@ -1453,11 +1491,18 @@ export default function PartsCatalogView({
                   <ChevronLeft size={15} aria-hidden="true" /> Volver a categorías
                 </button>
               )}
-              <div className="results-count-badge">
-                {activeVehicle && onlyCompatible ? (
-                  <span><strong>{totalProducts}</strong> repuestos compatibles con tu <strong>{activeVehicle.marca} {activeVehicle.modelo}</strong></span>
-                ) : (
-                  <span><strong>{totalProducts}</strong> repuestos encontrados</span>
+              <div className="catalog-count-line">
+                <div className="results-count-badge">
+                  {activeVehicle && onlyCompatible ? (
+                    <span><strong>{totalProducts}</strong> repuestos compatibles con tu <strong>{activeVehicle.marca} {activeVehicle.modelo}</strong></span>
+                  ) : (
+                    <span><strong>{totalProducts}</strong> repuestos encontrados</span>
+                  )}
+                </div>
+                {!lockedStoreId && partAssistant.canAsk && (
+                  <button type="button" className="ra-entry-link" onClick={openAssistant} aria-label="¿No encuentras tu repuesto? Abrir el asistente">
+                    <RepuestinAvatar size={16} /> ¿No encuentras tu repuesto?
+                  </button>
                 )}
               </div>
             </div>
@@ -1901,8 +1946,16 @@ export default function PartsCatalogView({
               /* Empty Filter State */
               <div className="directory-empty-state">
                 <Wrench size={56} className="empty-icon-gray" />
-                <h3>No se encontraron repuestos con los filtros seleccionados</h3>
-                <p>Intenta ajustar la búsqueda por código OEM o seleccionar una categoría más amplia.</p>
+                <h3>{partAssistant.canAsk ? 'No encontramos piezas' : 'No se encontraron repuestos con los filtros seleccionados'}</h3>
+                <p>{partAssistant.canAsk ? 'Prueba ajustando los filtros o cuéntale a Repuestín qué necesitas: te ayuda a encontrarlo o a pedírselo a las casas de repuestos.' : 'Intenta ajustar la búsqueda por código OEM o seleccionar una categoría más amplia.'}</p>
+                {!lockedStoreId && partAssistant.canAsk && (
+                  <div className="ra-empty-actions">
+                    <button type="button" className="ra-btn ra-btn-primary" onClick={openAssistant}>
+                      <RepuestinAvatar size={24} /> Pedir ayuda a Repuestín
+                    </button>
+                    <button type="button" className="ra-btn ra-btn-outline" onClick={handleOpenNeed}>Encargar el repuesto</button>
+                  </div>
+                )}
                 <button className="btn-reset-filters-large" onClick={handleResetFilters}>
                   <RotateCcw size={16} />
                   <span>Limpiar Filtros y Ver Todos</span>
@@ -1911,14 +1964,15 @@ export default function PartsCatalogView({
             )}
 
             {/* Aviso sutil: lo que no aparece puede estar en una casa de repuestos sin cargar o recién unida. */}
-            {activeVehicle && onlyCompatible && !productsLoading && !productsError && (!isLoggedIn || role === 'BUYER') && (
-              <p className="catalog-need-hint">
-                <Info size={15} aria-hidden="true" />
-                <span>
-                  ¿No encontraste lo que buscas? Puede que alguna casa de repuestos lo tenga y aún no lo haya cargado.{' '}
-                  <button type="button" className="catalog-need-hint-link" onClick={handleOpenNeed}>Registra tu encargo de repuestos</button>
-                </span>
-              </p>
+            {/* Como `MissingPartNotice` de la app: al final de los resultados por vehículo, Repuestín ayuda a encontrarlo. */}
+            {activeVehicle && onlyCompatible && !lockedStoreId && partAssistant.canAsk && !productsLoading && !productsError && displayedProducts.length > 0 && (
+              <div className="ra-missing-notice">
+                <RepuestinAvatar size={28} />
+                <div>
+                  <span>¿No encontraste lo que buscas? Es posible que alguna casa de repuestos lo tenga y aún no lo haya cargado. Repuestín te ayuda a encontrarlo.</span>
+                  <button type="button" className="ra-entry-link" onClick={openAssistant}>Hablar con Repuestín</button>
+                </div>
+              </div>
             )}
           </main>
         </div>}
@@ -1929,6 +1983,7 @@ export default function PartsCatalogView({
           <CreateAuctionModal
             isOpen
             initialPatente={activeVehicle?.patente && activeVehicle.patente !== 'MANUAL' ? activeVehicle.patente : ''}
+            prefill={assistantInitial.repuesto ? orderPrefill(toAssistantContext(assistantInitial)) : null}
             onClose={() => setNeedModalOpen(false)}
             onSuccess={(created) => {
               setNeedModalOpen(false);

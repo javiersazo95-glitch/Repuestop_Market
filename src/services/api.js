@@ -1943,8 +1943,8 @@ export async function uploadMediationEvidenceApi(pedidoId, imagenes, proveedorId
   });
 }
 
-export async function getNotificationsApi(userId) {
-  return fetchApi(`/usuarios/${userId}/notificaciones`, { method: 'GET' });
+export async function getNotificationsApi(userId, { soloNoLeidas = false } = {}) {
+  return fetchApi(`/usuarios/${userId}/notificaciones${soloNoLeidas ? '?soloNoLeidas=true' : ''}`, { method: 'GET' });
 }
 
 export async function getUnreadNotificationsCountApi(userId) {

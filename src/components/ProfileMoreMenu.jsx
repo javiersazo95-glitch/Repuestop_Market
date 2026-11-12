@@ -3,7 +3,7 @@ import CapturerContactCard from './CapturerContactCard';
 import {
   Calendar, ChevronRight, Clipboard, Cog, Compass, FileText, Flag, Hammer, Headphones, Heart, HelpCircle, LifeBuoy, LogOut,
   MessageCircle, MessageSquare, MessagesSquare, PackageCheck, Activity, Search, Settings, ShieldCheck, Store, Tags, Telescope,
-  Trash2, Lock, Wallet, X, Users, Inbox, Wrench, QrCode, Building2, Share2, FolderOpen, Truck, CreditCard, CarFront,
+  Trash2, Lock, Wallet, X, Users, Inbox, Wrench, QrCode, Building2, Share2, FolderOpen, Truck, CreditCard, CarFront, Sparkles,
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import { ROUTES } from '../routes/paths';
@@ -72,7 +72,8 @@ const MENUS = {
       t('Reportes', Flag, COLORS.flag, { tab: 'consultas' }),
     ]],
     ['Configuración', [
-      // Los 7 accesos de `app/(seller)/mas.tsx`, cada uno a su propia pantalla, con el mismo icono.
+      // Los accesos de `app/(seller)/mas.tsx`, cada uno a su propia pantalla, con el mismo icono.
+      t('Que Repuestín te recomiende', Sparkles, '#6B4EFF', { tab: 'tienda_asistente' }),
       t('Mi tienda y datos', Building2, COLORS.stores, { tab: 'tienda_datos' }),
       t('Redes sociales', Share2, COLORS.person, { tab: 'tienda_redes' }),
       t('Documentos', FolderOpen, COLORS.docs, { tab: 'tienda_documentos' }),

@@ -3067,87 +3067,99 @@ select.has-success, .taller-register-address.has-success input { border-color: #
   background: #e2e8f0;
 }
 
-/* Login de la tienda: con correo o con el RUT de la tienda (igual que la app). */
-/* Rol con el que se inicia sesión: grande y cambiable en el mismo formulario. */
-.auth-role-switch {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 10px;
-  border: 1px solid #dbe4f0;
-  border-radius: 14px;
-  background: #f8fafc;
-}
+/* Login (igual que la app): un solo acceso sin elegir perfil. Izquierda «Iniciar con Google», derecha «Iniciar
+   manualmente»; «Crear cuenta» queda fijo abajo. Con correo o con el RUT de la tienda dentro del acceso manual. */
+.auth-login-brand { display: flex; justify-content: center; margin-bottom: 8px; }
+.auth-modal-card--login .auth-modal-header { padding-top: 22px; padding-bottom: 14px; }
+.auth-modal-card--login .auth-modal-header h2 { font-size: 22px; }
 
-.auth-role-switch-label {
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  color: #475569;
-}
+.auth-login-body { gap: 14px; padding-bottom: 16px; }
 
-.auth-role-switch-options {
+.auth-method-tabs {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: #f1f5f9;
+}
+.auth-method-tabs button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
   min-width: 0;
+  min-height: 46px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #64748b;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
 }
+.auth-method-tabs button span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.auth-method-tabs button:hover:not(.active) { color: #0f172a; }
+.auth-method-tabs button:focus-visible { outline: 2px solid #0066ff; outline-offset: 2px; }
+.auth-method-tabs button.active { background: #fff; color: #0066ff; box-shadow: 0 1px 4px rgba(15, 23, 42, .14); }
 
-.auth-role-option {
-  position: relative;
+.auth-login-panel { min-height: 0; }
+.auth-manual-form { display: flex; flex-direction: column; gap: 12px; }
+.auth-google-panel { display: flex; flex-direction: column; align-items: stretch; gap: 12px; padding: 18px 4px 6px; text-align: center; }
+.auth-google-panel .google-signin-container { display: flex; justify-content: center; min-height: 44px; }
+.auth-method-hint { margin: 0; font-size: 14px; line-height: 1.45; color: #334155; }
+.auth-method-note { font-size: 12.5px; line-height: 1.4; color: #64748b; }
+
+/* Pie fijo: «Crear cuenta» siempre a la vista, aunque el formulario tenga que hacer scroll. */
+.auth-login-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  padding: 12px 24px calc(14px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 -6px 14px rgba(15, 23, 42, .05);
+}
+.auth-login-footer p { margin: 0; font-size: 13px; color: #64748b; }
+.btn-auth-create {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
-  min-width: 0;
-  min-height: 44px;
-  padding: 6px 10px;
-  border: 2px solid #e2e8f0;
+  min-height: 46px;
+  border: 1.5px solid #0066ff;
   border-radius: 12px;
   background: #fff;
-  color: #475569;
-  text-align: left;
+  color: #0066ff;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 800;
   cursor: pointer;
-  transition: border-color .2s, background .2s, box-shadow .2s;
+  transition: background .15s ease;
 }
-
-.auth-role-option span { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.auth-role-option strong { font-size: 14px; color: #0f172a; line-height: 1.2; }
-.auth-role-option small { font-size: 12px; color: #64748b; }
-.auth-role-option:hover { border-color: #93c5fd; }
-.auth-role-option:focus-visible { outline: 2px solid #0066ff; outline-offset: 2px; }
-.auth-role-check { margin-left: auto; flex: none; }
-
-.auth-role-option.buyer.active { border-color: #0284c7; background: #e0f2fe; color: #0369a1; box-shadow: 0 4px 12px rgba(2, 132, 199, .18); }
-.auth-role-option.seller.active { border-color: #ea580c; background: #fff7ed; color: #c2410c; box-shadow: 0 4px 12px rgba(234, 88, 12, .18); }
-.auth-role-option.workshop.active { border-color: #0066ff; background: #eff6ff; color: #0052cc; box-shadow: 0 4px 12px rgba(37, 99, 235, .16); }
-
-.auth-role-switch-hint {
-  margin: 0;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: #fff;
-  border: 1px dashed #cbd5e1;
-  font-size: 12.5px;
-  line-height: 1.4;
-  color: #334155;
-}
-
-.auth-role-switch-hint.seller { border-color: #fdba74; background: #fffbf5; }
-.auth-role-switch-hint.workshop { border-color: #93c5fd; background: #f5f9ff; }
+.btn-auth-create:hover { background: #eff6ff; }
+.btn-auth-create:focus-visible { outline: 2px solid #0066ff; outline-offset: 2px; }
+.auth-login-trust { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: #64748b; }
 
 @media (max-width: 420px) {
-  .auth-role-option { gap: 8px; padding: 6px 8px; }
+  .auth-method-tabs button { gap: 6px; padding: 0 6px; font-size: 13px; }
+  .auth-login-footer { padding-inline: 16px; }
 }
 
-@media (max-height: 850px) {
-  .auth-modal-card--login .auth-modal-header { padding-top: 18px; padding-bottom: 10px; }
-  .auth-modal-card--login .auth-modal-body { gap: 10px; padding: 12px 24px 16px; }
-  .auth-modal-card--login .auth-role-switch { gap: 4px; padding: 8px; }
-  .auth-modal-card--login .auth-role-option { min-height: 40px; padding-block: 4px; }
-  .auth-modal-card--login .btn-auth-google { padding-block: 8px; }
-  .auth-modal-card--login .btn-auth-primary { padding-block: 9px; }
+@media (max-height: 760px) {
+  .auth-modal-card--login .auth-modal-header { padding-top: 14px; padding-bottom: 8px; }
+  .auth-login-brand { display: none; }
+  .auth-login-body { gap: 10px; }
+  .auth-login-footer { gap: 6px; padding-top: 8px; }
+  .auth-login-footer .auth-login-trust { display: none; }
 }
 
 .auth-login-mode {

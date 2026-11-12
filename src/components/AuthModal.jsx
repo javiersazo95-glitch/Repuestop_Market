@@ -11,7 +11,7 @@ import CaptadorCodeField, { useCaptadorCode } from './CaptadorCodeField';
 import { clearStoredCaptadorReferral, getStoredCaptadorReferral } from '../utils/captadorReferral';
 import { decodeGoogleIdToken, guardarCorreoParaTienda, guardarGoogleParaTaller, guardarGoogleParaTienda } from '../utils/googleIdToken';
 import GoogleSignInButton from './GoogleSignInButton';
-import { lookupSellerByTaxId } from './founderApi';
+import RepuesTopLogo from './RepuesTopLogo';
 import { formatRut, isValidRut } from '../services/adapters';
 import { ROUTES } from '../routes/paths';
 import {
@@ -54,6 +54,18 @@ const SELLER_FEATURES = [
   'Aparece como tienda verificada en la vitrina',
 ];
 
+/** «G» de Google a color (lucide no incluye logos de marcas). */
+function GoogleMark({ size = 18 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+      <path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z" />
+      <path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.4-4.7 7l7.2 5.6c4.3-3.9 6.8-9.7 6.8-17.1z" />
+      <path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z" />
+      <path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.2-5.6c-2 1.4-4.7 2.3-8.7 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z" />
+    </svg>
+  );
+}
+
 export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerRegister, onLoginSuccess }) {
   // El acceso comienza en login_form salvo cuando se abre directamente para crear cuenta o referido.
   const [step, setStep] = useState(modalOptions?.initialStep || 'login_form');
@@ -70,6 +82,16 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
   const [loginMode, setLoginMode] = useState('email'); // 'email' | 'taxId'
   const [taxId, setTaxId] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // Cómo entra la persona: «Con Google» (izquierda) o «manualmente» con sus datos (derecha). Se recuerda la última
+  // elección en este navegador. El perfil (comprador, tienda o taller) NO se elige: lo decide la cuenta.
+  const [loginMethod, setLoginMethodState] = useState(() => {
+    try { return localStorage.getItem('repuestop_login_method') === 'google' ? 'google' : 'manual'; } catch { return 'manual'; }
+  });
+  const setLoginMethod = (method) => {
+    setLoginMethodState(method);
+    setErrorMessage(null);
+    try { localStorage.setItem('repuestop_login_method', method); } catch { /* sin almacenamiento */ }
+  };
   
   // Buyer Register Extra State
   const [buyerName, setBuyerName] = useState('');
@@ -310,14 +332,6 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     onOpenSellerRegister();
   };
 
-  /** Cambio de rol dentro del formulario de inicio de sesión, sin volver a la elección. */
-  const switchLoginRole = (role) => {
-    if (role === selectedRole) return;
-    setSelectedRole(role);
-    setLoginMode('email');
-    setErrorMessage(null);
-  };
-
   /** El taller se registra en `/taller/registro` (RUT, direccion del taller), no con el registro de comprador. */
   const goToWorkshopRegister = ({ email: correo, googleIdToken } = {}) => {
     if (googleIdToken) guardarGoogleParaTaller(googleIdToken);
@@ -344,7 +358,7 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
   const handleStartRecovery = () => {
     setErrorMessage(null);
     setSuccessMessage(null);
-    const nextRole = selectedRole === 'SELLER' ? 'PROVEEDOR' : 'CLIENTE';
+    const nextRole = loginMode === 'taxId' ? 'PROVEEDOR' : 'CLIENTE';
     setRecoverRole(nextRole);
     // Con rol tienda el campo pide el RUT: prellenarlo con el correo del login dejaba
     // un email dentro de un campo de RUT.
@@ -492,27 +506,9 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     return /(?:usuario|correo|cuenta|account|user).{0,40}(?:no existe|no encontrada|not found)/i.test(result?.error || '');
   };
 
-  /**
-   * El login responde lo mismo (401) a un correo inexistente que a una contraseña mal escrita,
-   * para no delatar cuentas. Solo con rol Tienda y tras un fallo se pregunta por separado: el
-   * correo a check-email (lo mismo que ya consulta el registro) y el RUT a seller-lookup (lo
-   * mismo que ya consulta /vender para retomar una postulación). Si falla la consulta, se
-   * muestra el error normal.
-   */
-  const sellerAccountMissing = async (result, byTaxId) => {
-    if (isAccountNotFound(result)) return true;
-    if (result?.status !== 401) return false;
-    try {
-      if (byTaxId) return (await lookupSellerByTaxId(formatRut(taxId)))?.found === false;
-      return (await checkEmailAvailabilityApi(email))?.exists === false;
-    } catch {
-      return false;
-    }
-  };
-
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    const byTaxId = selectedRole === 'SELLER' && loginMode === 'taxId';
+    const byTaxId = loginMode === 'taxId';
     if (byTaxId) {
       if (!isValidRut(taxId)) {
         setErrorMessage('Ingresa un RUT válido (con dígito verificador).');
@@ -530,17 +526,10 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     setIsSubmitting(true);
     setErrorMessage(null);
 
+    // Sin elegir perfil: el backend responde con el rol de la cuenta (comprador, tienda o taller).
     const result = await login(byTaxId
-      ? { taxId: formatRut(taxId), password, preferredRole: 'SELLER' }
-      : { email, password, preferredRole: selectedRole });
-
-    // Como vendedor y sin cuenta: directo al registro de tienda fundadora, no al de comprador.
-    if (selectedRole === 'SELLER' && !result.success && !result.deletionScheduled
-        && await sellerAccountMissing(result, byTaxId)) {
-      setIsSubmitting(false);
-      goToSellerRegister({ email: byTaxId ? '' : email });
-      return;
-    }
+      ? { taxId: formatRut(taxId), password }
+      : { email, password });
 
     if (byTaxId && !result.success && !result.deletionScheduled) {
       setIsSubmitting(false);
@@ -555,15 +544,10 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     setIsSubmitting(false);
 
     if (result.success) {
-      // El rol lo decide la cuenta, no el selector: un correo de comprador que entra con
-      // "Tienda" marcado sigue siendo comprador, y se le dice.
+      // El perfil lo decide la cuenta: se le dice con cuál entró.
       const entroComoTienda = Boolean(result.user?.sellerId);
       const entroComoTaller = result.user?.role === 'WORKSHOP';
-      setSuccessMessage(entroComoTaller
-        ? '¡Bienvenido de nuevo! Has iniciado sesión como Taller.'
-        : selectedRole === 'SELLER' && !entroComoTienda
-        ? '¡Bienvenido! Este correo es de una cuenta de comprador: entraste como Comprador. Para vender, registra tu tienda en "Vender en RepuesTop".'
-        : `¡Bienvenido de nuevo! Has iniciado sesión como ${entroComoTienda ? 'Tienda / Vendedor' : 'Comprador'}.`);
+      setSuccessMessage(`¡Bienvenido de nuevo! Has iniciado sesión como ${entroComoTaller ? 'Taller' : entroComoTienda ? 'Tienda / Vendedor' : 'Comprador'}.`);
       setTimeout(() => {
         handleClose();
         onLoginSuccess?.();
@@ -636,17 +620,6 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
     // de nuevo el nombre y el correo que Google ya habia entregado.
     // `requiresRegistration`: la cuenta existe pero su perfil fue eliminado; se crea de nuevo.
     const perfil = result.status === 404 || result.requiresRegistration ? decodeGoogleIdToken(idToken) : null;
-    // Eligió "Tienda" y el correo no tiene cuenta: directo a crear la cuenta fundadora con ese
-    // mismo Google, sin volver a preguntar el tipo de cuenta.
-    if (perfil && selectedRole === 'SELLER') {
-      goToSellerRegister({ googleIdToken: idToken });
-      return;
-    }
-    // Lo mismo con "Taller": sigue en `/taller/registro` con su cuenta de Google.
-    if (perfil && selectedRole === 'WORKSHOP') {
-      goToWorkshopRegister({ googleIdToken: idToken });
-      return;
-    }
     if (perfil) {
       setGooglePending({ ...perfil, idToken });
       setGoogleMissingFields({ firstName: !perfil.firstName?.trim(), lastName: !perfil.lastName?.trim() });
@@ -678,7 +651,6 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
         result = await login({
           email,
           password,
-          preferredRole: selectedRole,
           reactivateAccount: true,
           acceptsTerms: true,
         });
@@ -892,9 +864,13 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
 
         {/* Modal Header */}
         <div className="auth-modal-header">
-          <div className="auth-brand-badge">
-            <ShieldCheck size={14} /> PORTAL REPUESTOP ACCOUNTS
-          </div>
+          {step === 'login_form' ? (
+            <div className="auth-login-brand"><RepuesTopLogo height={52} /></div>
+          ) : (
+            <div className="auth-brand-badge">
+              <ShieldCheck size={14} /> PORTAL REPUESTOP ACCOUNTS
+            </div>
+          )}
           
           {step === 'select_role' && (
             <>
@@ -908,8 +884,8 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
 
           {step === 'login_form' && (
             <>
-              <h2>Iniciar sesión como {selectedRole === 'BUYER' ? 'Comprador' : selectedRole === 'WORKSHOP' ? 'Taller automotriz' : 'Tienda'}</h2>
-              <p>Ingresa tus credenciales para acceder a tu panel de {selectedRole === 'BUYER' ? 'compras' : selectedRole === 'WORKSHOP' ? 'taller' : 'ventas'}.</p>
+              <h2>Iniciar sesión</h2>
+              <p>Un solo acceso para compradores, tiendas y talleres: detectamos tu perfil automáticamente.</p>
             </>
           )}
 
@@ -1180,210 +1156,194 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
                 <ChevronRight size={18} />
               </button>
             </div>
+
+            {/* Quien llegó aquí desde «Crear cuenta» puede volver al acceso sin cerrar el modal. */}
+            <div className="auth-footer-switch">
+              <p>
+                ¿Ya tienes cuenta?{' '}
+                <button
+                  type="button"
+                  className="link-btn"
+                  onClick={() => {
+                    setErrorMessage(null);
+                    setIsRegistrationFlow(false);
+                    setStep('login_form');
+                  }}
+                >
+                  Iniciar sesión
+                </button>
+              </p>
+            </div>
           </div>
         )}
 
-        {/* STEP 2: LOGIN FORM */}
+        {/* STEP 2: LOGIN. Igual que la app: un solo acceso, sin elegir perfil (lo decide la cuenta). A la izquierda
+            «Iniciar con Google» y a la derecha «Iniciar manualmente»; «Crear cuenta» queda fijo abajo, siempre a la vista. */}
         {step === 'login_form' && (
-          <form onSubmit={handleLoginSubmit} className="auth-modal-body">
-            {/* El rol con el que se entra, bien a la vista y cambiable aquí mismo: antes era una
-                píldora chica y un "Cambiar Rol" al fondo, y tiendas terminaban creando una
-                cuenta de comprador sin darse cuenta. */}
-            <div className="auth-role-switch">
-              <span className="auth-role-switch-label">Estás ingresando como</span>
-              <div className="auth-role-switch-options" role="radiogroup" aria-label="Rol con el que ingresas">
+          <>
+            <div className="auth-modal-body auth-login-body">
+              <div className="auth-method-tabs" role="tablist" aria-label="Cómo quieres iniciar sesión">
                 <button
                   type="button"
-                  role="radio"
-                  aria-checked={selectedRole === 'BUYER'}
-                  className={`auth-role-option buyer ${selectedRole === 'BUYER' ? 'active' : ''}`}
-                  onClick={() => switchLoginRole('BUYER')}
+                  role="tab"
+                  id="auth-tab-google"
+                  aria-selected={loginMethod === 'google'}
+                  aria-controls="auth-panel-login"
+                  className={loginMethod === 'google' ? 'active' : ''}
+                  onClick={() => setLoginMethod('google')}
                 >
-                  <Car size={20} />
-                  <span><strong>Comprador</strong><small>Busco repuestos</small></span>
-                  {selectedRole === 'BUYER' && <CheckCircle2 size={18} className="auth-role-check" />}
+                  <GoogleMark /> <span>Iniciar con Google</span>
                 </button>
                 <button
                   type="button"
-                  role="radio"
-                  aria-checked={selectedRole === 'SELLER'}
-                  className={`auth-role-option seller ${selectedRole === 'SELLER' ? 'active' : ''}`}
-                  onClick={() => switchLoginRole('SELLER')}
+                  role="tab"
+                  id="auth-tab-manual"
+                  aria-selected={loginMethod === 'manual'}
+                  aria-controls="auth-panel-login"
+                  className={loginMethod === 'manual' ? 'active' : ''}
+                  onClick={() => setLoginMethod('manual')}
                 >
-                  <Store size={20} />
-                  <span><strong>Tienda / Vendedor</strong><small>Vendo repuestos</small></span>
-                  {selectedRole === 'SELLER' && <CheckCircle2 size={18} className="auth-role-check" />}
+                  <KeyRound size={16} /> <span>Iniciar manualmente</span>
                 </button>
-                <button
-                  type="button"
-                  role="radio"
-                  aria-checked={selectedRole === 'WORKSHOP'}
-                  className={`auth-role-option workshop ${selectedRole === 'WORKSHOP' ? 'active' : ''}`}
-                  onClick={() => switchLoginRole('WORKSHOP')}
-                >
-                  <Wrench size={20} />
-                  <span><strong>Taller automotriz</strong><small>Ofrezco servicios</small></span>
-                  {selectedRole === 'WORKSHOP' && <CheckCircle2 size={18} className="auth-role-check" />}
-                </button>
+              </div>
+
+              <div id="auth-panel-login" role="tabpanel" aria-labelledby={loginMethod === 'google' ? 'auth-tab-google' : 'auth-tab-manual'} className="auth-login-panel">
+                {loginMethod === 'google' ? (
+                  <div className="auth-google-panel">
+                    <p className="auth-method-hint">Entra con tu cuenta de Google en un toque, sin recordar contraseña.</p>
+                    <GoogleSignInButton onCredential={handleGoogleCredential} disabled={isSubmitting} />
+                    <small className="auth-method-note">Si ese correo aún no tiene cuenta en RepuesTop, te ayudamos a crearla.</small>
+                  </div>
+                ) : (
+                  <form onSubmit={handleLoginSubmit} className="auth-manual-form" noValidate={false}>
+                    <div className="auth-login-mode" role="tablist" aria-label="Con qué datos entras">
+                      {[
+                        { key: 'email', label: 'Con correo', icon: <Mail size={14} /> },
+                        { key: 'taxId', label: 'Tienda con RUT', icon: <Building2 size={14} /> },
+                      ].map((option) => (
+                        <button
+                          key={option.key}
+                          type="button"
+                          role="tab"
+                          aria-selected={loginMode === option.key}
+                          className={loginMode === option.key ? 'active' : ''}
+                          onClick={() => {
+                            setLoginMode(option.key);
+                            setErrorMessage(null);
+                          }}
+                        >
+                          {option.icon} {option.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {loginMode === 'taxId' ? (
+                      <div className="form-group">
+                        <label htmlFor="auth-login-taxid">RUT de la tienda *</label>
+                        <div className="input-with-icon">
+                          <Building2 size={18} className="field-icon" />
+                          <input
+                            id="auth-login-taxid"
+                            type="text"
+                            inputMode="text"
+                            autoComplete="username"
+                            required
+                            placeholder="Ej. 76.123.456-7"
+                            maxLength={12}
+                            value={taxId}
+                            onChange={(e) => setTaxId(formatRut(e.target.value))}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="form-group">
+                        <label htmlFor="auth-login-email">Correo electrónico *</label>
+                        <div className="input-with-icon">
+                          <Mail size={18} className="field-icon" />
+                          <input
+                            id="auth-login-email"
+                            type="email"
+                            autoComplete="email"
+                            required
+                            placeholder="ejemplo@correo.com"
+                            maxLength={254}
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="form-group">
+                      <label htmlFor="auth-login-password">Contraseña *</label>
+                      <div className="input-with-icon">
+                        <Lock size={18} className="field-icon" />
+                        <input
+                          id="auth-login-password"
+                          type={showPassword ? 'text' : 'password'}
+                          autoComplete="current-password"
+                          required
+                          placeholder="Ingresa tu contraseña"
+                          maxLength={128}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                        />
+                        <button
+                          type="button"
+                          className="btn-toggle-eye"
+                          aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                          onClick={() => setShowPassword(!showPassword)}
+                        >
+                          {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="form-secondary-actions">
+                      <button
+                        type="button"
+                        className="forgot-password-link"
+                        style={{ background: 'none', border: 'none', padding: 0 }}
+                        onClick={handleStartRecovery}
+                      >
+                        ¿Olvidaste tu contraseña?
+                      </button>
+                    </div>
+
+                    <div className="auth-action-row gap-2">
+                      <button type="submit" className="btn-auth-primary" disabled={isSubmitting}>
+                        {isSubmitting ? (
+                          <span>Conectando...</span>
+                        ) : (
+                          <>
+                            <LogIn size={18} />
+                            <span>Iniciar sesión</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                )}
               </div>
             </div>
 
-            <GoogleSignInButton onCredential={handleGoogleCredential} disabled={isSubmitting} />
-
-            <div className="auth-divider">
-              <span>{selectedRole === 'SELLER' ? 'o ingresa con tus datos' : 'o ingresa con tu correo'}</span>
-            </div>
-
-            {selectedRole === 'SELLER' && (
-              <div className="auth-login-mode" role="tablist" aria-label="Cómo quieres ingresar">
-                {[
-                  { key: 'email', label: 'Con correo', icon: <Mail size={14} /> },
-                  { key: 'taxId', label: 'Tienda con RUT', icon: <Building2 size={14} /> },
-                ].map((option) => (
-                  <button
-                    key={option.key}
-                    type="button"
-                    role="tab"
-                    aria-selected={loginMode === option.key}
-                    className={loginMode === option.key ? 'active' : ''}
-                    onClick={() => {
-                      setLoginMode(option.key);
-                      setErrorMessage(null);
-                    }}
-                  >
-                    {option.icon} {option.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {selectedRole === 'SELLER' && loginMode === 'taxId' ? (
-              <div className="form-group">
-                <label htmlFor="auth-login-taxid">RUT de la tienda *</label>
-                <div className="input-with-icon">
-                  <Building2 size={18} className="field-icon" />
-                  <input
-                    id="auth-login-taxid"
-                    type="text"
-                    inputMode="text"
-                    autoComplete="username"
-                    required
-                    placeholder="Ej. 76.123.456-7"
-                    maxLength={12}
-                    value={taxId}
-                    onChange={(e) => setTaxId(formatRut(e.target.value))}
-                  />
-                </div>
-              </div>
-            ) : (
-              <div className="form-group">
-                <label>Correo Electrónico *</label>
-                <div className="input-with-icon">
-                  <Mail size={18} className="field-icon" />
-                  <input
-                    type="email"
-                    required
-                    placeholder="ejemplo@correo.com"
-                    maxLength={254}
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                  />
-                </div>
-              </div>
-            )}
-
-            <div className="form-group">
-              <label>Contraseña *</label>
-              <div className="input-with-icon">
-                <Mail size={18} className="field-icon" style={{ display: 'none' }} />
-                <Lock size={18} className="field-icon" />
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  placeholder="Ingresa tu contraseña"
-                  maxLength={128}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  className="btn-toggle-eye"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-secondary-actions">
+            {/* Fijo abajo (sticky): aunque el formulario haga scroll en pantallas bajas, «Crear cuenta» siempre se ve. */}
+            <div className="auth-login-footer">
+              <p>¿No tienes cuenta?</p>
               <button
                 type="button"
-                className="forgot-password-link"
-                style={{ background: 'none', border: 'none', padding: 0 }}
-                onClick={handleStartRecovery}
+                className="btn-auth-create"
+                onClick={() => {
+                  setErrorMessage(null);
+                  setIsRegistrationFlow(true);
+                  setStep('select_role');
+                }}
               >
-                ¿Olvidaste tu contraseña?
+                <UserPlus size={17} /> Crear cuenta
               </button>
+              <span className="auth-login-trust"><ShieldCheck size={14} /> Seguro, rápido y confiable</span>
             </div>
-
-            <div className="auth-action-row gap-2">
-              <button
-                type="submit"
-                className="btn-auth-primary"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <span>Conectando...</span>
-                ) : (
-                  <>
-                    <LogIn size={18} />
-                    <span>Iniciar Sesión</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="auth-footer-switch">
-              {selectedRole === 'BUYER' ? (
-                <p>
-                  ¿No tienes cuenta de comprador?{' '}
-                  <button
-                    type="button"
-                    className="link-btn"
-                    onClick={() => {
-                      setErrorMessage(null);
-                      setIsRegistrationFlow(true);
-                      setStep('select_role');
-                    }}
-                  >
-                    Crear cuenta rápida
-                  </button>
-                </p>
-              ) : selectedRole === 'WORKSHOP' ? (
-                <p>
-                  ¿No tienes cuenta de taller?{' '}
-                  <button
-                    type="button"
-                    className="link-btn highlight"
-                    onClick={goToWorkshopRegister}
-                  >
-                    Crear cuenta de taller
-                  </button>
-                </p>
-              ) : (
-                <p>
-                  ¿Quieres registrar tu tienda o desarmaduría?{' '}
-                  <button
-                    type="button"
-                    className="link-btn highlight"
-                    onClick={() => goToSellerRegister({ email })}
-                  >
-                    Crear cuenta de tienda fundadora
-                  </button>
-                </p>
-              )}
-            </div>
-          </form>
+          </>
         )}
 
         {/* STEP: DELETION SCHEDULED FEEDBACK & REACTIVATION */}

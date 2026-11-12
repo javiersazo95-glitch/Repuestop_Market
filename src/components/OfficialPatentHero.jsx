@@ -22,6 +22,8 @@ import { adaptVehicle } from '../services/adapters';
 import { normalizePlate, sanitizePlateInput, isValidPlate, getRecentPlates, addRecentPlate } from '../utils/vehicleLookup';
 import CategoryIconTile from './CategoryIconTile';
 import { PlateBenefitHint, RecommendedBadge } from './PlateRecommended';
+import { usePartAssistant } from '../context/PartAssistantContext';
+import { RepuestinAvatar } from './assistant/AssistantBits';
 
 // La búsqueda por código OEM o nombre de repuesto vive ahora en la barra del
 // header (con sugerencias en vivo); este panel solo resuelve el vehículo.
@@ -46,6 +48,7 @@ export default function OfficialPatentHero({
   const [inputValue, setInputValue] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const partAssistant = usePartAssistant();
   const [activeCarouselPage, setActiveCarouselPage] = useState(0);
   const [recentPlates, setRecentPlates] = useState(() => getRecentPlates());
   // Categorias y combustibles del mantenedor (lista `COMBUSTIBLE`), con el respaldo de siempre.
@@ -791,6 +794,12 @@ export default function OfficialPatentHero({
                           <div className="light-search-error">
                             <AlertCircle size={15} /> {errorMsg}
                           </div>
+                        )}
+                        {/* Como la app: si la patente no se identifica, Repuestín igual ayuda a buscar el repuesto. */}
+                        {errorMsg && searchMode === 'patente' && partAssistant.canAsk && (
+                          <button type="button" className="ra-btn ra-btn-outline ra-hero-cta" onClick={() => partAssistant.open()}>
+                            <RepuestinAvatar size={24} /> ¿Buscas un repuesto? Pregúntale a Repuestín
+                          </button>
                         )}
 
                         <button className="light-primary-search" onClick={() => handleSearch()} disabled={isSearching}>
