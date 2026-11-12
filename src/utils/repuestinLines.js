@@ -103,14 +103,14 @@ export function productsFoundLine(count) {
 }
 
 /** Introducción de las casas sugeridas. Sin subcategoría, explica que son parecidas o especialistas en la marca. */
-export function storesIntroLine({ total, shown, part, marca, missing, similarName }) {
+export function storesIntroLine({ shown, part, marca, missing, similarName }) {
   const name = lower(part);
-  const those = shown === 1 ? 'esta es la' : `estas ${shown} son las`;
+  const those = shown === 1 ? 'esta es la' : 'estas son las';
   if (missing) {
     const alike = similarName ? ` (como ${lower(similarName)})` : '';
     return marca
-      ? `Revisé las ${total} casas de repuestos de RepuesTop y ${those} que más se acercan: trabajan repuestos parecidos${alike} o son especialistas en ${marca}. Escríbeles y pregúntales por ${name}, que muchas veces lo consiguen 😉`
-      : `Revisé las ${total} casas de repuestos de RepuesTop y ${those} que más se acercan: trabajan repuestos parecidos${alike}. Escríbeles y pregúntales por ${name} 😉`;
+      ? `Revisé las casas de repuestos de RepuesTop y ${those} que más se acercan: trabajan repuestos parecidos${alike} o son especialistas en ${marca}. Escríbeles y pregúntales por ${name}, que muchas veces lo consiguen 😉`
+      : `Revisé las casas de repuestos de RepuesTop y ${those} que más se acercan: trabajan repuestos parecidos${alike}. Escríbeles y pregúntales por ${name} 😉`;
   }
-  return `Revisé las ${total} casas de repuestos de RepuesTop y ${those} con más probabilidad de tener ${name}${marca ? ` para ${marca}` : ''}. Las ordené de la más a la menos probable: miro especialidad, lo que ya publican de ese rubro y su valoración.`;
+  return `Revisé las casas de repuestos de RepuesTop y ${those} con más probabilidad de tener ${name}${marca ? ` para ${marca}` : ''}. Las ordené de la más a la menos probable: miro especialidad, lo que ya publican de ese rubro y su valoración.`;
 }

@@ -47,30 +47,30 @@ async function workshopAddress(userId) {
 }
 
 /**
- * "Hay N casas de repuestos": también se elige. Al marcarla el usuario sabe que se generará un encargo
+ * "Que lo vean todas las casas de repuestos": también se elige. Al marcarla el usuario sabe que se generará un encargo
  * y que TODAS las casas de repuestos del sistema lo verán y podrán ofertarle.
  */
-function OrderCard({ total, shown, selected, onToggle }) {
+function OrderCard({ selected, onToggle }) {
   return (
     <div
       className={`ra-all-stores${selected ? ' is-on' : ''}`}
       role="checkbox"
       tabIndex={0}
       aria-checked={selected}
-      aria-label={`Generar un encargo que verán las ${total} casas de repuestos de RepuesTop`}
+      aria-label={`Generar un encargo que verán todas las casas de repuestos de RepuesTop`}
       onClick={onToggle}
       onKeyDown={(event) => { if (event.key === ' ' || event.key === 'Enter') { event.preventDefault(); onToggle(); } }}
     >
       <Megaphone size={26} className="ra-primary" aria-hidden="true" />
       <div className="ra-all-stores-copy">
-        <strong>Hay {total} casas de repuestos en RepuesTop</strong>
+        <strong>Que lo vean todas las casas de repuestos</strong>
         {selected ? (
           <>
-            <small className="ra-all-stores-feedback">Se generará un encargo y las {total} casas de repuestos del sistema lo verán y podrán ofertarte.</small>
+            <small className="ra-all-stores-feedback">Se generará un encargo y todas las casas de repuestos de RepuesTop lo verán y podrán ofertarte.</small>
             <small>Ya dejé el formulario casi listo con lo que me contaste.</small>
           </>
         ) : (
-          <small>{total > shown ? `Te muestro las ${shown} con más probabilidad. Toca aquí para generar un encargo que verán las ${total}.` : 'Toca aquí para generar un encargo que verán todas.'}</small>
+          <small>Te muestro las que más probablemente lo tienen. Toca aquí para generar un encargo que verán todas.</small>
         )}
       </div>
       {selected ? <CheckCircle2 size={26} className="ra-check is-on" aria-hidden="true" /> : <Circle size={26} className="ra-check" aria-hidden="true" />}
@@ -206,7 +206,7 @@ export default function PartAssistantSheet({
     const rest = otherStoresCount(result);
     goTo('stores', botSay(
       rest > 0
-        ? `Marca las que quieras y les dejo tu mensaje. Y si prefieres que las ${rest} casas restantes también lo vean, toca la tarjeta de encargo 😉`
+        ? `Marca las que quieras y les dejo tu mensaje. Y si prefieres que las demás casas de repuestos también lo vean, toca la tarjeta de encargo 😉`
         : 'Marca las que quieras y les dejo tu mensaje. Suelen responder rápido 😉',
       500,
     ));
@@ -228,7 +228,6 @@ export default function PartAssistantSheet({
     } else if (outcome === 'stores') {
       const marca = next.marca.trim();
       offerStores(next, result, storesIntroLine({
-        total: result.totalStores,
         shown: result.stores.length,
         part: next.repuesto,
         marca,
@@ -753,8 +752,7 @@ export default function PartAssistantSheet({
       onResolved?.();
       setCreatedOrderId(created?.id ?? null);
       push('me', 'Publicar encargo');
-      const total = availability?.totalStores ?? 0;
-      void botSay(`¡Publicado! 🚀 Tu encargo ${auctionTrackingCode(created?.id ?? '')} ya está visible para ${total > 0 ? `las ${total} casas de repuestos` : 'todas las casas de repuestos'} de RepuesTop.`);
+      void botSay(`¡Publicado! 🚀 Tu encargo ${auctionTrackingCode(created?.id ?? '')} ya está visible para todas las casas de repuestos de RepuesTop.`);
       goTo('orderDone', botSay('Te aviso apenas llegue una oferta 🔔 Mientras tanto, ¿te ayudo con algo más?', 500));
     } catch (err) {
       void botSay(`Uy, algo falló al publicarlo 😕 ${err?.message || ''} ¿Lo intento de nuevo?`.replace(/\s+/g, ' ').trim());
@@ -781,7 +779,7 @@ export default function PartAssistantSheet({
   const notWhatINeed = () => {
     push('me', 'No es lo que busco');
     if (availability && availability.stores.length > 0) {
-      offerStores(ctx, availability, `¡Sin problema! Probemos con las casas de repuestos que más probablemente lo tienen: son ${availability.stores.length} de las ${availability.totalStores} de RepuesTop.`);
+      offerStores(ctx, availability, `¡Sin problema! Probemos con las casas de repuestos que más probablemente lo tienen.`);
     } else {
       goTo('order', botSay('¡Sin problema! Publícalo como encargo y las casas de repuestos te ofertarán. Lo armamos aquí mismo en un minuto 😉'));
     }
@@ -832,7 +830,7 @@ export default function PartAssistantSheet({
       const rest = availability ? otherStoresCount(availability) : 0;
       goTo('sent', botSay(
         rest > 0
-          ? `Y si quieres que las ${rest} casas restantes también te ofrezcan, genera un encargo: todas lo verán 🙌`
+          ? `Y si quieres que las demás casas de repuestos también te ofrezcan, genera un encargo: todas lo verán 🙌`
           : 'Mientras tanto, si quieres que más casas de repuestos te ofrezcan, también puedes encargarlo 🙌',
         500,
       ));
@@ -907,7 +905,7 @@ export default function PartAssistantSheet({
                   />
                 ))}
                 {availability.totalStores > 0 && (
-                  <OrderCard total={availability.totalStores} shown={availability.stores.length} selected={orderSelected} onToggle={toggleOrder} />
+                  <OrderCard selected={orderSelected} onToggle={toggleOrder} />
                 )}
                 {selected.length > 0 && (
                   <div className="ra-message-card">
@@ -1049,7 +1047,7 @@ export default function PartAssistantSheet({
               </button>
             ) : orderSelected ? (
               <button type="button" className="ra-btn ra-btn-primary ra-btn-block" onClick={askForOrder}>
-                {availability && availability.totalStores > 0 ? `Generar encargo para las ${availability.totalStores} casas` : 'Generar encargo'}
+                Generar encargo para todas las casas
               </button>
             ) : (
               <p className="ra-caption ra-center ra-pick-hint">Elige una o más casas de repuestos, o la tarjeta de encargo para que todas lo vean.</p>

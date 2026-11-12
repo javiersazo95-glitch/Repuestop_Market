@@ -147,7 +147,7 @@ export function nudgeFor(step, ctx, otherStores = 0) {
       return '¡Mira esas opciones! Si ninguna calza con lo que necesitas, no pasa nada: probamos con las casas de repuestos 😉';
     case 'stores':
       return otherStores > 0
-        ? `Marca las casas a las que quieras escribirles, empezando por las primeras: suelen responder rápido. Y si prefieres que las ${otherStores} restantes también lo vean, toca la tarjeta de encargo 🚀`
+        ? `Marca las casas a las que quieras escribirles, empezando por las primeras: suelen responder rápido. Y si prefieres que las demás también lo vean, toca la tarjeta de encargo 🚀`
         : 'Marca las casas a las que quieras escribirles y les dejo el mensaje: suelen responder rápido 🚀';
     case 'order':
       return `¿Publicamos el encargo${ctx.repuesto.trim() ? ` de ${ctx.repuesto.trim()}` : ''}? Así todas las casas de repuestos te ofertan sin que busques una por una 🙌`;
