@@ -40,12 +40,17 @@ const FAQS = [
   },
 ];
 
-/** Placa patente chilena dibujada (formato nuevo: cuatro letras y dos numeros). */
+/**
+ * Placa patente chilena dibujada. La patente es INVENTADA a proposito: desde 2007 las patentes
+ * nuevas usan solo consonantes, asi que una con vocal (AB·CD·12) no puede pertenecer a un auto
+ * real. No poner una patente con formato valido: se mostraria junto a una marca y modelo como si
+ * fueran los datos de un vehiculo ajeno. Coincide con el ejemplo del buscador ("ABCD12").
+ */
 function ChilePlate({ small = false }) {
   return (
     <span className={`cl-plate ${small ? 'is-small' : ''}`} aria-hidden="true">
       <span className="cl-plate-country">CHILE</span>
-      <span className="cl-plate-chars">KH<i>·</i>TP<i>·</i>47</span>
+      <span className="cl-plate-chars">AB<i>·</i>CD<i>·</i>12</span>
     </span>
   );
 }
@@ -77,9 +82,9 @@ function PlateRoute() {
         <li>
           <div className="plate-route-figure">
             <ul className="plate-route-parts" aria-hidden="true">
-              <li><span /><b>Pastillas freno</b><em>$18.900</em></li>
-              <li><span /><b>Filtro aceite</b><em>$6.490</em></li>
-              <li><span /><b>Correa</b><em>$14.200</em></li>
+              <li><img src="/category-parts/frenos-v2.png" alt="" loading="lazy" /><b>Pastillas freno</b><em>$18.900</em></li>
+              <li><img src="/category-parts/filtros-v2.png" alt="" loading="lazy" /><b>Filtro aceite</b><em>$6.490</em></li>
+              <li><img src="/category-parts/correas-v2.png" alt="" loading="lazy" /><b>Correa</b><em>$14.200</em></li>
             </ul>
           </div>
           <h3>Compara y compra</h3>

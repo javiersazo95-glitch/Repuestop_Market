@@ -21725,8 +21725,8 @@ input.has-success {
 .plate-route-vehicle dt { color: #6b7890; }
 .plate-route-vehicle dd { margin: 0; font-weight: 800; color: #15202e; }
 .plate-route-parts { display: grid; gap: 5px; width: calc(100% - 22px); max-width: 210px; margin: 0; padding: 0; list-style: none; }
-.plate-route-parts li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 5px 7px; border: 1px solid #d8dee8; border-radius: 5px; background: #fff; font-size: 10.5px; }
-.plate-route-parts span { width: 16px; height: 16px; border-radius: 3px; background: #d6e3f6; }
+.plate-route-parts li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 5px 7px; border: 1px solid #d8dee8; border-radius: 5px; background: #fff; font-size: 10.5px; }
+.plate-route-parts img { width: 22px; height: 18px; object-fit: contain; }
 .plate-route-parts b { overflow: hidden; font-weight: 700; color: #15202e; text-overflow: ellipsis; white-space: nowrap; }
 .plate-route-parts em { font-style: normal; font-weight: 800; color: #1268f3; }
 
@@ -21775,7 +21775,7 @@ input.has-success {
   .plate-route-vehicle { transform: scale(.8); }
   .plate-route-parts { width: calc(100% - 14px); gap: 4px; }
   .plate-route-parts li { grid-template-columns: minmax(0, 1fr) auto; padding: 4px 6px; font-size: 10px; }
-  .plate-route-parts span { display: none; }
+  .plate-route-parts img { display: none; }
   .plate-tips, .plate-guide-faq { grid-template-columns: 1fr; }
   .plate-guide { padding: 14px 0 36px; }
 }
