@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { qk } from '../../services/queryKeys';
 import { getPublicStoresApi } from '../../services/api';
 import { adaptPage, adaptStore } from '../../services/adapters';
+import { storePath } from '../../routes/paths';
+import { isModifiedClick } from '../../utils/linkClick';
 
 const nf = new Intl.NumberFormat('es-CL');
 
@@ -42,9 +44,19 @@ export default function HomeFeaturedStores({ onOpenStores, onSelectStore }) {
                 {store.reviewCount > 0
                   ? <span className="hb-store-rating"><Star size={13} fill="currentColor" aria-hidden="true" /> {store.rating.toFixed(1)} <em>({nf.format(store.reviewCount)})</em></span>
                   : <span className="hb-store-rating is-new">Nueva tienda</span>}
-                <button type="button" className="hb-btn hb-btn-outline hb-btn-sm" onClick={() => onSelectStore(store)} aria-label={`Ver tienda ${store.nombre}`}>
+                {/* 16-nov: <a href> real para que Google llegue a la ficha de la tienda desde el inicio. */}
+                <a
+                  className="hb-btn hb-btn-outline hb-btn-sm"
+                  href={storePath(store)}
+                  aria-label={`Ver tienda ${store.nombre}`}
+                  onClick={(event) => {
+                    if (isModifiedClick(event)) return;
+                    event.preventDefault();
+                    onSelectStore(store);
+                  }}
+                >
                   Ver tienda <ArrowRight size={14} aria-hidden="true" />
-                </button>
+                </a>
               </span>
             </article>
           );

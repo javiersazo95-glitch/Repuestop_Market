@@ -11,34 +11,15 @@ import '../styles/home-sections.css';
 /**
  * /repuestos-por-patente (16-nov). Pagina de entrada desde Google para quien busca "repuestos por
  * patente": el inicio habla de todo a la vez y para Google era "un marketplace", no "el lugar para
- * buscar por patente". Arriba va EL MISMO buscador del inicio (mismo componente, misma logica);
- * debajo, una guia que no existia en ningun lado del sitio.
+ * buscar por patente". Arriba va EL MISMO buscador del inicio (mismo componente, misma logica).
+ *
+ * Diseño: los pasos se cuentan con los objetos reales del tramite -la placa, la ficha del auto y la
+ * lista de repuestos-, dibujados en CSS, en vez de recuadros numerados (el usuario los rechazo por
+ * parecer generados). La secuencia la da el recorrido de izquierda a derecha y el <ol>.
  *
  * Los textos describen solo lo que el sitio hace hoy. Ojo con prometer compatibilidad: la declara
- * cada tienda y los Terminos no la garantizan.
+ * cada tienda y los Terminos no la garantizan. Los datos de la ficha y la lista son ilustrativos.
  */
-
-const STEPS = [
-  {
-    title: 'Escribe tu patente',
-    text: 'En el buscador de arriba. Sirve el formato nuevo (ABCD12) y el antiguo (BB·CL·12), con o sin guiones.',
-  },
-  {
-    title: 'Identificamos tu vehículo',
-    text: 'Con la patente obtenemos la marca, el modelo, el año y la versión de tu auto, sin que tengas que buscarlos en una lista.',
-  },
-  {
-    title: 'Compara y compra',
-    text: 'El catálogo muestra los repuestos que las tiendas publicaron para ese vehículo, más los universales. Comparas precio, tienda y envío, y pagas con Flow: el pago queda protegido hasta que recibes.',
-  },
-];
-
-const PLATE_LOCATIONS = [
-  'La placa delantera y trasera del vehículo.',
-  'El padrón (certificado de inscripción).',
-  'El permiso de circulación.',
-  'El SOAP.',
-];
 
 const FAQS = [
   {
@@ -59,6 +40,89 @@ const FAQS = [
   },
 ];
 
+/** Placa patente chilena dibujada (formato nuevo: cuatro letras y dos numeros). */
+function ChilePlate({ small = false }) {
+  return (
+    <span className={`cl-plate ${small ? 'is-small' : ''}`} aria-hidden="true">
+      <span className="cl-plate-country">CHILE</span>
+      <span className="cl-plate-chars">KH<i>·</i>TP<i>·</i>47</span>
+    </span>
+  );
+}
+
+function PlateRoute() {
+  return (
+    <div className="plate-route">
+      <h2>Cómo funciona</h2>
+      <ol>
+        <li>
+          <div className="plate-route-figure">
+            <ChilePlate />
+          </div>
+          <h3>Escribe tu patente</h3>
+          <p>Formato nuevo (ABCD12) o antiguo (BB·CL·12), con o sin guiones.</p>
+        </li>
+        <li>
+          <div className="plate-route-figure">
+            <dl className="plate-route-vehicle" aria-hidden="true">
+              <div><dt>Marca</dt><dd>Toyota</dd></div>
+              <div><dt>Modelo</dt><dd>Yaris</dd></div>
+              <div><dt>Año</dt><dd>2019</dd></div>
+              <div><dt>Versión</dt><dd>1.5 GLi</dd></div>
+            </dl>
+          </div>
+          <h3>Reconocemos tu auto</h3>
+          <p>Marca, modelo, año y versión, sin que tengas que buscarlos en una lista.</p>
+        </li>
+        <li>
+          <div className="plate-route-figure">
+            <ul className="plate-route-parts" aria-hidden="true">
+              <li><span /><b>Pastillas freno</b><em>$18.900</em></li>
+              <li><span /><b>Filtro aceite</b><em>$6.490</em></li>
+              <li><span /><b>Correa</b><em>$14.200</em></li>
+            </ul>
+          </div>
+          <h3>Compara y compra</h3>
+          <p>Lo publicado para tu auto y los universales. Pagas con Flow, protegido hasta que recibes.</p>
+        </li>
+      </ol>
+    </div>
+  );
+}
+
+function PlateHelp() {
+  return (
+    <div className="plate-tips">
+      <section>
+        <h3>¿La patente no encontró tu auto?</h3>
+        <p>
+          Cambia a «Búsqueda manual» y elige marca, modelo, año, versión y combustible: llegas al mismo
+          catálogo filtrado para tu vehículo. Si el repuesto no está publicado,{' '}
+          <Link to={ROUTES.auctions}>encárgalo</Link> y las tiendas te envían sus ofertas.
+        </p>
+      </section>
+      <section>
+        <h3>Dónde encontrar tu patente</h3>
+        <ul className="plate-docs">
+          <li><span className="plate-doc is-plate"><ChilePlate small /></span>En la placa del auto</li>
+          <li>
+            <span className="plate-doc is-padron" aria-hidden="true"><b>Padrón</b><i /><i /><i /></span>
+            En el padrón
+          </li>
+          <li>
+            <span className="plate-doc is-permiso" aria-hidden="true"><b>Permiso</b><strong>2026</strong></span>
+            En el permiso de circulación
+          </li>
+          <li>
+            <span className="plate-doc is-soap" aria-hidden="true"><strong>SOAP</strong><i /><i /></span>
+            En el SOAP
+          </li>
+        </ul>
+      </section>
+    </div>
+  );
+}
+
 export default function PlateSearchPage() {
   useDocumentTitle(seoTitleFor(ROUTES.plateSearch));
   const nav = useAppNavigation();
@@ -66,8 +130,24 @@ export default function PlateSearchPage() {
 
   return (
     <>
+      {/* Hero compacto: a la izquierda el titulo y el recorrido; a la derecha el buscador y las
+          ayudas. Con el hero completo del inicio la explicacion quedaba muy abajo. */}
       <OfficialPatentHero
+        compact
         heading={<>Repuestos<br /> por patente<br /> <span>en todo Chile</span></>}
+        intro={(
+          <p className="plate-hero-lead">
+            Cada auto en Chile tiene una patente única. Con ella sabemos qué vehículo tienes y te
+            mostramos los repuestos que las tiendas publicaron para él, sin que necesites el código
+            de la pieza.
+          </p>
+        )}
+        introExtra={(
+          <>
+            <PlateRoute />
+            <PlateHelp />
+          </>
+        )}
         activeVehicle={activeVehicle}
         onSelectVehicle={setActiveVehicle}
         onOpenSellerModal={nav.goSellerRegister}
@@ -77,49 +157,10 @@ export default function PlateSearchPage() {
         onSelectCategory={(filter) => nav.goCatalog(filter)}
       />
 
-      <section className="plate-guide" aria-labelledby="plate-guide-title">
+      <section className="plate-guide" aria-labelledby="plate-faq-title">
         <div className="container plate-guide-sheet">
-          <header className="plate-guide-head">
-            <span className="plate-guide-label">Guía</span>
-            <h2 id="plate-guide-title">Cómo funciona la búsqueda de repuestos por patente</h2>
-            <p>
-              Cada auto en Chile tiene una patente única. Con ella sabemos exactamente qué vehículo
-              tienes y te mostramos los repuestos que las tiendas de RepuesTop publicaron para él, sin
-              que necesites el código de la pieza.
-            </p>
-          </header>
-
-          <ol className="plate-guide-steps">
-            {STEPS.map((step, index) => (
-              <li key={step.title}>
-                <span className="plate-guide-num">{String(index + 1).padStart(2, '0')}</span>
-                <h3>{step.title}</h3>
-                <p>{step.text}</p>
-              </li>
-            ))}
-          </ol>
-
-          <div className="plate-guide-pair">
-            <div>
-              <span className="plate-guide-label">Si no aparece</span>
-              <h3>La patente no encontró tu auto</h3>
-              <p>
-                Cambia a «Búsqueda manual» y elige marca, modelo, año, versión y combustible: el
-                resultado es el mismo catálogo filtrado para tu vehículo. Y si el repuesto no está
-                publicado, <Link to={ROUTES.auctions}>encárgalo</Link> y las tiendas te envían sus ofertas.
-              </p>
-            </div>
-            <div>
-              <span className="plate-guide-label">Dónde está</span>
-              <h3>Dónde encontrar tu patente</h3>
-              <ul>
-                {PLATE_LOCATIONS.map((item) => <li key={item}>{item}</li>)}
-              </ul>
-            </div>
-          </div>
-
+          <h2 id="plate-faq-title">Preguntas frecuentes</h2>
           <div className="plate-guide-faq">
-            <span className="plate-guide-label">Preguntas frecuentes</span>
             {FAQS.map((item) => (
               <details key={item.q}>
                 <summary>{item.q}</summary>
@@ -129,10 +170,9 @@ export default function PlateSearchPage() {
           </div>
 
           <nav className="plate-guide-more" aria-label="Sigue explorando">
-            <span className="plate-guide-label">Sigue explorando</span>
-            <Link to={ROUTES.catalog}>Catálogo de repuestos</Link>
-            <Link to={ROUTES.stores}>Casas de repuestos verificadas</Link>
-            <Link to={ROUTES.support}>Centro de ayuda</Link>
+            <Link to={ROUTES.catalog}>Ver el catálogo de repuestos</Link>
+            <Link to={ROUTES.stores}>Conocer las casas de repuestos</Link>
+            <Link to={ROUTES.support}>Ir al centro de ayuda</Link>
           </nav>
         </div>
       </section>

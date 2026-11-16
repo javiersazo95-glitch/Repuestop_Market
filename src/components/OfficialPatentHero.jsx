@@ -43,6 +43,12 @@ export default function OfficialPatentHero({
   onOpenCatalog,
   // H1 propio para /repuestos-por-patente: dos paginas con el mismo H1 se leen como copias.
   heading = null,
+  // Version compacta (/repuestos-por-patente): sin panel de categorias, franja de confianza ni
+  // carrusel, para que la explicacion quede a la vista junto al buscador. `intro` reemplaza el
+  // texto y la lista bajo el H1, y `introExtra` va debajo (en celular, despues del buscador).
+  compact = false,
+  intro = null,
+  introExtra = null,
 }) {
   const [searchMode, setSearchMode] = useState('patente');
   // El boton "¿Dónde está mi patente?" no hacia nada: ahora despliega la ayuda.
@@ -452,9 +458,10 @@ export default function OfficialPatentHero({
   };
 
   return (
-    <section className="light-home-hero" id="patent-search-hero">
+    <section className={`light-home-hero ${compact ? 'is-compact' : ''}`} id="patent-search-hero">
       <div className="container light-home-layout">
         {/* Left Category Sidebar */}
+        {!compact && (
         <aside className="light-category-sidebar">
           <div className="light-category-sidebar-heading">
             <h2>Más consultadas</h2>
@@ -483,6 +490,7 @@ export default function OfficialPatentHero({
             </span>
           </button>
         </aside>
+        )}
 
         {/* Main Hero Cockpit */}
         <main className="light-hero-main">
@@ -490,14 +498,18 @@ export default function OfficialPatentHero({
             <div className="light-intro-copy">
               {/* 16-nov: el H1 dice "repuestos por patente", que es lo que se busca en Google. */}
               <h1>{heading || <>Busca repuestos<br /> por patente<br /> <span>en segundos</span></>}</h1>
-              <i aria-hidden="true" />
-              <p>Busca por patente, código OEM o nombre del repuesto y compara opciones de tiendas verificadas, con el pago protegido hasta que recibas.</p>
-              <ul>
-                <li><CheckCircle2 size={17} /> Repuestos originales y alternativos</li>
-                <li><CheckCircle2 size={17} /> Precios competitivos</li>
-                <li><CheckCircle2 size={17} /> Vendedores verificados</li>
-                <li><CheckCircle2 size={17} /> Compra 100% segura</li>
-              </ul>
+              {intro || (
+                <>
+                  <i aria-hidden="true" />
+                  <p>Busca por patente, código OEM o nombre del repuesto y compara opciones de tiendas verificadas, con el pago protegido hasta que recibas.</p>
+                  <ul>
+                    <li><CheckCircle2 size={17} /> Repuestos originales y alternativos</li>
+                    <li><CheckCircle2 size={17} /> Precios competitivos</li>
+                    <li><CheckCircle2 size={17} /> Vendedores verificados</li>
+                    <li><CheckCircle2 size={17} /> Compra 100% segura</li>
+                  </ul>
+                </>
+              )}
             </div>
 
             {/* Right Search Cockpit Panel */}
@@ -826,19 +838,23 @@ export default function OfficialPatentHero({
                 </>
               )}
             </div>
+            {introExtra}
           </div>
 
           {/* Trust Guarantees Bar */}
+          {!compact && (
           <div className="light-trust-row">
             <div><span className="trust-circle blue"><Users size={27} /></span><p><strong>Casas de repuestos verificadas</strong><small>Documentos revisados por soporte</small></p></div>
             <div><span className="trust-circle green"><Truck size={27} /></span><p><strong>Envíos a todo Chile</strong><small>Rápido y seguro</small></p></div>
             <div><span className="trust-circle amber"><ShieldCheck size={27} /></span><p><strong>Repuestos originales<br />y alternativos</strong><small>Calidad garantizada</small></p></div>
             <div><span className="trust-circle purple"><ShieldCheck size={27} /></span><p><strong>Compra protegida</strong><small>Tu compra 100% segura</small></p></div>
           </div>
+          )}
         </main>
       </div>
 
       {/* Category Showcase Carousel */}
+      {!compact && (
       <section className="container category-showcase-carousel" aria-label="Explora por categorías">
         <button
           className="category-carousel-arrow previous"
@@ -891,6 +907,7 @@ export default function OfficialPatentHero({
           ))}
         </div>
       </section>
+      )}
     </section>
   );
 }

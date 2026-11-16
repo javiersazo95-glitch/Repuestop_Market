@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Outfit:wght@400;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Outfit:wght@400;600;700;800;900&family=Barlow+Condensed:wght@600;700&display=swap');
 
 /* ==========================================================================
    CSS VARIABLES & DESIGN SYSTEM (Official RepuesTop Logo Palette)
@@ -21688,39 +21688,94 @@ input.has-success {
 }
 
 /* ==========================================================================
-   Guia de /repuestos-por-patente (PlateSearchPage, 16-nov)
-   Lenguaje de documento, no de tarjetas: filetes de 1px en vez de sombras,
-   esquinas de 3px, numeros en monoespaciada y etiquetas en mayuscula espaciada.
+   /repuestos-por-patente (PlateSearchPage, 16-nov)
+   Los pasos se cuentan con los objetos reales del tramite (placa, ficha del auto,
+   lista de repuestos) dibujados en CSS. Sin recuadros numerados ni etiquetas en
+   mayuscula: el usuario los rechazo por parecer generados.
    ========================================================================== */
-.plate-guide { padding: 8px 0 56px; }
-.plate-guide-sheet { max-width: 1040px; color: #101b32; }
-.plate-guide-label { display: block; margin-bottom: 8px; color: #5b6880; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
-.plate-guide-head { padding: 28px 0 22px; border-bottom: 1px solid #101b32; }
-.plate-guide-head h2 { max-width: 720px; margin: 0 0 12px; font-family: var(--font-display); font-size: clamp(22px, 3vw, 30px); font-weight: 800; line-height: 1.15; }
-.plate-guide-head p { max-width: 720px; margin: 0; color: #3b4760; font-size: 15px; line-height: 1.6; }
-.plate-guide-steps { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0; padding: 0; list-style: none; border-bottom: 1px solid #d5dbe6; }
-.plate-guide-steps li { padding: 22px 22px 24px 0; }
-.plate-guide-steps li + li { padding-left: 22px; border-left: 1px solid #d5dbe6; }
-.plate-guide-num { display: inline-block; margin-bottom: 10px; padding: 2px 6px; border: 1px solid #1268f3; border-radius: 3px; color: #1268f3; font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace; font-size: 12px; font-weight: 700; }
-.plate-guide-steps h3, .plate-guide-pair h3 { margin: 0 0 6px; font-size: 16px; font-weight: 800; }
-.plate-guide-steps p, .plate-guide-pair p, .plate-guide-pair li, .plate-guide-faq p { margin: 0; color: #3b4760; font-size: 14px; line-height: 1.6; }
-.plate-guide-pair { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid #d5dbe6; }
-.plate-guide-pair > div { padding: 24px 22px 24px 0; }
-.plate-guide-pair > div + div { padding-left: 22px; border-left: 1px solid #d5dbe6; }
-.plate-guide-pair a { color: #1268f3; font-weight: 700; }
-.plate-guide-pair ul { margin: 0; padding-left: 18px; }
-.plate-guide-faq { padding: 24px 0 8px; border-bottom: 1px solid #d5dbe6; }
-.plate-guide-faq details { border-top: 1px solid #e4e8ef; }
-.plate-guide-faq details:last-of-type { border-bottom: 0; }
-.plate-guide-faq summary { padding: 14px 0; cursor: pointer; font-size: 15px; font-weight: 700; list-style-position: inside; }
-.plate-guide-faq details p { padding: 0 0 16px; }
-.plate-guide-more { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 24px; padding: 22px 0 0; }
-.plate-guide-more .plate-guide-label { width: 100%; margin: 0; }
-.plate-guide-more a { color: #1268f3; font-size: 14px; font-weight: 700; text-decoration: none; border-bottom: 1px solid currentColor; }
+/* Hero compacto (OfficialPatentHero compact). Izquierda: texto y recorrido; derecha:
+   buscador y ayudas. El recorrido ocupa dos filas para empezar justo bajo el texto. */
+.light-home-hero.is-compact { padding-bottom: 8px; }
+.light-home-hero.is-compact .light-home-layout { grid-template-columns: minmax(0, 1fr); }
+.light-home-hero.is-compact .light-search-intro { grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); grid-template-areas: "copy panel" "route panel" "route help"; grid-template-rows: auto auto 1fr; column-gap: 44px; row-gap: 26px; align-items: start; }
+.light-home-hero.is-compact .light-intro-copy { grid-area: copy; padding: 14px 0 0; }
+.light-home-hero.is-compact .light-search-panel { grid-area: panel; }
+.light-intro-copy > .plate-hero-lead { max-width: 520px; margin: 14px 0 0; color: #4a5871; font-size: 15px; line-height: 1.6; }
 
+/* Placa patente chilena */
+.cl-plate { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 156px; height: 62px; padding: 3px 8px 2px; border: 2.5px solid #1b1f24; border-radius: 7px; background: #fff; box-shadow: inset 0 0 0 2px #fff, inset 0 0 0 3px #c9cfd8, 0 2px 0 #b9c3d1; color: #1b1f24; }
+.cl-plate-country { font-size: 8px; font-weight: 800; letter-spacing: .32em; line-height: 1; padding-left: .32em; }
+.cl-plate-chars { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 36px; font-weight: 700; letter-spacing: .03em; line-height: 1.05; }
+.cl-plate-chars i { margin: 0 2px; font-style: normal; opacity: .8; }
+.cl-plate.is-small { width: 54px; height: 24px; padding: 1px 3px; border-width: 1.5px; border-radius: 3px; box-shadow: inset 0 0 0 1px #fff; }
+.cl-plate.is-small .cl-plate-country { font-size: 3.5px; letter-spacing: .2em; }
+.cl-plate.is-small .cl-plate-chars { font-size: 13px; }
+.cl-plate.is-small .cl-plate-chars i { margin: 0; }
+
+/* Recorrido: placa, ficha del auto y repuestos, unidos por una linea */
+.plate-route { grid-area: route; color: #15202e; }
+.plate-route h2, .plate-guide-sheet > h2 { margin: 0 0 14px; font-family: var(--font-display); font-size: 19px; font-weight: 800; color: #15202e; }
+.plate-route ol { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 26px; margin: 0; padding: 0; list-style: none; }
+.plate-route-figure { position: relative; display: grid; place-items: center; height: 124px; margin-bottom: 12px; border-radius: 10px; background: #eef3f9; }
+.plate-route ol > li + li .plate-route-figure::before { content: ""; position: absolute; top: 50%; right: 100%; width: 26px; height: 2px; background: #b9c7da; }
+.plate-route h3 { margin: 0 0 4px; font-size: 15px; font-weight: 800; color: #15202e; }
+.plate-route p { margin: 0; color: #4a5871; font-size: 13.5px; line-height: 1.5; }
+.plate-route-vehicle { display: grid; gap: 2px; width: 150px; margin: 0; padding: 8px 10px; border: 1px solid #d8dee8; border-radius: 6px; background: #fff; font-size: 11.5px; }
+.plate-route-vehicle div { display: flex; justify-content: space-between; gap: 8px; }
+.plate-route-vehicle dt { color: #6b7890; }
+.plate-route-vehicle dd { margin: 0; font-weight: 800; color: #15202e; }
+.plate-route-parts { display: grid; gap: 5px; width: calc(100% - 22px); max-width: 210px; margin: 0; padding: 0; list-style: none; }
+.plate-route-parts li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto; align-items: center; gap: 7px; padding: 5px 7px; border: 1px solid #d8dee8; border-radius: 5px; background: #fff; font-size: 10.5px; }
+.plate-route-parts span { width: 16px; height: 16px; border-radius: 3px; background: #d6e3f6; }
+.plate-route-parts b { overflow: hidden; font-weight: 700; color: #15202e; text-overflow: ellipsis; white-space: nowrap; }
+.plate-route-parts em { font-style: normal; font-weight: 800; color: #1268f3; }
+
+/* Ayudas bajo el buscador */
+.plate-tips { grid-area: help; display: grid; grid-template-columns: 1fr 1fr; gap: 28px; padding-top: 4px; }
+.plate-tips h3 { margin: 0 0 6px; font-size: 15px; font-weight: 800; color: #15202e; }
+.plate-tips p { margin: 0; color: #4a5871; font-size: 13.5px; line-height: 1.55; }
+.plate-tips a { color: #1268f3; font-weight: 700; }
+.plate-docs { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.plate-docs li { display: flex; align-items: center; gap: 10px; color: #4a5871; font-size: 13px; }
+.plate-doc { position: relative; flex: none; display: grid; place-items: center; width: 54px; height: 34px; border-radius: 3px; }
+.plate-doc.is-padron { align-content: start; justify-items: start; gap: 3px; padding: 4px 5px; border: 1px solid #c9d2df; background: #fff; }
+.plate-doc.is-padron b { font-size: 6.5px; font-weight: 800; color: #15202e; }
+.plate-doc.is-padron i, .plate-doc.is-soap i { display: block; width: 100%; height: 2px; border-radius: 1px; background: #d8dee8; }
+.plate-doc.is-padron i:last-child { width: 60%; }
+.plate-doc.is-permiso { align-content: center; gap: 0; border: 1px solid #9fd3b2; background: #ecf8f0; color: #1d6b3d; }
+.plate-doc.is-permiso b { font-size: 6px; font-weight: 700; }
+.plate-doc.is-permiso strong { font-size: 12px; font-weight: 800; line-height: 1; }
+.plate-doc.is-soap { align-content: center; gap: 3px; padding: 4px 6px; border: 1px solid #efc98f; background: #fff6e8; }
+.plate-doc.is-soap strong { font-size: 9px; font-weight: 900; letter-spacing: .06em; color: #9a5b00; }
+.plate-doc.is-soap i { background: #f0d9b4; }
+
+/* Bajo el hero: preguntas y enlaces, al mismo ancho del hero. */
+.plate-guide { padding: 26px 0 48px; }
+.plate-guide-sheet { max-width: 1540px; color: #15202e; } /* el mismo ancho que .light-home-hero .container */
+.plate-guide-faq { display: grid; grid-template-columns: 1fr 1fr; column-gap: 44px; align-items: start; }
+.plate-guide-faq details { border-top: 1px solid #d8dee8; }
+.plate-guide-faq summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 0; cursor: pointer; font-size: 14.5px; font-weight: 700; list-style: none; }
+.plate-guide-faq summary::-webkit-details-marker { display: none; }
+.plate-guide-faq summary::after { content: "+"; flex: none; color: #1268f3; font-size: 20px; font-weight: 500; line-height: 1; }
+.plate-guide-faq details[open] summary::after { content: "\2212"; }
+.plate-guide-faq summary:focus-visible { outline: 2px solid #1268f3; outline-offset: 2px; }
+.plate-guide-faq details p { margin: 0; padding: 0 0 14px; color: #4a5871; font-size: 14px; line-height: 1.6; }
+.plate-guide-more { display: flex; flex-wrap: wrap; gap: 8px 28px; padding: 22px 0 0; }
+.plate-guide-more a { color: #1268f3; font-size: 14px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-width: 1100px) {
+  .light-home-hero.is-compact .light-search-intro { grid-template-columns: minmax(0, 1fr); grid-template-areas: "copy" "panel" "route" "help"; grid-template-rows: none; row-gap: 22px; }
+}
 @media (max-width: 767px) {
-  .plate-guide { padding: 0 0 40px; }
-  .plate-guide-steps, .plate-guide-pair { grid-template-columns: 1fr; }
-  .plate-guide-steps li, .plate-guide-steps li + li, .plate-guide-pair > div, .plate-guide-pair > div + div { padding: 18px 0; border-left: 0; }
-  .plate-guide-steps li + li, .plate-guide-pair > div + div { border-top: 1px solid #d5dbe6; }
+  .plate-route ol { grid-template-columns: 1fr; gap: 16px; }
+  .plate-route ol > li { display: grid; grid-template-columns: 150px minmax(0, 1fr); column-gap: 14px; align-items: center; }
+  .plate-route-figure { grid-row: span 2; height: 96px; margin: 0; }
+  .plate-route ol > li + li .plate-route-figure::before { top: auto; bottom: 100%; right: 50%; width: 2px; height: 16px; }
+  .plate-route .cl-plate { transform: scale(.78); }
+  .plate-route-vehicle { transform: scale(.8); }
+  .plate-route-parts { width: calc(100% - 14px); gap: 4px; }
+  .plate-route-parts li { grid-template-columns: minmax(0, 1fr) auto; padding: 4px 6px; font-size: 10px; }
+  .plate-route-parts span { display: none; }
+  .plate-tips, .plate-guide-faq { grid-template-columns: 1fr; }
+  .plate-guide { padding: 14px 0 36px; }
 }

@@ -7,6 +7,8 @@ import { qk } from '../../services/queryKeys';
 import { adaptPage, adaptLatestPart, compatibilidadLinea } from '../../services/adapters';
 import { useAuth } from '../../context/AuthContext';
 import { useFavorites } from '../../hooks/useFavorites';
+import { productPath } from '../../routes/paths';
+import { isModifiedClick } from '../../utils/linkClick';
 
 const FEATURED_COUNT = 4;
 const FETCH_COUNT = 12;
@@ -50,6 +52,9 @@ function FeaturedCard({ product, onView, isFavorite, onToggleFavorite }) {
   const referenceImage = getPartImage(product.titulo, product.subcategoria, product.categoriaNombre) || CATEGORY_IMAGE_BY_ID[category];
   const image = product.imagen || product.imagenes?.[0] || product.imageUrls?.[0] || referenceImage;
   const compat = compatibilidadLinea(product.compatibilidad);
+  // 16-nov: titulo y "Comprar ahora" son <a href> reales para que Google llegue a la ficha desde
+  // el inicio (ver MarketplaceProductCard). El clic normal sigue pasando por onView.
+  const href = productPath(product);
 
   return (
     <article className="hb-part">
@@ -66,7 +71,17 @@ function FeaturedCard({ product, onView, isFavorite, onToggleFavorite }) {
         <PartPhoto src={image} fallback={referenceImage} />
       </div>
       <div className="hb-part-body">
-        <h3 onClick={() => onView?.(product)}>{product.titulo}</h3>
+        <h3 onClick={() => onView?.(product)}>
+          <a
+            href={href}
+            onClick={(event) => {
+              if (isModifiedClick(event)) event.stopPropagation();
+              else event.preventDefault();
+            }}
+          >
+            {product.titulo}
+          </a>
+        </h3>
         <p className="hb-part-sub">{compat || product.categoriaNombre || 'Compatibilidad multimarca'}</p>
         <div className="hb-part-store">
           {storeLogo ? <img src={storeLogo} alt="" /> : <span className="hb-part-store-dot" aria-hidden="true"><Tag size={11} /></span>}
@@ -89,9 +104,17 @@ function FeaturedCard({ product, onView, isFavorite, onToggleFavorite }) {
             </>
           )}
         </div>
-        <button type="button" className="hb-part-buy" onClick={() => onView?.(product)}>
+        <a
+          className="hb-part-buy"
+          href={href}
+          onClick={(event) => {
+            if (isModifiedClick(event)) return;
+            event.preventDefault();
+            onView?.(product);
+          }}
+        >
           <ShoppingCart size={16} aria-hidden="true" /> Comprar ahora
-        </button>
+        </a>
       </div>
     </article>
   );
