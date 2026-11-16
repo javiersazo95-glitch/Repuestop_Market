@@ -19,6 +19,8 @@
     { "source": "/sitemap-catalogo.xml", "has": [{ "type": "host", "value": "dev-repuestop.repuestop.cl" }], "destination": "https://api-dev.repuestop.cl/api/v1/seo/sitemap-catalogo.xml" },
     { "source": "/(vender|nosotros|ayuda|terminos|privacidad|repuestos|repuestos-por-patente|tiendas)", "destination": "/$1/index.html" },
     { "source": "/ayuda/(preguntas-frecuentes|contacto|productos|cotizaciones|necesidades|cuenta|politicas|seguridad)", "destination": "/ayuda/$1/index.html" },
+    { "source": "/repuestos/([^/]+)", "destination": "/api/ficha?tipo=repuesto&ref=$1" },
+    { "source": "/tiendas/([^/]+)", "destination": "/api/ficha?tipo=tienda&ref=$1" },
     { "source": "/(.*)", "destination": "/app.html" }
   ],
   "headers": [

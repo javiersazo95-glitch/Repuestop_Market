@@ -9,11 +9,9 @@ import { HELP_ROLES, getCategoriesForRole } from '../data/helpContent.js';
 // robots.txt las abre: al agregar una ruta aqui, sumarla en esos dos archivos.
 // Archivo sin JSX ni alias: lo importa Node al compilar.
 
-export const SITE_URL = 'https://repuestop.cl';
-// 16-nov: con "patente" (ver el comentario del <title> en index.html).
-export const BASE_TITLE = 'Marketplace de repuestos por patente en Chile | RepuesTop';
-
-export const titleWithBrand = (title) => (title ? `${title} | RepuesTop` : BASE_TITLE);
+// SITE_URL, BASE_TITLE y titleWithBrand viven en site.js (16-nov) para que los use la funcion
+// de Vercel api/ficha.js sin cargar el contenido del centro de ayuda.
+export { SITE_URL, BASE_TITLE, titleWithBrand } from './site.js';
 
 const HELP_FIXED = [
   {
