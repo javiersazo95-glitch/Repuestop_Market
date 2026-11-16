@@ -373,7 +373,7 @@ export default function Header({
               Centro de ayuda <HelpCircle size={14} />
             </button>
             <button className="top-seller-link" onClick={onOpenSellerModal}>
-              <Store size={14} /> Vende en RepuestosTop
+              <Store size={14} /> Vende en RepuesTop
             </button>
           </div>
         </div>
@@ -469,7 +469,7 @@ export default function Header({
             {isLoggedIn && showUserMenu && (
               <div className="user-dropdown-menu" onClick={(event) => event.stopPropagation()}>
                 <div className="user-dropdown-header">
-                  <strong>{user?.userName || user?.storeName || 'Usuario RepuestosTop'}</strong>
+                  <strong>{user?.userName || user?.storeName || 'Usuario RepuesTop'}</strong>
                   <span className="dropdown-user-email">{user?.email}</span>
                 </div>
                 <div className="user-dropdown-body">

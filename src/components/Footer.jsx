@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   ChevronDown, ChevronRight, Compass, Disc3, FileText, Filter, Headphones,
   Lock, MessageSquare, PackageSearch, Search, ShieldCheck, Store, Tag,
@@ -16,9 +16,8 @@ import SocialIcon from './SocialIcon';
 
 /**
  * Los enlaces del footer son `<a>` reales (`Link`), no botones: así se indexan,
- * se pueden abrir en una pestaña nueva y el navegador muestra el destino. Solo
- * "Buscar por patente" queda como botón, porque es una acción de scroll y no
- * tiene URL propia.
+ * se pueden abrir en una pestaña nueva y el navegador muestra el destino.
+ * "Buscar por patente" también, desde el 16-nov (antes era un scroll al hero).
  *
  * Ojo con las categorías: el `id` tiene que existir en `HEADER_CATEGORIES`
  * (`src/data/categories.js`). `PartsCatalogView` traduce ese id a un id real del
@@ -83,7 +82,6 @@ const SUPPORT_LINKS = [
 
 export default function Footer() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { user } = useAuth();
   // Mantenedor comun: enlaces de categorias (`market.footer.enlaces-categorias`) y del Mural
   // (`market.nav.mural-anuncios`). Sin bootstrap ambos se ven como siempre.
@@ -122,18 +120,6 @@ export default function Footer() {
     if (to.split('?')[0] !== location.pathname) return;
     event.preventDefault();
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const goPatentSearch = () => {
-    if (location.pathname !== ROUTES.home) {
-      navigate(ROUTES.home);
-      return;
-    }
-    const hero = document.getElementById('patent-search-hero');
-    if (!hero) return;
-    // `scrollIntoView` no mueve nada en algunos navegadores embebidos; el scroll
-    // calculado sobre la ventana funciona igual en todos.
-    window.scrollTo({ top: hero.getBoundingClientRect().top + window.scrollY, behavior: 'smooth' });
   };
 
   const renderLink = (label, Icon, to, requiresAuth = false) => (
@@ -201,11 +187,8 @@ export default function Footer() {
           >
             <ul>
               {exploreLinks.map(([label, Icon, to]) => renderLink(label, Icon, to))}
-              <li>
-                <button type="button" onClick={goPatentSearch}>
-                  <Search /> <span>Buscar por patente</span> <ChevronRight className="footer-link-chevron" />
-                </button>
-              </li>
+              {/* 16-nov: con URL propia (/repuestos-por-patente) deja de ser boton de scroll. */}
+              {renderLink('Buscar por patente', Search, ROUTES.plateSearch)}
             </ul>
           </div>
         </section>

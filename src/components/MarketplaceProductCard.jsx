@@ -5,6 +5,8 @@ import ProductTopBadge from './ProductTopBadge';
 import { getPartImage, useCategories } from '../data/categories';
 import { isProductTopActive } from '../utils/productTop';
 import { compatibilidadLinea } from '../services/adapters';
+import { productPath } from '../routes/paths';
+import { isModifiedClick } from '../utils/linkClick';
 
 const CATEGORY_LABELS = {
   frenos: 'Frenos',
@@ -79,6 +81,11 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
     || referenceImage;
 
   const favoriteActive = Boolean(isFavorite || product.favorito || product.isFavorite);
+  // 16-nov: el titulo y "Ver detalle" son <a href> reales. Google solo sigue enlaces, y con
+  // onClick sueltos no habia ningun camino hacia las fichas: las conocia solo por el sitemap
+  // y quedaban "Descubiertas: sin indexar". El clic normal sigue pasando por onView (que puede
+  // abrir una vista rapida); Ctrl/Cmd+clic abre la ficha en otra pestana como cualquier enlace.
+  const detailHref = productPath(product);
 
   return (
     <article className="market-product-card">
@@ -107,7 +114,18 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
       </div>
 
       <div className="market-product-content">
-        <h3 onClick={() => onView?.(product)}>{product.titulo}</h3>
+        <h3 onClick={() => onView?.(product)}>
+          {/* El clic normal sube al h3 (en celular su ::after cubre la tarjeta entera). */}
+          <a
+            href={detailHref}
+            onClick={(event) => {
+              if (isModifiedClick(event)) event.stopPropagation();
+              else event.preventDefault();
+            }}
+          >
+            {product.titulo}
+          </a>
+        </h3>
         <p className="market-product-compatibility">{getCompatibility(product)}</p>
         <div className="market-product-tags">
           <span className="market-product-category" data-category={category}>
@@ -148,7 +166,17 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
           {oldPrice > price && price > 0 && <del>${oldPrice.toLocaleString('es-CL')}</del>}
         </div>
 
-        <button className="market-product-detail" type="button" onClick={() => onView?.(product)}>Ver detalle</button>
+        <a
+          className="market-product-detail"
+          href={detailHref}
+          onClick={(event) => {
+            if (isModifiedClick(event)) return;
+            event.preventDefault();
+            onView?.(product);
+          }}
+        >
+          Ver detalle
+        </a>
       </div>
     </article>
   );

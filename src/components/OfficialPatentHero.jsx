@@ -40,7 +40,9 @@ export default function OfficialPatentHero({
   onOpenSellerModal,
   selectedCategory,
   onSelectCategory,
-  onOpenCatalog
+  onOpenCatalog,
+  // H1 propio para /repuestos-por-patente: dos paginas con el mismo H1 se leen como copias.
+  heading = null,
 }) {
   const [searchMode, setSearchMode] = useState('patente');
   // El boton "¿Dónde está mi patente?" no hacia nada: ahora despliega la ayuda.
@@ -486,7 +488,8 @@ export default function OfficialPatentHero({
         <main className="light-hero-main">
           <div className="light-search-intro">
             <div className="light-intro-copy">
-              <h1>Encuentra el<br /> repuesto correcto<br /> <span>en segundos</span></h1>
+              {/* 16-nov: el H1 dice "repuestos por patente", que es lo que se busca en Google. */}
+              <h1>{heading || <>Busca repuestos<br /> por patente<br /> <span>en segundos</span></>}</h1>
               <i aria-hidden="true" />
               <p>Busca por patente, código OEM o nombre del repuesto y compara opciones de tiendas verificadas, con el pago protegido hasta que recibas.</p>
               <ul>

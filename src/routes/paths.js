@@ -5,6 +5,9 @@
 export const ROUTES = {
   home: '/',
   catalog: '/repuestos',
+  // Pagina de entrada desde Google para "repuestos por patente" (16-nov): el mismo buscador del
+  // inicio mas una guia. Es indexable: ver seoPages.js, vercel.json y robots.txt.
+  plateSearch: '/repuestos-por-patente',
   product: '/repuestos/:productId',
   // Cotizacion compartida (5-oct): el enlace de "Compartir cotizacion" para ver o descargar el PDF.
   sharedQuote: '/cotizacion/:token',

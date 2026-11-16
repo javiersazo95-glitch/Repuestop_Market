@@ -26,6 +26,8 @@ Allow: /terminos
 Allow: /privacidad
 Allow: /repuestos
 Disallow: /repuestos?
+# 16-nov: "Allow: /repuestos" ya la abre por prefijo; se lista para que se vea a proposito.
+Allow: /repuestos-por-patente
 Allow: /tiendas
 Disallow: /tiendas?
 Allow: /assets/

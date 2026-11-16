@@ -22,6 +22,7 @@ const HelpAllFaqsView = lazy(() => import('../pages/help/HelpAllFaqsView'));
 const TermsPage = lazy(() => import('../pages/TermsPage'));
 const PrivacyPage = lazy(() => import('../pages/PrivacyPage'));
 const AboutPage = lazy(() => import('../pages/AboutPage'));
+const PlateSearchPage = lazy(() => import('../pages/PlateSearchPage'));
 const TalleresPage = lazy(() => import('../pages/TalleresPage'));
 const AuctionsPage = lazy(() => import('../pages/AuctionsPage'));
 const AuctionDetailPage = lazy(() => import('../pages/AuctionDetailPage'));
@@ -49,6 +50,7 @@ export default function AppRoutes() {
             <Route element={<AppLayout />}>
               <Route path={ROUTES.home} element={<HomePage />} />
               <Route path={ROUTES.catalog} element={<CatalogPage />} />
+              <Route path={ROUTES.plateSearch} element={<PlateSearchPage />} />
               <Route path={ROUTES.product} element={<ProductPage />} />
               <Route path={ROUTES.stores} element={<StoresPage />} />
               <Route path={ROUTES.store} element={<StorePage />} />

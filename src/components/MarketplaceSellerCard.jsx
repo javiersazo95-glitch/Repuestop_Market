@@ -3,6 +3,8 @@ import { ArrowRight, CarFront, Clock, Heart, MapPin, Navigation, Package, Shield
 import VehicleBrandLogo from './VehicleBrandLogo';
 import { parseShippingMethods, resolveShippingService } from '../data/shippingMethods';
 import { formatDistanceKm } from '../utils/geoDistance';
+import { storePath } from '../routes/paths';
+import { isModifiedClick } from '../utils/linkClick';
 
 function initials(name) {
   return String(name || 'RT').split(/\s+/).slice(0, 2).map((word) => word[0]).join('').toUpperCase();
@@ -145,9 +147,19 @@ export default function MarketplaceSellerCard({ store, avatarPhoto, onView, isFa
         </div>
       </div>
 
-      <button className="market-seller-profile" type="button" onClick={() => onView?.(store)}>
+      {/* 16-nov: <a href> real para que Google llegue a la ficha de la tienda (ver
+          MarketplaceProductCard). El clic normal sigue pasando por onView. */}
+      <a
+        className="market-seller-profile"
+        href={storePath(store)}
+        onClick={(event) => {
+          if (isModifiedClick(event)) return;
+          event.preventDefault();
+          onView?.(store);
+        }}
+      >
         <span>Ver perfil</span><ArrowRight size={15} />
-      </button>
+      </a>
     </article>
   );
 }

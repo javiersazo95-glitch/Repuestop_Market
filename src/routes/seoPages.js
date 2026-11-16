@@ -10,7 +10,8 @@ import { HELP_ROLES, getCategoriesForRole } from '../data/helpContent.js';
 // Archivo sin JSX ni alias: lo importa Node al compilar.
 
 export const SITE_URL = 'https://repuestop.cl';
-export const BASE_TITLE = 'RepuesTop | Marketplace de repuestos automotrices de Chile';
+// 16-nov: con "patente" (ver el comentario del <title> en index.html).
+export const BASE_TITLE = 'Marketplace de repuestos por patente en Chile | RepuesTop';
 
 export const titleWithBrand = (title) => (title ? `${title} | RepuesTop` : BASE_TITLE);
 
@@ -63,6 +64,11 @@ export const SEO_PAGES = [
     path: '/repuestos',
     title: 'Catálogo de repuestos',
     description: 'Catálogo de repuestos automotrices de tiendas de todo Chile: busca por patente o por marca, modelo y año, compara precios y compra con pago seguro en RepuesTop.',
+  },
+  {
+    path: '/repuestos-por-patente',
+    title: 'Buscar repuestos por patente',
+    description: 'Busca repuestos con la patente de tu auto: identificamos marca, modelo y año y te mostramos repuestos de tiendas de todo Chile. Gratis y sin crear cuenta.',
   },
   {
     path: '/tiendas',
