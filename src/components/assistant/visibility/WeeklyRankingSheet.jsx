@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { GitBranch, Hourglass, Store, Trophy, X } from 'lucide-react';
 import { resolveMediaUrl } from '../../../services/api';
 import { formatMinutes, weekLabel } from '../../../utils/assistantVisibility';
@@ -11,7 +12,7 @@ function Row({ row }) {
   const photo = row.foto ? resolveMediaUrl(row.foto) : null;
   return (
     <div className={`rv-tr${row.esMiTienda ? ' is-me' : ''}`} aria-label={`${row.posicion ? `Lugar ${row.posicion}` : 'Sin lugar'}: ${row.nombre}${row.esMiTienda ? ' (tu tienda)' : ''}, ${row.derivaciones} consultas, ${responseRate(row)} respondidas`}>
-      <span className="rv-col-pos">{medal ? <span className="rv-medal" style={{ background: medal.main }}>{row.posicion}</span> : <span className="rv-muted">{row.posicion ?? '—'}</span>}</span>
+      <span className="rv-col-pos">{medal ? <span className="rv-medal" style={{ background: medal.main }}>{row.posicion}</span> : <span className="rva-muted">{row.posicion ?? '—'}</span>}</span>
       <span className="rv-col-store">
         <span className="rv-row-avatar">{photo ? <img src={photo} alt="" referrerPolicy="no-referrer" /> : <Store size={14} />}</span>
         <span className="rv-row-copy">
@@ -51,19 +52,20 @@ export default function WeeklyRankingSheet({ open, ranking, isMobile, onClose, o
   if (!open || !ranking) return null;
   const me = ranking.miTienda;
   const meInTop = ranking.top.some((row) => row.esMiTienda);
-  return (
+  // Portal a <body>: dentro del perfil quedaba bajo `.profile-body` (z-index 1), detras de la barra superior.
+  return createPortal(
     <div className={`rv-modal-root${isMobile ? ' is-mobile' : ' is-desktop'}`}>
       <button type="button" className="rv-backdrop" aria-label="Cerrar ranking" onClick={onClose} />
-      <section className="rv-modal rv-ranking" role="dialog" aria-modal="true" aria-label="Ranking de la semana">
+      <section className="rva-modal rv-ranking" role="dialog" aria-modal="true" aria-label="Ranking de la semana">
         {isMobile && <span className="rv-grabber" aria-hidden="true" />}
-        <header className="rv-modal-head">
+        <header className="rva-modal-head">
           <div>
             <h2>Ranking de la semana</h2>
             <small>{weekLabel(ranking)} · se reinicia cada lunes</small>
           </div>
           <button type="button" className="rv-close" onClick={onClose} aria-label="Cerrar"><X size={20} /></button>
         </header>
-        <div className="rv-summary">
+        <div className="rva-summary">
           <Summary Icon={GitBranch} value={String(ranking.totalDerivaciones)} label="consultas derivadas" />
           <Summary Icon={Store} value={String(ranking.tiendasConDerivaciones)} label="casas con consultas" />
           <Summary Icon={Trophy} value={me.posicion ? `#${me.posicion}` : '—'} label="tu lugar" highlight />
@@ -88,6 +90,7 @@ export default function WeeklyRankingSheet({ open, ranking, isMobile, onClose, o
         </div>
         {!meInTop && <div className="rv-me-footer"><Row row={me} /></div>}
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }

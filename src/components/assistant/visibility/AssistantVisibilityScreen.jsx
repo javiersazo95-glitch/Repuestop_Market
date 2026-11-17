@@ -362,7 +362,7 @@ export default function AssistantVisibilityScreen({ sellerId, storeName, storePh
                     {!isOpen && <StepSummary stepKey={key} data={data} specialties={specialties} />}
                   </span>
                   <span className="rv-status" style={done ? undefined : { background: meta.soft, color: meta.text }} data-done={done ? 'true' : undefined}>{done ? 'Listo' : 'Falta'}</span>
-                  {isOpen ? <ChevronUp size={18} className="rv-muted" /> : <ChevronDown size={18} className="rv-muted" />}
+                  {isOpen ? <ChevronUp size={18} className="rva-muted" /> : <ChevronDown size={18} className="rva-muted" />}
                 </button>
                 {isOpen && (
                   <div className="rv-step-body">
@@ -429,8 +429,8 @@ export default function AssistantVisibilityScreen({ sellerId, storeName, storePh
   );
 
   const preview = (
-    <section className="rv-card">
-      <div className="rv-card-head">
+    <section className="rva-card">
+      <div className="rva-card-head">
         <span className="rv-card-icon"><Eye size={16} /></span>
         <div><h3>Así te ve el comprador</h3><small>La misma tarjeta que muestra Repuestín · en vivo</small></div>
       </div>
@@ -457,8 +457,8 @@ export default function AssistantVisibilityScreen({ sellerId, storeName, storePh
   );
 
   const factors = (
-    <section className="rv-card">
-      <div className="rv-card-head">
+    <section className="rva-card">
+      <div className="rva-card-head">
         <span className="rv-card-icon"><ChartNoAxesColumn size={16} /></span>
         <div><h3>Cómo elige Repuestín</h3><small>Lo que más pesa para quedar entre las 3</small></div>
       </div>
@@ -476,8 +476,8 @@ export default function AssistantVisibilityScreen({ sellerId, storeName, storePh
   );
 
   const metrics = (
-    <section className="rv-card">
-      <div className="rv-card-head">
+    <section className="rva-card">
+      <div className="rva-card-head">
         <span className="rv-card-icon"><Gauge size={16} /></span>
         <div><h3>Tus respuestas</h3><small>Consultas de Repuestín · últimos 60 días</small></div>
       </div>
@@ -505,7 +505,7 @@ export default function AssistantVisibilityScreen({ sellerId, storeName, storePh
 
   const notices = (
     <>
-      {welcome && !complete && onLater && <button type="button" className="rv-link rv-muted rv-later" onClick={onLater}>Hacerlo después</button>}
+      {welcome && !complete && onLater && <button type="button" className="rva-link rva-muted rv-later" onClick={onLater}>Hacerlo después</button>}
       {savedAt && (
         <div className="rv-saved" role="status">
           <span className="rv-saved-icon"><Check size={16} /></span>

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertTriangle, ArrowRight, Bike, Car, Check, Clock, MessagesSquare, Package, Search, Wrench } from 'lucide-react';
 import { loadAssistantVisibility } from '../../../services/assistantApi';
 import { missingStepsLabel, STEP_META, STEP_ORDER, STEP_SHORT } from '../../../utils/assistantVisibility';
@@ -82,7 +83,8 @@ export function AssistantMissingPopup({ open, storeName, storePhoto, onRegister,
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onExit]);
   if (!open) return null;
-  return (
+  // Portal a <body>: asi el aviso queda sobre la barra del perfil aunque se monte dentro de `.profile-body`.
+  return createPortal(
     <div className="rv-popup-root">
       <div className="rv-popup" role="dialog" aria-modal="true" aria-label="Estás perdiendo clientes">
         <div className="rv-popup-hero">
@@ -103,7 +105,8 @@ export function AssistantMissingPopup({ open, storeName, storePhoto, onRegister,
           <p className="rv-caption rv-center">Si sales, te dejamos un recordatorio <AlertTriangle size={12} className="rv-warn" /> arriba, junto a tus notificaciones.</p>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -20,7 +20,7 @@
 }
 .rv-screen *, .rv-popup-root *, .rv-modal-root * { box-sizing: border-box; }
 .rv-primary { color: var(--rv-primary); }
-.rv-muted { color: var(--rv-text-muted); }
+.rva-muted { color: var(--rv-text-muted); }
 .rv-danger { color: #b42318 !important; }
 .rv-warn { color: #F59E0B; vertical-align: -2px; }
 .rv-center { text-align: center; }
@@ -28,8 +28,8 @@
 .rv-error { margin: 0; font-size: 13px; color: #b42318; }
 .rv-overline { font-size: 11px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: var(--rv-text-muted); }
 .rv-loader { display: grid; place-items: center; padding: 16px; }
-.rv-link { display: inline-flex; align-items: center; gap: 3px; padding: 4px 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--rv-primary); cursor: pointer; }
-.rv-link.rv-muted { color: var(--rv-text-muted); font-weight: 600; }
+.rva-link { display: inline-flex; align-items: center; gap: 3px; padding: 4px 0; border: 0; background: none; font: inherit; font-size: 13px; font-weight: 700; color: var(--rv-primary); cursor: pointer; }
+.rva-link.rva-muted { color: var(--rv-text-muted); font-weight: 600; }
 
 .rv-screen { display: flex; flex-direction: column; gap: 16px; color: var(--rv-text); }
 .rv-screen.is-mobile { padding: 0 0 16px; }
@@ -37,7 +37,7 @@
 .rv-center-screen { align-items: center; justify-content: center; min-height: 320px; padding: 24px; text-align: center; }
 .rv-stack { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 /* En columnas flex los hijos no pueden crecer más que su contenedor (textos de una línea con elipsis). */
-.rv-stack > *, .rv-card > *, .rv-lost-list > *, .rv-step-body > * { min-width: 0; max-width: 100%; }
+.rv-stack > *, .rva-card > *, .rv-lost-list > *, .rv-step-body > * { min-width: 0; max-width: 100%; }
 .rv-columns { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(320px, 1fr); gap: 20px; align-items: start; }
 .rv-aside { position: sticky; top: 88px; }
 
@@ -94,11 +94,11 @@
 .rv-podium.is-light .rv-podium-outside { background: #FFF0F0; color: #b42318; }
 
 /* ---------------------------------------------------------------- Tarjetas */
-.rv-card { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 16px; background: #fff; border: 1px solid var(--rv-divider); box-shadow: 0 2px 8px rgba(15, 23, 42, .06); }
-.rv-card-head { display: flex; align-items: center; gap: 10px; }
-.rv-card-head > div { display: flex; flex-direction: column; min-width: 0; }
-.rv-card-head h3 { margin: 0; font-size: 17px; line-height: 22px; font-weight: 800; color: var(--rv-text); }
-.rv-card-head small { font-size: 12px; color: var(--rv-text-muted); }
+.rva-card { display: flex; flex-direction: column; gap: 12px; padding: 16px; border-radius: 16px; background: #fff; border: 1px solid var(--rv-divider); box-shadow: 0 2px 8px rgba(15, 23, 42, .06); }
+.rva-card-head { display: flex; align-items: center; gap: 10px; }
+.rva-card-head > div { display: flex; flex-direction: column; min-width: 0; }
+.rva-card-head h3 { margin: 0; font-size: 17px; line-height: 22px; font-weight: 800; color: var(--rv-text); }
+.rva-card-head small { font-size: 12px; color: var(--rv-text-muted); }
 .rv-card-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 auto; border-radius: 10px; background: var(--rv-primary-light); color: var(--rv-primary); }
 .rv-section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
 .rv-section-title h3 { margin: 0; font-size: 18px; font-weight: 800; }
@@ -238,20 +238,20 @@
 }
 
 /* ---------------------------------------------------------------- Ranking semanal (modal) */
-.rv-modal-root { position: fixed; inset: 0; z-index: 1400; display: flex; }
+.rv-modal-root { position: fixed; inset: 0; z-index: 1400; display: flex; color: var(--rv-text); }
 .rv-modal-root.is-mobile { align-items: flex-end; }
 .rv-modal-root.is-desktop { align-items: center; justify-content: center; padding: 24px; }
 .rv-backdrop { position: fixed; inset: 0; border: 0; padding: 0; background: rgba(15, 23, 42, .5); cursor: default; animation: ra-fade .2s ease; }
-.rv-modal { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 12px; width: 100%; background: #fff; padding: 8px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
-.rv-modal-root.is-mobile .rv-modal { max-height: 90dvh; border-radius: 24px 24px 0 0; animation: ra-slide-up .28s ease; }
-.rv-modal-root.is-desktop .rv-modal { max-width: 720px; max-height: min(820px, calc(100vh - 48px)); padding: 20px 24px; border-radius: 20px; box-shadow: 0 18px 48px rgba(15, 23, 42, .28); animation: ra-pop .22s ease; }
+.rva-modal { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 12px; width: 100%; background: #fff; padding: 8px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+.rv-modal-root.is-mobile .rva-modal { max-height: 90dvh; border-radius: 24px 24px 0 0; animation: ra-slide-up .28s ease; }
+.rv-modal-root.is-desktop .rva-modal { max-width: 720px; max-height: min(820px, calc(100vh - 48px)); padding: 20px 24px; border-radius: 20px; box-shadow: 0 18px 48px rgba(15, 23, 42, .28); animation: ra-pop .22s ease; }
 .rv-grabber { display: block; width: 40px; height: 4px; margin: 0 auto; border-radius: 2px; background: var(--rv-border); }
-.rv-modal-head { display: flex; align-items: flex-start; gap: 12px; }
-.rv-modal-head > div { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.rv-modal-head h2 { margin: 0; font-size: 22px; font-weight: 800; }
-.rv-modal-head small { font-size: 12px; color: var(--rv-text-muted); }
+.rva-modal-head { display: flex; align-items: flex-start; gap: 12px; }
+.rva-modal-head > div { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.rva-modal-head h2 { margin: 0; font-size: 22px; font-weight: 800; }
+.rva-modal-head small { font-size: 12px; color: var(--rv-text-muted); }
 .rv-close { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 auto; border: 0; border-radius: 50%; background: var(--rv-muted-bg); color: var(--rv-text-muted); cursor: pointer; }
-.rv-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.rva-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .rv-summary-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 6px; border-radius: 12px; background: var(--rv-muted-bg); color: var(--rv-primary); text-align: center; }
 .rv-summary-item strong { font-size: 18px; font-weight: 800; color: var(--rv-text); }
 .rv-summary-item small { font-size: 11px; color: var(--rv-text-muted); }
@@ -259,6 +259,8 @@
 .rv-summary-item.is-gold strong { color: #8A6112; }
 .rv-modal-scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
 .rv-table { display: flex; flex-direction: column; border: 1px solid var(--rv-divider); border-radius: 14px; overflow: hidden; }
+/* Lo que va dentro del area con scroll no se encoge: con poco alto (celular) la tabla quedaba aplastada a la fila de titulos. */
+.rv-modal-scroll > * { flex-shrink: 0; }
 .rv-tr { display: grid; grid-template-columns: 34px minmax(0, 1fr) 64px 48px 36px; align-items: center; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--rv-divider); font-size: 13px; }
 .rv-tr:first-child { border-top: 0; }
 .rv-tr.is-me { background: #eafbf1; }
@@ -298,7 +300,7 @@
 .rv-home-cta { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; border-radius: 12px; background: #fff; color: var(--rv-primary); font-size: 15px; font-weight: 800; }
 
 /* ---------------------------------------------------------------- Aviso "Estás perdiendo clientes" */
-.rv-popup-root { position: fixed; inset: 0; z-index: 1400; display: grid; place-items: center; padding: 16px; background: rgba(15, 23, 42, .55); animation: ra-fade .2s ease; }
+.rv-popup-root { position: fixed; inset: 0; z-index: 1400; color: var(--rv-text); display: grid; place-items: center; padding: 16px; background: rgba(15, 23, 42, .55); animation: ra-fade .2s ease; }
 .rv-popup { width: min(420px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; border-radius: 24px; background: #fff; box-shadow: 0 18px 48px rgba(15, 23, 42, .3); animation: ra-pop .22s ease; }
 .rv-popup-hero { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 20px 20px 16px; background: var(--rv-hero); color: #fff; text-align: center; }
 .rv-popup-hero h2 { margin: 0; font-size: 22px; font-weight: 800; color: #fff; }
@@ -329,6 +331,8 @@
   .rv-hero h1 { font-size: 24px; line-height: 30px; }
   .rv-stack { padding: 0; }
   .rv-tr { grid-template-columns: 28px minmax(0, 1fr) 54px 42px 30px; padding: 8px 6px; }
+  /* En celular "CONSULTAS" no cabe en 54 px y se pegaba con "RESP.". */
+  .rv-th { font-size: 9px; letter-spacing: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .rv-reminder-icon { animation: none; }

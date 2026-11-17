@@ -109,8 +109,8 @@ const SUGGESTION_ICONS = {
 /** "Repuestín te sugiere": lo que le falta a la casa para subir en el ranking. Cada fila lleva a completarlo. */
 export function RankingSuggestions({ suggestions, onPress, position }) {
   return (
-    <section className="rv-card rv-suggestions">
-      <div className="rv-card-head">
+    <section className="rva-card rv-suggestions">
+      <div className="rva-card-head">
         <RepuestinAvatar size={34} />
         <div>
           <h3>Repuestín te sugiere</h3>
@@ -171,8 +171,8 @@ export function LostSearchesCard({ total, groups, onOpenCategory }) {
   const visible = expanded ? filtered.slice(0, limit) : pending.slice(0, LOST_PREVIEW);
   const hiddenCount = expanded ? Math.max(0, filtered.length - limit) : Math.max(0, pending.length - LOST_PREVIEW);
   return (
-    <section className="rv-card rv-lost">
-      <div className="rv-card-head">
+    <section className="rva-card rv-lost">
+      <div className="rva-card-head">
         <span className="rv-lost-icon"><TrendingDown size={20} /></span>
         <div>
           <h3 className="rv-danger">{total === 1 ? 'Esta semana 1 búsqueda no te llegó' : `Esta semana ${total} búsquedas no te llegaron`}</h3>
@@ -193,12 +193,12 @@ export function LostSearchesCard({ total, groups, onOpenCategory }) {
       {(hiddenCount > 0 || (expanded && pending.length > LOST_PREVIEW)) && (
         <div className="rv-lost-footer">
           {hiddenCount > 0 ? (
-            <button type="button" className="rv-link rv-danger" onClick={() => (expanded ? setLimit((n) => n + LOST_PAGE) : setExpanded(true))}>
+            <button type="button" className="rva-link rv-danger" onClick={() => (expanded ? setLimit((n) => n + LOST_PAGE) : setExpanded(true))}>
               {expanded ? `Ver ${Math.min(LOST_PAGE, hiddenCount)} más` : `Ver las ${pending.length} categorías`} <ChevronDown size={14} />
             </button>
           ) : <span />}
           {expanded && (
-            <button type="button" className="rv-link rv-muted" onClick={() => { setExpanded(false); setQuery(''); setLimit(LOST_PAGE); }}>Mostrar menos <ChevronUp size={14} /></button>
+            <button type="button" className="rva-link rva-muted" onClick={() => { setExpanded(false); setQuery(''); setLimit(LOST_PAGE); }}>Mostrar menos <ChevronUp size={14} /></button>
           )}
         </div>
       )}
