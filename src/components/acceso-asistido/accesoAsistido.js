@@ -47,6 +47,7 @@ export const TEXTO_EVENTO = {
   PRODUCTO_CREADO: 'Soporte creó un repuesto',
   PRECIO_ACTUALIZADO: 'Soporte cambió un precio',
   EXCEL_CARGADO: 'Soporte cargó un Excel',
+  FOTOS_AGREGADAS: 'Soporte agregó fotos',
   REVOCADO: 'Cortaste el acceso',
   FINALIZADO: 'Soporte salió de tu panel',
   EXPIRADO: 'Venció',

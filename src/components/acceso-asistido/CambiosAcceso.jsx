@@ -7,7 +7,7 @@ function detalleEvento(detalle) {
   try {
     const d = JSON.parse(detalle);
     if (d.nombre) return ` — ${d.nombre}${d.sku ? ` (${d.sku})` : ''}`;
-    if (d.sku) return ` — SKU ${d.sku}${d.precioAntes != null ? ` · ${pesos(d.precioAntes)} → ${pesos(d.precioDespues)}` : ''}`;
+    if (d.sku) return ` — SKU ${d.sku}${d.precioAntes != null ? ` · ${pesos(d.precioAntes)} → ${pesos(d.precioDespues)}` : ''}${d.fotos != null ? ` · ${d.fotos} ${Number(d.fotos) === 1 ? 'foto' : 'fotos'}` : ''}`;
     if (d.cargados != null) return ` — ${d.archivo ? `${d.archivo}: ` : ''}${d.cargados} de ${d.filas} filas`;
   } catch { /* detalle ilegible: se omite */ }
   return '';
