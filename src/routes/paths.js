@@ -11,6 +11,8 @@ export const ROUTES = {
   product: '/repuestos/:productId',
   // Cotizacion compartida (5-oct): el enlace de "Compartir cotizacion" para ver o descargar el PDF.
   sharedQuote: '/cotizacion/:token',
+  /** Acceso asistido: pagina del enlace del correo, donde el vendedor autoriza (o no) que soporte cargue repuestos. */
+  accesoSoporte: '/acceso-soporte/:token',
   stores: '/tiendas',
   store: '/tiendas/:storeId',
   cart: '/carrito',
@@ -97,7 +99,7 @@ export function sellerCaseChatPath(orderId, proveedorId, tab) {
 
 export const PROFILE_TABS = [
   'resumen', 'pedidos', 'compras', 'favoritos', 'datos', 'consultas',
-  'cotizaciones', 'mis_cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'tienda', 'tienda_datos',
+  'cotizaciones', 'mis_cotizaciones', 'productos', 'preguntas_productos', 'retiros', 'ayuda_carga', 'tienda', 'tienda_datos',
   'mi_taller', 'feedback',
   // Configuración del vendedor: una pantalla por acceso del menú Más (como `app/(seller)/tienda-*.tsx`).
   'tienda_redes', 'tienda_documentos', 'tienda_envios', 'tienda_bancarios', 'tienda_marcas', 'cambiar_clave',

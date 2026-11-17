@@ -10,6 +10,8 @@ export const qk = {
   sellerBankAccount: (id) => ['seller', id, 'bankAccount'],
   /** Pago de retiro rebotado que el vendedor aun no corrige (alerta del header). */
   sellerWithdrawalAlert: (id) => ['seller', id, 'withdrawalAlert'],
+  /** Acceso asistido de la tienda: solicitud viva e historial (pestana, banner del header). */
+  accesoAsistido: (id) => ['seller', id, 'accesoAsistido'],
   products: (filters) => ['products', filters || {}],
   product: (id) => ['products', id],
   productQuestions: (id) => ['products', id, 'questions'],

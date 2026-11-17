@@ -14,6 +14,7 @@ const ProductPage = lazy(() => import('../pages/ProductPage'));
 const StoresPage = lazy(() => import('../pages/StoresPage'));
 const StorePage = lazy(() => import('../pages/StorePage'));
 const SharedQuotePage = lazy(() => import('../pages/SharedQuotePage'));
+const AccesoSoportePage = lazy(() => import('../pages/AccesoSoportePage'));
 const HelpCenterPage = lazy(() => import('../pages/HelpCenterPage'));
 const HelpHomeView = lazy(() => import('../pages/help/HelpHomeView'));
 const HelpCategoryView = lazy(() => import('../pages/help/HelpCategoryView'));
@@ -56,6 +57,8 @@ export default function AppRoutes() {
               <Route path={ROUTES.store} element={<StorePage />} />
               {/* Publica: el enlace de "Compartir cotizacion" se abre sin sesion. */}
               <Route path={ROUTES.sharedQuote} element={<SharedQuotePage />} />
+              {/* Publica: el enlace del correo de acceso asistido se abre sin sesion; el token firmado es la autorizacion. */}
+              <Route path={ROUTES.accesoSoporte} element={<AccesoSoportePage />} />
               <Route path={ROUTES.talleres} element={<TalleresPage />} />
               {/* Enlaces viejos del Mural de Anuncios: el anuncio ya no existe, el buscador de
                   talleres es su reemplazo. */}

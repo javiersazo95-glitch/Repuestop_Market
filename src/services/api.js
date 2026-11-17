@@ -1430,6 +1430,67 @@ export async function createQuoteShareLinkApi(conversacionId) {
   return fetchApi(`/conversaciones/${conversacionId}/cotizacion/enlace`, { method: 'POST' });
 }
 
+// ---- Acceso asistido (17-nov): soporte carga repuestos por el vendedor, con su permiso ----
+
+const ACCESO_ASISTIDO_JSON = { headers: { 'Content-Type': 'application/json' } };
+
+/** Solicitud viva (si hay) e historial de la tienda, con lo que cargo soporte en cada acceso. */
+export async function getAccesoAsistidoApi(sellerId) {
+  return fetchApi(`/proveedores/${encodeURIComponent(sellerId)}/acceso-asistido`, { method: 'GET' });
+}
+
+/**
+ * El vendedor pide que soporte le cargue repuestos: { nivel, duracionHoras, justificacion }, con la lista de
+ * repuestos como adjunto opcional (Excel, PDF o foto, hasta 10 MB). Con adjunto va como multipart.
+ */
+export async function solicitarAyudaCargaApi(sellerId, body, adjunto = null) {
+  const url = `/proveedores/${encodeURIComponent(sellerId)}/acceso-asistido/solicitar`;
+  if (adjunto) {
+    const form = new FormData();
+    form.append('nivel', body.nivel);
+    form.append('duracionHoras', String(body.duracionHoras));
+    form.append('justificacion', body.justificacion);
+    form.append('adjunto', adjunto);
+    return fetchApi(url, { method: 'POST', body: form });
+  }
+  return fetchApi(url, { method: 'POST', ...ACCESO_ASISTIDO_JSON, body: JSON.stringify(body) });
+}
+
+/** Autoriza una solicitud de soporte: { duracionHoras, nivel? } (el nivel solo puede bajar). */
+export async function autorizarAccesoAsistidoApi(sellerId, accesoId, body) {
+  return fetchApi(`/proveedores/${encodeURIComponent(sellerId)}/acceso-asistido/${accesoId}/autorizar`, {
+    method: 'POST', ...ACCESO_ASISTIDO_JSON, body: JSON.stringify(body),
+  });
+}
+
+export async function rechazarAccesoAsistidoApi(sellerId, accesoId, comentario) {
+  return fetchApi(`/proveedores/${encodeURIComponent(sellerId)}/acceso-asistido/${accesoId}/rechazar`, {
+    method: 'POST', ...ACCESO_ASISTIDO_JSON, body: JSON.stringify({ comentario: comentario || null }),
+  });
+}
+
+/** Corta un acceso activo o retira la propia solicitud de ayuda. */
+export async function revocarAccesoAsistidoApi(sellerId, accesoId) {
+  return fetchApi(`/proveedores/${encodeURIComponent(sellerId)}/acceso-asistido/${accesoId}/revocar`, { method: 'POST' });
+}
+
+/** Pagina del enlace del correo (publica: el token firmado es la autorizacion). */
+export async function getConsentimientoAccesoApi(token) {
+  return fetchApi(`/acceso-asistido/consentimiento/${encodeURIComponent(token)}`, { method: 'GET' });
+}
+
+export async function autorizarPorEnlaceApi(token, body) {
+  return fetchApi(`/acceso-asistido/consentimiento/${encodeURIComponent(token)}/autorizar`, {
+    method: 'POST', ...ACCESO_ASISTIDO_JSON, body: JSON.stringify(body),
+  });
+}
+
+export async function rechazarPorEnlaceApi(token, comentario) {
+  return fetchApi(`/acceso-asistido/consentimiento/${encodeURIComponent(token)}/rechazar`, {
+    method: 'POST', ...ACCESO_ASISTIDO_JSON, body: JSON.stringify({ comentario: comentario || null }),
+  });
+}
+
 /** Cotizacion de un enlace compartido (publico: el token firmado es la autorizacion). */
 export async function getSharedQuoteApi(token) {
   return fetchApi(`/cotizaciones/compartidas/${encodeURIComponent(token)}`, { method: 'GET' });

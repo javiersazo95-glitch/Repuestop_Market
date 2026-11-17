@@ -14,6 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
 import HeaderWalletButton from './wallet/HeaderWalletButton';
 import WithdrawalFailureAlert from './WithdrawalFailureAlert';
+import AccesoAsistidoBanner from './acceso-asistido/AccesoAsistidoBanner';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
 import { useBuyerBlocked } from '../hooks/useBuyerBlocked';
 import { typedYear, useVehicleSuggestions } from '../hooks/useVehicleSuggestions';
@@ -48,6 +49,7 @@ export default function Header({
   // El dueno puede apagar el mega menu desde el mantenedor (`market.header.megamenu-categorias`)
   // y la entrada al Mural (`market.nav.mural-anuncios`). Sin bootstrap, ambos se ven como siempre.
   const showCategoryMegaMenu = useFlag('market.header.megamenu-categorias');
+  const accesoAsistidoHabilitado = useFlag('global.acceso-asistido', false);
   const [showCategoryMenu, setShowCategoryMenu] = useState(false);
   const [activeHeaderCategoryId, setActiveHeaderCategoryId] = useState(HEADER_CATEGORIES[0].id);
   const [categorySearchQuery, setCategorySearchQuery] = useState('');
@@ -520,6 +522,8 @@ export default function Header({
       </div>
 
       {isSellerAccount && <WithdrawalFailureAlert variant="strip" />}
+      {/* Acceso asistido: avisa al vendedor cuando soporte pide entrar a su panel o ya esta dentro. */}
+      {isSellerAccount && accesoAsistidoHabilitado && <AccesoAsistidoBanner />}
 
       {showMobileNav && <button type="button" className="mobile-nav-backdrop" aria-label="Cerrar menú" onClick={() => { setShowCategoryMenu(false); setShowMobileNav(false); }} />}
       <nav id="marketplace-navigation" className={`header-primary-nav ${showMobileNav ? 'mobile-nav-open' : ''}`}>

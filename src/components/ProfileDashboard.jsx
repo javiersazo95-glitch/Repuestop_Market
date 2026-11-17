@@ -8,7 +8,7 @@ import {
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
   Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
   Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, PackageSearch, Wrench, CalendarClock,
-  Cog, Gauge, Telescope, Box, QrCode, Share2, FolderOpen, CreditCard, CarFront, Lock
+  Cog, Gauge, Telescope, Box, QrCode, Share2, FolderOpen, CreditCard, CarFront, Lock, LifeBuoy
 } from 'lucide-react';
 import EngineIcon from './EngineIcon';
 import ProfileMoreMenu from './ProfileMoreMenu';
@@ -71,6 +71,8 @@ import SellerChatsView from './SellerChatsView';
 import ProfileNotificationsBell from './ProfileNotificationsBell';
 import ProfileAppointmentsButton from './ProfileAppointmentsButton';
 import HeaderWalletButton from './wallet/HeaderWalletButton';
+import AccesoAsistidoPanel from './acceso-asistido/AccesoAsistidoPanel';
+import AccesoAsistidoResumen from './acceso-asistido/AccesoAsistidoResumen';
 import NewCatalogProductModal from './NewCatalogProductModal';
 import SellerProductQuestionsPanel from './SellerProductQuestionsPanel';
 import SellerWithdrawalsPanel, { isCompleteBankAccount } from './SellerWithdrawalsPanel';
@@ -169,7 +171,9 @@ const SELLER_SIDEBAR_GROUPS = [
     flag: 'market.perfil.vendedor.mi-tienda',
     items: [
       { id: 'tienda_datos', label: 'Mi tienda y datos', icon: Store },
-      { id: 'retiros', label: 'Retirar dinero', icon: Wallet }
+      { id: 'retiros', label: 'Retirar dinero', icon: Wallet },
+      // Acceso asistido: sale a produccion con el flag `global.acceso-asistido` (apagado si no hay bootstrap).
+      { id: 'ayuda_carga', label: 'Ayuda con la carga', icon: LifeBuoy, flag: 'global.acceso-asistido', flagFallback: false }
     ]
   },
   {
@@ -734,8 +738,16 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
   // Grupos que el dueno oculto desde el Mantenedor comun. Se leen los flags del bootstrap (no un
   // `useFlag` por grupo) porque la lista de grupos depende del rol.
   const remoteConfigData = useRemoteData();
+  const accesoAsistidoHabilitado = readFlag(remoteConfigData, 'global.acceso-asistido', false);
   const sidebarGroups = useMemo(() => {
-    const enabledGroups = baseSidebarGroups.filter((group) => !group.flag || readFlag(remoteConfigData, group.flag, true));
+    const enabledGroups = baseSidebarGroups
+      .filter((group) => !group.flag || readFlag(remoteConfigData, group.flag, true))
+      // Items con su propio flag (p. ej. "Ayuda con la carga"): fuera si el mantenedor lo apaga.
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => !item.flag || readFlag(remoteConfigData, item.flag, item.flagFallback ?? true)),
+      }))
+      .filter((group) => group.items.length > 0);
     const hiddenTabs = isSellerBlocked
       ? SELLER_BLOCKED_HIDDEN_TABS
       : isBuyerBlocked
@@ -1390,7 +1402,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
         { id: 'cotizaciones', tone: 'purple', icon: ReceiptText, title: 'Responder cotizaciones', description: 'Atiende solicitudes directas de clientes.', onClick: () => openFilteredTab('cotizaciones', 'pending') },
         { id: 'tienda', tone: 'sky', icon: Store, title: 'Mi tienda y datos', description: 'Edita la información comercial de tu tienda.', onClick: () => setActiveTab('tienda_datos') },
         { id: 'retiros', tone: 'emerald', icon: Wallet, title: 'Retirar dinero', description: 'Solicita el depósito bancario de tus ventas.', onClick: () => setActiveTab('retiros') },
-        { id: 'mi_taller', tone: 'amber', icon: Wrench, title: 'Mi taller', description: 'Muestra tus servicios y recibe reservas de hora.', onClick: () => setActiveTab('mi_taller') },
+        // Sin "Mi taller": es del perfil de taller (la tienda no tiene esa pestaña; ver SELLER_REMOVED_TABS).
         { id: 'video_tutorial', tone: 'blue', icon: PlayCircle, title: 'Aprende a usar RepuesTop', description: 'Mira el video tutorial para tiendas.', onClick: () => setVideoTutorialOpen(true) },
       ];
     }
@@ -1864,6 +1876,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   onOpenService={() => setActiveTab('diagnostico')}
                 />
               )}
+              {/* Acceso asistido: si soporte pide entrar (o ya está dentro), lo primero que ve el vendedor, con el contador. */}
+              {activeTab === 'resumen' && isSeller && accesoAsistidoHabilitado && !isSellerBlocked && !isBuyerBlocked && (
+                <AccesoAsistidoResumen sellerId={effectiveSellerId} onVerDetalle={() => setActiveTab('ayuda_carga')} />
+              )}
               {/* Arriba de todo mientras el perfil para Repuestín esté incompleto (como el inicio de la tienda en la app). */}
               {activeTab === 'resumen' && isSeller && !isSellerBlocked && !isBuyerBlocked && (
                 <AssistantVisibilityCard sellerId={effectiveSellerId} onOpen={openAssistantScreen} />
@@ -2053,6 +2069,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
               {activeTab === 'retiros' && isSeller && (
                 <SellerWithdrawalsPanel sellerId={user?.sellerId} sellerEmail={user?.email} />
               )}
+
+              {activeTab === 'ayuda_carga' && isSeller && accesoAsistidoHabilitado && <AccesoAsistidoPanel sellerId={user?.sellerId} />}
 
               {activeTab === 'consultas' && (
                 <ProfileSupportPanel user={user} deepLinkTicketId={deepLinkTicketId} onClearDeepLink={onClearDeepLink} />
