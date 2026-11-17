@@ -15,7 +15,7 @@ import CambiosAcceso, { CifrasAcceso } from './CambiosAcceso';
 import './AccesoAsistido.css';
 
 /** Adjunto de la solicitud: los tipos que acepta el backend (que ademas revisa el contenido real). */
-const ADJUNTO_ACCEPT = '.xlsx,.xls,.pdf,image/jpeg,image/png,image/webp';
+const ADJUNTO_ACCEPT = '.xlsx,.pdf,image/jpeg,image/png,image/webp'; // SEC-BACKEND-218: sin .xls
 const ADJUNTO_MAX_BYTES = 10 * 1024 * 1024;
 
 /** Tope de la justificacion y del comentario de rechazo: mismas columnas que la base (500 y 300). */

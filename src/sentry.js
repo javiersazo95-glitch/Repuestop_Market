@@ -42,7 +42,12 @@ export function scrubUrl(url) {
     // El resultado se arma a mano en vez de asignar a `parsed.pathname` y leer `href`:
     // al asignarla, la URL percent-codifica las llaves y `{id}` sale como `%7Bid%7D`,
     // que es justo lo que hace ilegible la agrupacion de errores en Sentry.
-    const ruta = parsed.pathname.replace(/\/\d+(?=\/|$)/g, '/{id}');
+    // MARKET-1 / SEC-BACKEND-212: el enlace de consentimiento del acceso asistido lleva en la ruta un
+    // token que autoriza sin login por 48 h (pagina /acceso-soporte/{token} y la API
+    // /acceso-asistido/consentimiento/{token}); se reemplaza antes de que salga hacia Sentry.
+    const ruta = parsed.pathname
+      .replace(/(\/acceso-soporte\/|\/acceso-asistido\/consentimiento\/)[^/]+/gi, '$1{token}')
+      .replace(/\/\d+(?=\/|$)/g, '/{id}');
 
     const pares = [];
     parsed.searchParams.forEach((valor, clave) => {
