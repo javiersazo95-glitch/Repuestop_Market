@@ -68,6 +68,8 @@ const MENUS = {
       t('Pedidos recibidos', Inbox, COLORS.orders, { tab: 'pedidos' }),
       t('Preguntas de productos', MessageSquare, COLORS.questions, { tab: 'preguntas_productos' }),
       t('Retirar dinero', Wallet, COLORS.orders, { tab: 'retiros' }),
+      // Acceso asistido: solo aparece si el flag global.acceso-asistido esta encendido (availableTabs viene del menu lateral).
+      t('Ayuda con la carga', LifeBuoy, COLORS.support, { tab: 'ayuda_carga' }),
       t('Chats con compradores', MessagesSquare, COLORS.questions, { tab: 'chats_compradores' }),
       t('Reportes', Flag, COLORS.flag, { tab: 'consultas' }),
     ]],
