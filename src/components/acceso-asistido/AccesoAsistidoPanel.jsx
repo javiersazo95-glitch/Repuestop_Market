@@ -327,7 +327,7 @@ function Garantias() {
         <ul>
           <li>Ver tu inventario, solo para consultar</li>
           <li>Crear repuestos nuevos (uno a uno o con Excel, según lo que autorices)</li>
-          <li>Cambiar precios si lo autorizas (el stock no se toca)</li>
+          <li>Ajustar el precio de lo que cargó, si lo autorizas (no toca el stock ni lo que ya tenías)</li>
         </ul>
       </div>
       <div className="aa-garantia no">

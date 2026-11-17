@@ -14,7 +14,7 @@ export const DURACIONES = [
 
 export const NIVELES = [
   { valor: 'BASICO', titulo: 'Carga uno a uno', detalle: 'Soporte crea tus repuestos nuevos con el formulario, uno a uno.' },
-  { valor: 'MEDIO', titulo: 'Carga uno a uno y precios', detalle: 'Lo anterior, y cambia el precio de repuestos que ya tienes (el stock no se toca).' },
+  { valor: 'MEDIO', titulo: 'Carga uno a uno y precios', detalle: 'Lo anterior, y ajusta el precio de los repuestos que soporte cargó en ese acceso (no toca el stock ni lo que ya tenías).' },
   { valor: 'COMPLETO', titulo: 'Carga completa con Excel', detalle: 'Lo anterior, y sube tus repuestos nuevos con un archivo Excel.' },
 ];
 

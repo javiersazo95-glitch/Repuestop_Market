@@ -150,7 +150,9 @@
 .aa-chips { display: flex; flex-wrap: wrap; gap: 0.45rem; }
 .aa-chip { min-height: 40px; padding: 0.45rem 1rem; border-radius: 999px; border: 1.5px solid #cbd5e1; background: #fff; color: #334155; font: inherit; font-weight: 700; cursor: pointer; transition: all 0.15s ease; }
 .aa-chip:hover:not(:disabled) { border-color: var(--aa-azul); color: var(--aa-azul); }
-.aa-chip.activo { background: var(--aa-azul); border-color: var(--aa-azul); color: #fff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+.aa-chip.activo,
+.aa-chip.activo:hover:not(:disabled) { background: var(--aa-azul); border-color: var(--aa-azul); color: #fff; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+/* En celular el :hover queda pegado tras tocar: sin la regla de arriba el chip activo quedaba azul sobre azul. */
 .aa-chip:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .aa-acciones { display: flex; flex-wrap: wrap; gap: 0.5rem; }
