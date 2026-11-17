@@ -105,8 +105,10 @@ export default function AccesoSoportePage() {
   return (
     <main className="acceso-soporte-pagina">
       <section className="acceso-soporte-tarjeta">
-        <Headset size={28} aria-hidden="true" />
-        <h1>Soporte pide ayudarte a cargar repuestos</h1>
+        <div className="acceso-soporte-titulo">
+          <span className="acceso-asistido-resumen-icono"><Headset size={20} aria-hidden="true" /></span>
+          <h1>Soporte pide ayudarte a cargar repuestos</h1>
+        </div>
         <p>El equipo de Mediación y Confianza de RepuesTop pide entrar al panel de <strong>{datos.tiendaNombre}</strong>.
           <strong> No entra nadie hasta que tú lo autorices.</strong></p>
 
@@ -119,7 +121,7 @@ export default function AccesoSoportePage() {
           <ul>
             <li>Ver tu inventario, solo para consultar.</li>
             <li>Crear repuestos nuevos con el formulario, uno a uno.</li>
-            {datos.nivelSolicitado !== 'BASICO' && <li>Cambiar el precio de repuestos que ya existen (el stock no se toca).</li>}
+            {datos.nivelSolicitado !== 'BASICO' && <li>Ajustar el precio de los repuestos que carguen en este acceso (no tocan el stock ni lo que ya tenías).</li>}
             {datos.nivelSolicitado === 'COMPLETO' && <li>Subir repuestos nuevos con un archivo Excel.</li>}
           </ul>
         </div>
@@ -144,20 +146,31 @@ export default function AccesoSoportePage() {
           </div>
         ) : (
           <div className="acceso-asistido-decision">
-            <label>
-              ¿Por cuánto tiempo das el acceso?
-              <select value={horas} onChange={(e) => setHoras(Number(e.target.value))} disabled={ocupado}>
-                {DURACIONES.map((d) => <option key={d.horas} value={d.horas}>{d.etiqueta}</option>)}
-              </select>
-            </label>
-            <label>
-              Permiso que concedes
-              <select value={nivel} onChange={(e) => setNivel(e.target.value)} disabled={ocupado}>
-                {nivelesHasta(datos.nivelSolicitado).map((n) => <option key={n.valor} value={n.valor}>{n.titulo}</option>)}
-              </select>
-            </label>
-            <p className="acceso-asistido-nota">Quedará autorizado por <strong>{etiquetaDuracion(horas)}</strong> desde que presiones el botón.</p>
-            <div className="acceso-asistido-acciones">
+            <div className="acceso-soporte-campo">
+              <span className="acceso-soporte-etiqueta">¿Por cuánto tiempo das el acceso?</span>
+              <div className="aa-chips" role="radiogroup" aria-label="Duración del acceso">
+                {DURACIONES.map((d) => (
+                  <button key={d.horas} type="button" role="radio" aria-checked={horas === d.horas}
+                    className={`aa-chip ${horas === d.horas ? 'activo' : ''}`} disabled={ocupado} onClick={() => setHoras(d.horas)}>
+                    {d.etiqueta}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {nivelesHasta(datos.nivelSolicitado).length > 1 && (
+              <div className="acceso-soporte-campo">
+                <span className="acceso-soporte-etiqueta">¿Qué les permites? (puedes dar menos de lo pedido)</span>
+                <div className="aa-chips" role="radiogroup" aria-label="Permiso que concedes">
+                  {nivelesHasta(datos.nivelSolicitado).map((n) => (
+                    <button key={n.valor} type="button" role="radio" aria-checked={nivel === n.valor}
+                      className={`aa-chip ${nivel === n.valor ? 'activo' : ''}`} disabled={ocupado} onClick={() => setNivel(n.valor)}>
+                      {n.titulo}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="acceso-asistido-acciones acceso-soporte-botones">
               <button type="button" className="aa-btn aa-btn-primary" disabled={ocupado} onClick={() => ejecutar(() => autorizarPorEnlaceApi(token, { duracionHoras: horas, nivel }))}>
                 Autorizar por {etiquetaDuracion(horas)}
               </button>
@@ -165,7 +178,7 @@ export default function AccesoSoportePage() {
             </div>
           </div>
         )}
-        <p className="acceso-asistido-nota">Esta solicitud vence el {fechaHora(datos.solicitudExpiraEn)}.</p>
+        <p className="acceso-asistido-nota">Esta solicitud vence el {String(fechaHora(datos.solicitudExpiraEn) || '').replace(/\.$/, '')}.</p>
       </section>
     </main>
   );

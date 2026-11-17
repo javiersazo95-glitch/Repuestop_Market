@@ -28,7 +28,7 @@ export default function AccesoAsistidoBanner() {
       <span>
         {activo
           ? <>Soporte tiene acceso a tu panel · vence en <strong className={`tono-${restante.tono}`}>{restante.texto}</strong></>
-          : <>Soporte pide acceso a tu panel para cargar repuestos · responde antes de <strong className={`tono-${restante.tono}`}>{restante.texto}</strong></>}
+          : <>Soporte pide acceso a tu panel<span className="acceso-asistido-banner-extra"> para cargar repuestos</span> · responde en <strong className={`tono-${restante.tono}`}>{restante.texto}</strong></>}
       </span>
       <button type="button" onClick={() => navigate(profilePath('ayuda_carga'))}>{activo ? 'Ver o cortar' : 'Revisar'}</button>
     </div>

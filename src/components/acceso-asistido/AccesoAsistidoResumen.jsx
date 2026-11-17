@@ -41,28 +41,30 @@ export default function AccesoAsistidoResumen({ sellerId, onVerDetalle }) {
   };
 
   const titulo = pide ? 'Soporte pide acceso a tu panel' : activo ? 'Soporte tiene acceso a tu panel' : 'Tu solicitud de ayuda espera a soporte';
-  const rotulo = activo ? 'El acceso vence en' : pide ? 'Responde antes de' : 'Tu solicitud vence en';
   const nivel = tituloNivel(actual.nivel ?? actual.nivelSolicitado);
+
+  // Compacta (18-nov): titulo, una linea con permiso y contador, y el motivo en hasta 2 lineas.
+  const rotuloCorto = pide ? 'responde en' : 'vence en';
+  const detalle = pide
+    ? (actual.justificacion ? `Motivo: ${actual.justificacion}` : null)
+    : activo
+      ? 'Solo crea repuestos: no edita ni elimina.'
+      : 'Te avisamos cuando soporte la acepte.';
 
   return (
     <section className={`acceso-asistido-resumen ${pide ? 'pide' : activo ? 'activo' : 'propia'}`} aria-label="Ayuda con la carga">
       <div className="acceso-asistido-resumen-cabecera">
-        <span className="acceso-asistido-resumen-icono"><Headset size={20} aria-hidden="true" /></span>
+        <span className="acceso-asistido-resumen-icono"><Headset size={18} aria-hidden="true" /></span>
         <div className="acceso-asistido-resumen-copia">
           <strong>{titulo}</strong>
-          <small>
-            {pide
-              ? `Quieren cargar repuestos por ti (${nivel}).${actual.justificacion ? ` Motivo: ${actual.justificacion}` : ''}`
-              : activo
-                ? `Permiso: ${nivel}${actual.duracionHoras ? ` · ${etiquetaDuracion(actual.duracionHoras)}` : ''}. Solo crea repuestos: no edita ni elimina.`
-                : `Pediste: ${nivel}. Te avisamos cuando soporte la acepte.`}
+          <small className="acceso-asistido-resumen-meta">
+            {nivel}{activo && actual.duracionHoras ? ` · ${etiquetaDuracion(actual.duracionHoras)}` : ''}
+            {' · '}
+            <span className={`acceso-asistido-resumen-tiempo tono-${restante.tono}`} role="timer" aria-live="off">{rotuloCorto} {restante.texto}</span>
           </small>
         </div>
-        <div className={`acceso-asistido-resumen-contador tono-${restante.tono}`} role="timer" aria-live="off">
-          <small>{rotulo}</small>
-          <strong>{restante.texto}</strong>
-        </div>
       </div>
+      {detalle && <p className="acceso-asistido-resumen-motivo">{detalle}</p>}
 
       <div className="acceso-asistido-resumen-acciones">
         {pide && (
@@ -93,8 +95,8 @@ export default function AccesoAsistidoResumen({ sellerId, onVerDetalle }) {
             Cortar el acceso
           </button>
         )}
-        <button type="button" className="aa-btn aa-btn-secondary" onClick={onVerDetalle}>
-          {pide ? 'Ver detalle o rechazar' : 'Ver detalle'} <ChevronRight size={16} aria-hidden="true" />
+        <button type="button" className="acceso-asistido-resumen-enlace" onClick={onVerDetalle}>
+          {pide ? 'Ver detalle o rechazar' : 'Ver detalle'} <ChevronRight size={15} aria-hidden="true" />
         </button>
       </div>
       {mensaje && <p className="acceso-asistido-resumen-mensaje" role="status">{mensaje}</p>}

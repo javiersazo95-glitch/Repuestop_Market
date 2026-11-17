@@ -36,6 +36,14 @@
 .acceso-asistido-banner strong { font-variant-numeric: tabular-nums; }
 .acceso-asistido-banner strong.tono-rojo { color: #b91c1c; }
 .acceso-asistido-banner button { border: 0; border-radius: 6px; padding: 0.25rem 0.75rem; font-weight: 700; cursor: pointer; background: #1f2937; color: #fff; }
+/* Celular (18-nov): una sola franja; el texto se ajusta a la izquierda y el boton queda a la derecha. */
+@media (max-width: 640px) {
+  .acceso-asistido-banner { flex-wrap: nowrap; justify-content: flex-start; gap: 0.5rem; padding: 0.4rem 0.75rem; font-size: 0.8rem; line-height: 1.3; }
+  .acceso-asistido-banner > svg { flex: 0 0 auto; }
+  .acceso-asistido-banner > span { flex: 1; min-width: 0; }
+  .acceso-asistido-banner-extra { display: none; }
+  .acceso-asistido-banner button { flex: 0 0 auto; padding: 0.3rem 0.6rem; }
+}
 
 .acceso-soporte-pagina { min-height: 70vh; display: flex; justify-content: center; padding: 2rem 1rem; }
 .acceso-soporte-tarjeta { width: 100%; max-width: 640px; display: grid; gap: 1rem; align-content: start; padding: 1.75rem; border: 1px solid #e2e8f0; border-radius: 16px; background: #fff; box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08); }
@@ -46,7 +54,12 @@
 .acceso-soporte-bloque ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.25rem; }
 .acceso-soporte-no { background: #fff1f2; }
 .acceso-soporte-no h2 { color: #9f1239; }
-@media (max-width: 640px) { .acceso-soporte-tarjeta { padding: 1.1rem; } .acceso-asistido-datos { grid-template-columns: 1fr; } }
+.acceso-soporte-titulo { display: flex; align-items: center; gap: 10px; }
+.acceso-soporte-titulo h1 { font-size: 1.3rem; }
+.acceso-soporte-campo { display: grid; gap: 8px; }
+.acceso-soporte-etiqueta { font-size: 14px; font-weight: 700; color: #0f172a; }
+.acceso-soporte-botones .aa-btn { min-height: 44px; }
+@media (max-width: 640px) { .acceso-soporte-tarjeta { padding: 1.1rem; } .acceso-soporte-botones { display: grid; grid-template-columns: 1fr; } .acceso-soporte-tarjeta h1 { font-size: 1.15rem; } .acceso-asistido-datos { grid-template-columns: 1fr; } }
 
 /* Botones del modulo (el Market no tiene .btn-primary global). */
 .aa-btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; min-height: 40px; padding: 0.55rem 1.1rem; border-radius: 10px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.15s ease, border-color 0.15s ease; }
@@ -57,36 +70,36 @@
 .aa-btn-secondary:hover:not(:disabled) { background: #f1f5f9; }
 
 /* Tarjeta del Resumen del vendedor: solicitud de soporte o acceso activo, con contador y accion rapida. */
-.acceso-asistido-resumen { display: grid; gap: 12px; margin-bottom: 16px; padding: 14px 16px; border-radius: 14px; border: 1px solid #fde68a; background: #fffbeb; }
+.acceso-asistido-resumen { display: grid; gap: 8px; margin-bottom: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid #fde68a; background: #fffbeb; }
 .acceso-asistido-resumen.activo { border-color: #bbf7d0; background: #f0fdf4; }
 .acceso-asistido-resumen.propia { border-color: #bfdbfe; background: #eff6ff; }
-.acceso-asistido-resumen-cabecera { display: flex; align-items: center; gap: 12px; }
-.acceso-asistido-resumen-icono { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; border-radius: 12px; background: #fef3c7; color: #b45309; }
+.acceso-asistido-resumen-cabecera { display: flex; align-items: center; gap: 10px; }
+.acceso-asistido-resumen-icono { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; border-radius: 10px; background: #fef3c7; color: #b45309; }
 .acceso-asistido-resumen.activo .acceso-asistido-resumen-icono { background: #dcfce7; color: #15803d; }
 .acceso-asistido-resumen.propia .acceso-asistido-resumen-icono { background: #dbeafe; color: #1d4ed8; }
-.acceso-asistido-resumen-copia { display: grid; gap: 2px; flex: 1; min-width: 0; }
-.acceso-asistido-resumen-copia strong { font-size: 15px; color: #0f172a; }
-.acceso-asistido-resumen-copia small { font-size: 13px; color: #475569; line-height: 1.35; overflow-wrap: anywhere; }
-.acceso-asistido-resumen-contador { display: grid; justify-items: center; gap: 0; padding: 6px 12px; border-radius: 10px; background: #fff; border: 1px solid #e2e8f0; text-align: center; }
-.acceso-asistido-resumen-contador small { font-size: 11px; color: #64748b; white-space: nowrap; }
-.acceso-asistido-resumen-contador strong { font-size: 20px; font-variant-numeric: tabular-nums; color: #0f172a; }
-.acceso-asistido-resumen-contador.tono-ambar { background: #fef3c7; border-color: #fde68a; }
-.acceso-asistido-resumen-contador.tono-rojo { background: #fee2e2; border-color: #fecaca; }
-.acceso-asistido-resumen-contador.tono-rojo strong { color: #b91c1c; }
+.acceso-asistido-resumen-copia { display: grid; gap: 1px; flex: 1; min-width: 0; }
+.acceso-asistido-resumen-copia strong { font-size: 15px; line-height: 1.25; color: #0f172a; }
+.acceso-asistido-resumen-meta { font-size: 12.5px; color: #475569; }
+.acceso-asistido-resumen-tiempo { font-weight: 700; font-variant-numeric: tabular-nums; color: #0f172a; white-space: nowrap; }
+.acceso-asistido-resumen-tiempo.tono-ambar { color: #b45309; }
+.acceso-asistido-resumen-tiempo.tono-rojo { color: #b91c1c; }
+.acceso-asistido-resumen-motivo { margin: 0; font-size: 13px; line-height: 1.35; color: #475569; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .acceso-asistido-resumen-acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.acceso-asistido-resumen-acciones .aa-btn { min-height: 38px; }
 .acceso-asistido-resumen-duracion { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #334155; }
-.acceso-asistido-resumen-duracion select { min-height: 40px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; font: inherit; }
+.acceso-asistido-resumen-duracion select { min-height: 38px; padding: 0 8px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; font: inherit; }
+.acceso-asistido-resumen-enlace { display: inline-flex; align-items: center; gap: 2px; margin-left: auto; padding: 4px 2px; border: 0; background: none; color: #1d4ed8; font: inherit; font-size: 13.5px; font-weight: 700; cursor: pointer; }
+.acceso-asistido-resumen-enlace:hover { text-decoration: underline; }
 .acceso-asistido-resumen-mensaje { margin: 0; font-size: 13px; color: #166534; }
 .acceso-asistido-resumen-mensaje.suelto { margin-bottom: 16px; padding: 10px 14px; border-radius: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; }
 @media (max-width: 640px) {
-  .acceso-asistido-resumen-cabecera { flex-wrap: wrap; }
-  .acceso-asistido-resumen-contador { width: 100%; grid-auto-flow: column; justify-content: space-between; align-items: center; }
-  .acceso-asistido-resumen-acciones .aa-btn { flex: 1 1 auto; }
+  .acceso-asistido-resumen-acciones .aa-btn-primary { flex: 1 1 auto; }
+  .acceso-asistido-resumen-enlace { width: 100%; justify-content: center; margin-left: 0; }
 }
 
 
 /* =================================================================== Rediseño de la pestaña (17-nov) */
-.acceso-asistido { --aa-azul: #2563eb; --aa-azul-bg: #eff6ff; --aa-azul-borde: #bfdbfe;
+.acceso-asistido, .acceso-soporte-pagina { --aa-azul: #2563eb; --aa-azul-bg: #eff6ff; --aa-azul-borde: #bfdbfe;
   --aa-violeta: #7c3aed; --aa-violeta-bg: #f5f3ff; --aa-violeta-borde: #ddd6fe;
   --aa-verde: #059669; --aa-verde-bg: #ecfdf5; --aa-verde-borde: #a7f3d0;
   --aa-ambar: #b45309; --aa-ambar-bg: #fffbeb; --aa-ambar-borde: #fde68a;
@@ -258,7 +271,10 @@
   .aa-hero-icono { width: 44px; height: 44px; }
   .aa-pasos { grid-template-columns: 1fr; }
   .aa-estado-cabecera { flex-direction: column; }
-  .aa-reloj { width: 100%; min-width: 0; }
+  /* Celular (18-nov): el contador es una franja (icono + texto a la izquierda, numero a la derecha), no un recuadro alto. */
+  .aa-reloj { width: 100%; min-width: 0; grid-template-columns: auto 1fr auto; align-items: center; justify-items: start; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 12px; box-shadow: none; }
+  .aa-reloj small { font-size: 0.8rem; }
+  .aa-reloj strong { font-size: 1.15rem; }
   .aa-niveles, .aa-garantias, .aa-cifras { grid-template-columns: 1fr; }
   .aa-cifra { grid-template-columns: auto auto 1fr; grid-template-rows: auto; column-gap: 0.5rem; }
   .aa-cifra svg { grid-row: auto; }

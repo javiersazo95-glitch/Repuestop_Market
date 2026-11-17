@@ -119,6 +119,8 @@ const TARGETS = {
   '/withdrawals': () => PROFILE('retiros'),
   '/withdrawal-payments': () => PROFILE('retiros'),
   '/(seller)/retiros': () => PROFILE('retiros'),
+  // Acceso asistido: el backend manda la ruta de la app; en el Market es la pestaña "ayuda_carga".
+  '/(seller)/ayuda-carga': () => PROFILE('ayuda_carga'),
   '/seller/retiros': () => PROFILE('retiros'),
 
   // El monedero de Monedas. En la app es una pantalla propia (`app/wallet.tsx`); en la web es el
