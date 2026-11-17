@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { AlertCircle, ArrowRight, Crown, Banknote, Box, ChevronRight, MessageCircle, MessageSquare, PackagePlus, Send, Sparkles, Store, Timer, Truck, Wallet } from 'lucide-react';
-import { founderBenefitLabel } from '../../utils/founderBenefit';
+import { AlertCircle, ArrowRight, Banknote, Box, ChevronRight, MessageCircle, MessageSquare, PackagePlus, Send, Sparkles, Store, Timer, Truck, Wallet } from 'lucide-react';
+import { founderShortLabel } from '../../utils/founderBenefit';
 import FounderBenefitInfo from '../FounderBenefitInfo';
 import { getSellerBalanceApi, getSellerInventorySummaryApi, resolveMediaUrl } from '../../services/api';
 import '../../styles/seller-home.css';
@@ -94,7 +94,7 @@ export default function SellerHomeSummary({
           {isOpen != null && <span className={`sh-chip ${isOpen ? 'is-green' : 'is-red'}`}>{isOpen ? 'Abierta' : 'Cerrada'}</span>}
         </div>
         {founder && (
-          <span className="sh-founder"><Crown size={13} strokeWidth={2.4} /> Fundador · {founderBenefitLabel(founder.until)}
+          <span className="sh-founder">Fundador · {founderShortLabel(founder.until)}
             <FounderBenefitInfo founderSince={founder.since} founderUntil={founder.until} /></span>
         )}
         <div className="sh-hero-stats">

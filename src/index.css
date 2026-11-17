@@ -910,7 +910,7 @@ input, select, textarea {
 }
 
 .profile-dashboard .btn-visit-my-store:hover { background: #0665ca; }
-.profile-dashboard .profile-role-chip { box-shadow: none; background: transparent; padding: 5px 0; }
+.profile-dashboard .profile-role-chip { box-shadow: none; background: #f8fafc; border: 1px solid #cbd5e1; padding: 5px 12px; color: #1e293b; }
 
 .profile-dashboard .facebook-cover-hero-container {
   height: 202px;
@@ -956,6 +956,7 @@ input, select, textarea {
 .profile-dashboard .profile-hero-tags { display: flex; gap: 8px; }
 .profile-dashboard .tag-contrast { color: #9af4bb !important; background: rgba(4, 90, 43, .55) !important; border-color: rgba(74, 222, 128, .55) !important; }
 .profile-dashboard .founder-tag-contrast { color: #ffd264 !important; background: rgba(42, 28, 4, .68) !important; border-color: rgba(250, 204, 21, .6) !important; white-space: nowrap; }
+.profile-dashboard .member-tag-contrast { color: #fff !important; background: rgba(15, 23, 42, .62) !important; border-color: rgba(255, 255, 255, .5) !important; white-space: nowrap; }
 /* Marcha blanca por terminar (7 dias o menos): mismo chip, apenas mas encendido para que el
    contador se note sin convertirse en alerta. No cambia padding ni alto. */
 .profile-dashboard .founder-tag-contrast.is-ending { color: #ffe08a !important; background: rgba(92, 52, 0, .8) !important; border-color: rgba(251, 191, 36, .9) !important; box-shadow: 0 0 0 2px rgba(251, 191, 36, .22); }

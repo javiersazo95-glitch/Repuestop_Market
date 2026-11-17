@@ -54,6 +54,14 @@ export function founderBenefitLabel(founderUntil, now = new Date()) {
   return `Servicio gratis · quedan ${daysLeft} días`;
 }
 
+/** Version corta para el encabezado del perfil: "31 días gratis", "último día gratis" o "servicio gratis". */
+export function founderShortLabel(founderUntil, now = new Date()) {
+  const { daysLeft, isExpired, endsAt } = founderDaysLeft(founderUntil, now);
+  if (!endsAt || isExpired) return 'servicio gratis';
+  if (daysLeft === 1) return 'último día gratis';
+  return `${daysLeft} días gratis`;
+}
+
 /** Lo que viene despues de la marcha blanca; va en tooltips, ayuda y pantallas de fundador. */
 export function founderAfterLabel() {
   return `Después: ${standardRateLabel()} + IVA por venta. El costo de Flow se mantiene.`;

@@ -6,7 +6,7 @@ import {
   MessageSquare, LogOut, Star, TrendingUp, Truck, Check, Save, X,
   Clock, ShieldCheck, PackageCheck, Loader2, Inbox, Search,
   ArrowUpRight, Sparkles, Camera, Upload, Image as ImageIcon,
-  Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet, Crown,
+  Trash2, AlertTriangle, ReceiptText, Plus, MessageCircleQuestion, Headphones, Wallet,
   Menu, ChevronRight, Home, Car, MapPin, PlayCircle, Gavel, PackageSearch, Wrench, CalendarClock,
   Cog, Gauge, Telescope, Box, QrCode, Share2, FolderOpen, CreditCard, CarFront, Lock, LifeBuoy
 } from 'lucide-react';
@@ -92,7 +92,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { ROUTES, productPath, storePath } from '../routes/paths';
 import { orderDisplayCode } from '../data/orderIdentity';
 import { deliveryTermsLabel, isConversationPaused, quoteChargeBase, quoteShippingCost } from '../utils/quoteFlow';
-import { founderBenefitLabel, founderDaysLeft } from '../utils/founderBenefit';
+import { founderDaysLeft, founderShortLabel } from '../utils/founderBenefit';
 import FounderBenefitInfo from './FounderBenefitInfo';
 import { useRemoteData } from '../remoteConfig/hooks';
 import { readFlag } from '../remoteConfig/remoteConfig';
@@ -1028,7 +1028,8 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     : isWorkshop
       ? null
       : BUYER_PROFILE_COVER_URL;
-  const memberSince = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('es-CL', { year: 'numeric', month: 'long' }) : null;
+  // Version corta para la pildora del encabezado: "sep. 2026".
+  const memberSinceShort = user?.createdAt ? new Date(user.createdAt).toLocaleDateString('es-CL', { year: 'numeric', month: 'short' }) : null;
 
   /**
    * `proveedorId` acota la transicion a UNA tienda: es como el comprador confirma la
@@ -1547,7 +1548,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
 
           <div className="profile-topbar-user">
             <div className={`profile-role-chip ${isSeller ? 'chip-seller' : 'chip-buyer'}`}>
-              {isSeller ? <Store size={13} /> : isWorkshop ? <Wrench size={13} /> : <ShoppingBag size={13} />}
               <span>{isSeller ? 'Proveedor' : isWorkshop ? 'Taller' : 'Comprador'}</span>
             </div>
             <HeaderWalletButton variant="topbar" />
@@ -1617,7 +1617,6 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                   rechazada o suspendida se veia como si estuviera en tramite. */}
               {isSeller && storeInfo?.status && (
                 <span className={`store-status-chip ${STORE_STATUS_CHIP[storeInfo.status]?.className || 'chip-pending'}`}>
-                  <ShieldCheck size={13} />
                   <span>{STORE_STATUS_CHIP[storeInfo.status]?.label || 'Tienda en revisión'}</span>
                 </span>
               )}
@@ -1626,11 +1625,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
             <p className="facebook-hero-email">{user?.email}</p>
 
             <div className="profile-hero-tags">
-              {memberSince && (
-                <span className="hero-tag tag-contrast">
-                  <Clock size={13} /> Miembro desde {memberSince}
-                </span>
-              )}
+              {memberSinceShort && <span className="hero-tag member-tag-contrast">Miembro desde {memberSinceShort}</span>}
               {/* Solo las tiendas marcadas como fundadoras en el backoffice
                   (`PATCH /backoffice/founders/{id}` -> `Proveedor.fundador`, que viaja
                   en `TiendaResponseDTO.founder`). Antes salía para TODO vendedor, así
@@ -1647,7 +1642,7 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
                 // de cuanto es, cuando empieza y termina); la corona queda para verlo de un vistazo.
                 return (
                   <span className={`hero-tag founder-tag-contrast${isEnding ? ' is-ending' : ''}`}>
-                    <Crown size={14} strokeWidth={2.4} /> Fundador · {founderBenefitLabel(founderUntil)}
+                    Fundador · {founderShortLabel(founderUntil)}
                     <FounderBenefitInfo founderSince={founderSince} founderUntil={founderUntil} />
                   </span>
                 );

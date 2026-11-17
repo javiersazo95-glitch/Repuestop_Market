@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import {
-  Camera, Clock, Crown, FileText, Eye, Mail, Map, MapPin, Navigation, Pencil, Phone,
+  Camera, Clock, FileText, Eye, Mail, Map, MapPin, Navigation, Pencil, Phone,
   Store, User,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -11,7 +11,7 @@ import { resolverUbicacionPorNombre } from '../../services/geoLookup';
 import { qk } from '../../services/queryKeys';
 import { DEFAULT_STORE_COVER, isValidClPhone } from '../../services/adapters';
 import { storePath } from '../../routes/paths';
-import { founderBenefitLabel } from '../../utils/founderBenefit';
+import { founderShortLabel } from '../../utils/founderBenefit';
 import FounderBenefitInfo from '../FounderBenefitInfo';
 import '../../styles/store-profile-mobile.css';
 
@@ -215,7 +215,7 @@ export default function StoreProfileMobile({
           <img src={cover} alt="Portada de la tienda" />
           {storeInfo?.founder && (
             <span className="spm-founder">
-              <Crown size={13} strokeWidth={2.4} /> Fundador · {founderBenefitLabel(storeInfo.founderUntil ?? user?.founderUntil ?? null)}
+              Fundador · {founderShortLabel(storeInfo.founderUntil ?? user?.founderUntil ?? null)}
               <FounderBenefitInfo founderSince={storeInfo.founderSince ?? user?.founderSince ?? null} founderUntil={storeInfo.founderUntil ?? user?.founderUntil ?? null} />
             </span>
           )}
