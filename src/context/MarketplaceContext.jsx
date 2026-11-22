@@ -82,6 +82,8 @@ function mapServerCart(summary) {
     esUniversal: Boolean(item.esUniversal),
     // Checkout por producto: lo que publica la tienda para entregar y desde donde.
     storeShippingMethods: item.metodosEnvioTienda || '',
+    // Mínimo de compra en la tienda para despachar (22-nov); null = sin mínimo.
+    minimoDespacho: Number(item.minimoDespachoTienda) > 0 ? Number(item.minimoDespachoTienda) : null,
     storeComunaId: item.comunaTiendaId != null ? String(item.comunaTiendaId) : '',
     storeComuna: item.comunaTienda || '',
     storeAddress: item.direccionTienda || '',
@@ -306,9 +308,20 @@ export function MarketplaceProvider({ children }) {
 
     // El aviso se muestra con el cambio optimista, no con la respuesta del servidor: si
     // la petición falla, el rollback y `cartError` se encargan de contarlo.
-    setLastAddedItem({ id: product.id, titulo: product.titulo, imagen: product.imagen, precio: product.precio });
+    // Con mínimo de despacho el aviso además dice cuánto falta e invita a la tienda: se deja más tiempo.
+    const minimoDespacho = Number(product.minimoDespacho) > 0 ? Number(product.minimoDespacho) : null;
+    setLastAddedItem({
+      id: product.id,
+      titulo: product.titulo,
+      imagen: product.imagen,
+      precio: product.precio,
+      proveedorId: product.proveedorId,
+      vendedor: product.vendedor,
+      minimoDespacho,
+      shippingMethod,
+    });
     if (lastAddedTimerRef.current) clearTimeout(lastAddedTimerRef.current);
-    lastAddedTimerRef.current = setTimeout(() => setLastAddedItem(null), 5000);
+    lastAddedTimerRef.current = setTimeout(() => setLastAddedItem(null), minimoDespacho ? 9000 : 5000);
 
     if (!isLoggedIn || !userId) return null;
 

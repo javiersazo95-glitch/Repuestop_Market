@@ -23,6 +23,9 @@ import { SOCIAL_NETWORKS, socialLinksFromVerification, socialLinksPayload, valid
 import { absoluteUrl, shareLink } from '../../utils/shareLink';
 import { storePath } from '../../routes/paths';
 import { buildShippingMethodsString, getShippingMethodDefs, parseShippingSelections } from '../../data/shippingMethods';
+import { minimoVigente } from '../../utils/minimoDespacho';
+import { useMinimoDespachoField } from '../../hooks/useMinimoDespachoField';
+import { MinimoDespachoSlot } from '../MinimoDespacho';
 import { SELLER_SETTINGS } from '../../data/sellerSettings';
 import '../../styles/store-profile-mobile.css';
 import '../../styles/seller-settings.css';
@@ -177,17 +180,25 @@ function ShippingSection({ sellerId, storeInfo, onSaved }) {
   const [selections, setSelections] = useState(() => parseShippingSelections(storeInfo?.shippingMethods));
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState(null);
+  const minimoGuardado = minimoVigente(storeInfo?.minimoDespacho);
+  const minimo = useMinimoDespachoField(buildShippingMethodsString(selections), minimoGuardado);
+  const { reset: resetMinimo } = minimo;
   useEffect(() => { setSelections(parseShippingSelections(storeInfo?.shippingMethods)); }, [storeInfo?.shippingMethods]);
+  useEffect(() => { resetMinimo(minimoGuardado); }, [minimoGuardado, resetMinimo]);
 
   const save = async () => {
     if (!getShippingMethodDefs().some((def) => selections[def.id]?.enabled)) {
       setNotice({ type: 'error', message: 'Selecciona al menos un método de envío.' });
       return;
     }
+    if (minimo.incompleto) {
+      setNotice({ type: 'error', message: minimo.incompleto });
+      return;
+    }
     setSaving(true);
     setNotice(null);
     try {
-      await updateSellerShippingMethodsApi(sellerId, buildShippingMethodsString(selections));
+      await updateSellerShippingMethodsApi(sellerId, buildShippingMethodsString(selections), minimo.valor);
       setNotice({ type: 'success', message: 'Tus métodos de envío se guardaron.' });
       onSaved();
     } catch (err) {
@@ -204,8 +215,9 @@ function ShippingSection({ sellerId, storeInfo, onSaved }) {
       )}
       <ShippingMethodsPicker selections={selections} onChange={setSelections} />
       <small className="sst-help">Elige los métodos que ofrece tu tienda. Deja el precio en blanco si es gratuito.</small>
+      <MinimoDespachoSlot field={minimo} />
       <Notice notice={notice} />
-      <button type="button" className="sst-save" disabled={saving} onClick={save}>{saving ? <Loader2 size={16} className="spin-icon" /> : null} Guardar métodos de envío</button>
+      <button type="button" className="sst-save" disabled={saving} onClick={save}>{saving ? <Loader2 size={16} className="spin-icon" /> : null} Guardar envíos</button>
     </div>
   );
 }

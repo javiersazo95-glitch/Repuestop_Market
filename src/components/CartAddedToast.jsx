@@ -4,7 +4,9 @@ import { Check, Package, X } from 'lucide-react';
 import ProductPhoto from './ProductPhoto';
 import { productReferenceImage } from '../utils/productImage';
 import { useMarketplace } from '../context/MarketplaceContext';
-import { ROUTES } from '../routes/paths';
+import { ROUTES, storePath } from '../routes/paths';
+import { MinimoDespachoProgress } from './MinimoDespacho';
+import { isPickupMethod, storeCartSubtotal } from '../utils/minimoDespacho';
 
 /**
  * Confirmación de "producto agregado". Reemplaza al drawer que se abría de golpe encima
@@ -14,7 +16,7 @@ import { ROUTES } from '../routes/paths';
  * aviso encima sería ruido.
  */
 export default function CartAddedToast() {
-  const { lastAddedItem, cartCount, dismissLastAdded } = useMarketplace();
+  const { lastAddedItem, cartItems, cartCount, dismissLastAdded } = useMarketplace();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -22,6 +24,12 @@ export default function CartAddedToast() {
     || location.pathname.startsWith(ROUTES.checkout);
 
   if (!lastAddedItem || enFlujoDeCompra) return null;
+
+  // Mínimo de despacho (22-nov): el del carrito del servidor manda; si aún no llega, el de la ficha.
+  const enCarrito = (cartItems || []).find((item) => String(item.id) === String(lastAddedItem.id));
+  const minimo = enCarrito?.minimoDespacho ?? lastAddedItem.minimoDespacho;
+  const metodo = enCarrito?.shippingMethod || lastAddedItem.shippingMethod;
+  const mostrarMinimo = Boolean(minimo) && lastAddedItem.proveedorId != null && !isPickupMethod(metodo);
 
   return (
     <div className="cart-added-toast" role="status" aria-live="polite">
@@ -40,6 +48,19 @@ export default function CartAddedToast() {
           <small>{cartCount} {cartCount === 1 ? 'producto' : 'productos'} en el carrito</small>
         </div>
       </div>
+
+      {mostrarMinimo && (
+        <MinimoDespachoProgress
+          compact
+          storeName={enCarrito?.storeName || lastAddedItem.vendedor}
+          minimo={minimo}
+          subtotal={storeCartSubtotal(cartItems, lastAddedItem.proveedorId)}
+          onVisitStore={() => {
+            dismissLastAdded();
+            navigate(storePath({ id: lastAddedItem.proveedorId, nombre: enCarrito?.storeName || lastAddedItem.vendedor }));
+          }}
+        />
+      )}
 
       <div className="cart-added-actions">
         <button type="button" className="cart-added-ghost" onClick={dismissLastAdded}>

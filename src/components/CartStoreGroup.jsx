@@ -1,8 +1,10 @@
 import React from 'react';
 import { Store } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { storePath } from '../routes/paths';
 import CartLineItem from './CartLineItem';
+import { MinimoDespachoProgress } from './MinimoDespacho';
+import { isPickupMethod } from '../utils/minimoDespacho';
 import '../styles/auction-purchase.css';
 
 const formatCLP = (value) => `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -22,6 +24,10 @@ export default function CartStoreGroup({ group, activeVehicle, compatStatusOf = 
   const comuna = items[0]?.storeComuna;
   const subtotal = items.reduce((sum, item) => sum + item.precio * item.quantity, 0);
   const units = items.reduce((sum, item) => sum + item.quantity, 0);
+  const navigate = useNavigate();
+  // Mínimo de despacho (22-nov): no aplica si ya se eligió retiro en tienda para todo lo de esta tienda.
+  const minimo = items.find((item) => item.minimoDespacho)?.minimoDespacho ?? null;
+  const todoRetiro = items.length > 0 && items.every((item) => item.shippingMethod && isPickupMethod(item.shippingMethod));
 
   return (
     <article className="ap-store cart-store-card" aria-label={`Productos de ${storeName}`}>
@@ -38,6 +44,17 @@ export default function CartStoreGroup({ group, activeVehicle, compatStatusOf = 
         </div>
         <strong className="ap-store-total">{formatCLP(subtotal)}</strong>
       </header>
+
+      {minimo && !todoRetiro && (
+        <div className="cart-store-minimo">
+          <MinimoDespachoProgress
+            storeName={storeName}
+            minimo={minimo}
+            subtotal={subtotal}
+            onVisitStore={proveedorId ? () => navigate(storePath({ id: proveedorId, nombre: vendedor })) : undefined}
+          />
+        </div>
+      )}
 
       <div className="cart-store-lines">
         {items.map((item) => (

@@ -10,6 +10,7 @@ import ProductTopBadge from './ProductTopBadge';
 import ShareLinkButton from './ShareLinkButton';
 import StoreLogoBadge from './StoreLogoBadge';
 import ContextualReportButton from './ContextualReportButton';
+import { MinimoDespachoBadge } from './MinimoDespacho';
 import { resolveShippingService, shippingMethodPrice } from '../data/shippingMethods';
 import { productPath } from '../routes/paths';
 import { shippingMethodMessage } from '../utils/cartDelivery';
@@ -255,6 +256,8 @@ export default function ProductDetailMobile({
             <span className="pdm-seller-place"><MapPin size={12} /> {city}</span>
           </small>
           {product.horarioVendedor && <small className="pdm-seller-hours">{product.horarioVendedor}</small>}
+          {/* Mínimo de despacho de la tienda (22-nov), junto a sus datos. */}
+          {!quoteOnly && <MinimoDespachoBadge minimo={product.minimoDespacho} variant="pill" className="pdm-seller-minimo" />}
         </span>
         {onOpenStore && <ChevronRight size={18} className="pdm-seller-chevron" />}
       </button>

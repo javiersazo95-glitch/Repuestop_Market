@@ -27,6 +27,8 @@ export type SellerRegistrationPayload = {
   direccion: DireccionPayload;
   hours?: string;
   shippingMethods?: string;
+  /** Mínimo de despacho en pesos (22-nov); sin él la tienda despacha sin mínimo. */
+  minimoDespacho?: number;
   specialistBrandIds?: number[];
   referral?: string;
   referralChannel?: 'CASA_REPUESTOS';

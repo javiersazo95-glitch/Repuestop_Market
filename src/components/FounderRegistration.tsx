@@ -8,6 +8,8 @@ import OpeningHoursPicker from './talleres/OpeningHoursPicker';
 import AddressAutocompleteInput from './AddressAutocompleteInput';
 import { normalizarNombreGeografico } from '../services/geoLookup';
 import ShippingMethodsPicker from './ShippingMethodsPicker';
+import { MinimoDespachoSlot } from './MinimoDespacho';
+import { useMinimoDespachoField } from '../hooks/useMinimoDespachoField';
 import SpecialistBrandsManager, { type VehicleBrandOption } from './SpecialistBrandsManager';
 import { createDefaultSchedule, formatOpeningHours } from '../data/openingHours';
 import { defaultShippingSelections, buildShippingMethodsString } from '../data/shippingMethods';
@@ -19,9 +21,9 @@ import {
 import {
   registerSeller, validateReferral, verifyRegistrationCode, resendRegistrationCode,
   fetchPaises, fetchRegiones, fetchComunas,
-  uploadVerificacion, renderGoogleButton, renderGoogleResumeButton, googleEnabled,
+  uploadVerificacion, renderGoogleResumeButton,
   isPendingVerification, ApiError,
-  loginSeller, loginSellerByTaxId, loginSellerWithGoogle, lookupSellerByTaxId, fetchVerificacionStatus,
+  loginSeller, loginSellerByTaxId, lookupSellerByTaxId, fetchVerificacionStatus,
   sendSellerRecoverCode, verifySellerRecoverCode, resetSellerPassword, checkEmailAvailability,
   type UbicacionOption, type GoogleProfile, type SellerRegistrationPayload,
   type SellerSession, type SellerLookup, type VerificacionResponse,
@@ -197,12 +199,15 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
   // Mismos metodos que pide el registro de la app (`useShippingField`), con "Retiro en
   // tienda" marcado por defecto igual que alla.
   const [shippingSelections, setShippingSelections] = useState(defaultShippingSelections);
+  // Mínimo de despacho (22-nov): se pide junto a los métodos de envío, desde que se crea la cuenta.
+  const minimoDespacho = useMinimoDespachoField(buildShippingMethodsString(shippingSelections));
   // Marcas especialistas de la tienda, idéntico al registro mobile (`useRegisterProviderScreen`)
   const [specialistBrands, setSpecialistBrands] = useState<VehicleBrandOption[]>([]);
   const [legal, setLegal] = useState<LegalDoc | null>(null);
 
   // Phase 0 — registro
-  const [methodChosen, setMethodChosen] = useState(false);
+  // 22-nov: /vender abre directo el formulario con correo y contraseña; ya no hay paso para elegir método. Solo
+  // quien llega desde el modal de acceso con su cuenta de Google ya elegida ve el formulario con Google.
   const [form, setForm] = useState<FormState>(() => {
     const initialReferral = getStoredCaptadorReferral() || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('ref') || '' : '');
     return {
@@ -294,26 +299,8 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
   const [comunas, setComunas] = useState<UbicacionOption[]>([]);
   const [geoError, setGeoError] = useState('');
 
-  // Google button
-  const googleRef = useRef<HTMLDivElement | null>(null);
-  const [googleMsg, setGoogleMsg] = useState('');
-  // Se incrementa al volver de un back/forward (bfcache) para forzar que React
-  // remonte el contenedor del botón: el iframe de Google no sobrevive la restauración.
-  const [googleRemountKey, setGoogleRemountKey] = useState(0);
-
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
-
-  // Si el navegador restaura esta página desde el back/forward cache (ej. el usuario
-  // vuelve atrás tras abrir el selector de cuenta de Google), el iframe de Google
-  // queda vacío aunque el contenedor siga en el DOM. Forzamos un remount.
-  useEffect(() => {
-    const onPageShow = (e: PageTransitionEvent) => {
-      if (e.persisted) setGoogleRemountKey((k) => k + 1);
-    };
-    window.addEventListener('pageshow', onPageShow);
-    return () => window.removeEventListener('pageshow', onPageShow);
   }, []);
 
   // Deep-link desde el correo de "necesita corrección": ?rut=... abre directo el flujo de retomar postulación.
@@ -348,48 +335,10 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
     return () => { alive = false; };
   }, [form.regionId]);
 
-  // Botón de Google (paso "elige método"): si ya existe una cuenta VENDEDORA con ese correo,
-  // retomamos su postulación donde quedó (documentos, en revisión o ya aprobada) en vez de mostrar
-  // el formulario de registro; si el correo existe pero es de comprador (sin tienda), no dejamos
-  // continuar con ese correo -se avisa para que use otro-; solo si no existe cuenta se prellena
-  // el formulario para crear una cuenta de vendedor nueva.
-  useEffect(() => {
-    if (activePhase !== 0 || pendingEmail || methodChosen || !googleEnabled || !googleRef.current) return;
-    renderGoogleButton(googleRef.current, async (profile) => {
-      setGoogleMsg('');
-      try {
-        const existingSession = await loginSellerWithGoogle(profile.idToken);
-        if (existingSession.sellerId) {
-          await resolveSellerSession(existingSession);
-          return;
-        }
-        // El mismo correo puede pertenecer a una cuenta de comprador (app móvil) sin tienda
-        // asociada; el backend igual responde 200 pero sin sellerId. No hay nada que retomar
-        // ni podemos crear una cuenta de vendedor con un correo ya usado (rebotaría 409 igual).
-        setGoogleMsg('Ese correo ya está registrado como comprador. Intenta con otro correo para postular como tienda fundadora.');
-        return;
-      } catch (err: any) {
-        if (!(err instanceof ApiError) || err.status !== 404) {
-          setGoogleMsg(err?.message || 'No pudimos verificar tu cuenta de Google.');
-          return;
-        }
-        // 404: no hay cuenta de RepuesTop con este correo todavía -> seguimos como registro nuevo.
-      }
-      setGoogle(profile);
-      setAuthProvider('GOOGLE');
-      setForm((f) => ({
-        ...f,
-        email: profile.email || f.email,
-        responsibleName: f.responsibleName || profile.name || '',
-      }));
-      setMethodChosen(true);
-    }, (msg) => setGoogleMsg(msg));
-  }, [activePhase, pendingEmail, methodChosen, googleRemountKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
   // Viene del modal de acceso: entro con Google, el correo no tenia cuenta y eligio "Tienda". Se
   // retoma con ese mismo perfil, como si hubiera usado el boton de Google de este paso (404).
   useEffect(() => {
-    if (activePhase !== 0 || pendingEmail || methodChosen) return;
+    if (activePhase !== 0 || pendingEmail) return;
     const profile = tomarGoogleParaTienda();
     if (!profile) return;
     setGoogle(profile);
@@ -399,21 +348,9 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
       email: profile.email || f.email,
       responsibleName: f.responsibleName || profile.name || '',
     }));
-    setMethodChosen(true);
     // Solo al entrar a la pagina.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  function chooseManual() {
-    setGoogle(null);
-    setAuthProvider('EMAIL_PASSWORD');
-    setGoogleMsg('');
-    setMethodChosen(true);
-  }
-
-  function changeMethod() {
-    setMethodChosen(false);
-  }
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -575,6 +512,10 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
   async function handleSubmit() {
     setFormError('');
     if (!validate()) return;
+    if (minimoDespacho.incompleto) {
+      setFormError(minimoDespacho.incompleto);
+      return;
+    }
     setSubmitting(true);
     try {
       const referral = form.referral.trim().toUpperCase();
@@ -603,6 +544,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
         },
         hours: formatOpeningHours(schedule) || undefined,
         shippingMethods: buildShippingMethodsString(shippingSelections) || undefined,
+        minimoDespacho: minimoDespacho.valor ?? undefined,
         specialistBrandIds: specialistBrands.length ? specialistBrands.map((b) => b.id) : undefined,
         acceptsTerms: true,
         termsVersion: LEGAL_VERSION_CODE,
@@ -724,22 +666,19 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
             />
           ) : (
             <>
-              {activePhase === 0 && !pendingEmail && !methodChosen && (
-                <MethodChooser googleRef={googleRef} googleMsg={googleMsg} onManual={chooseManual} remountKey={googleRemountKey} />
-              )}
-
-              {activePhase === 0 && !pendingEmail && methodChosen && (
+              {activePhase === 0 && !pendingEmail && (
                 <RegistrationForm
                   form={form} errors={visibleErrors} update={update} touch={touch}
                   isFormValid={isFormValid} pendingSummary={resumenPendiente}
                   emailAvailable={emailAvailable && !emailTaken} taxIdAvailable={taxIdAvailable && !taxIdTaken}
                   authProvider={authProvider} emailLocked={emailLocked}
-                  google={google} onChangeMethod={changeMethod}
+                  google={google}
                   showPassword={showPassword} setShowPassword={setShowPassword}
                   regiones={regiones} comunas={comunas} geoError={geoError}
                   onRegionChange={(regionId) => setForm((f) => ({ ...f, regionId, comunaId: '' }))}
                   schedule={schedule} onScheduleChange={setSchedule}
                   shippingSelections={shippingSelections} onShippingChange={setShippingSelections}
+                  minimoDespacho={minimoDespacho}
                   specialistBrands={specialistBrands} onSpecialistBrandsChange={setSpecialistBrands}
                   submitting={submitting} formError={formError}
                   onSubmit={handleSubmit}
@@ -828,52 +767,6 @@ function GoogleGIcon() {
   );
 }
 
-function MethodChooser({ googleRef, googleMsg, onManual, remountKey }: {
-  googleRef: React.RefObject<HTMLDivElement | null>; googleMsg: string; onManual: () => void; remountKey: number;
-}) {
-  return (
-    <div className="founder-reg-card">
-      <div className="founder-reg-head">
-        <h2>Crea tu cuenta de tienda fundadora</h2>
-        <p>Elige cómo quieres crearla. La usarás para ingresar al panel de vendedores y, cuando esté disponible, a la app de RepuesTop.</p>
-      </div>
-
-      <div className="founder-reg-method-grid">
-        <div className="founder-reg-method-card">
-          <span className="founder-reg-method-icon"><GoogleGIcon /></span>
-          <h3>Crear con Google</h3>
-          <p>Inicias sesión con tu cuenta de Google cada vez. Tu correo queda verificado al instante, sin contraseñas.</p>
-          {googleEnabled ? (
-            <>
-              <div key={remountKey} ref={googleRef} className="founder-reg-google-btn" />
-              {googleMsg && <p className="founder-reg-hint-error">{googleMsg}</p>}
-            </>
-          ) : (
-            <>
-              <button type="button" className="button button-outline founder-reg-method-btn" disabled>Continuar con Google</button>
-              <small className="founder-reg-hint">Disponible al configurar el acceso con Google.</small>
-            </>
-          )}
-        </div>
-
-        <div className="founder-reg-method-card">
-          <span className="founder-reg-method-icon founder-reg-method-icon-manual"><Mail size={22} /></span>
-          <h3>Crear manualmente</h3>
-          <p>Te registras con tu correo y una contraseña. Inicias sesión con ambos cada vez que vuelvas.</p>
-          <button type="button" className="button button-outline founder-reg-method-btn" onClick={onManual}>
-            Registro manual <ArrowRight size={16} />
-          </button>
-        </div>
-      </div>
-
-      <div className="founder-reg-method-note">
-        <ShieldCheck size={15} />
-        <span>Con esta cuenta ingresarás al <strong>panel de vendedores</strong> y, cuando esté disponible, a la <strong>app de RepuesTop</strong>.</span>
-      </div>
-    </div>
-  );
-}
-
 /* ==================================================================== *
  * Fase 1b — Formulario de registro
  * ==================================================================== */
@@ -881,7 +774,7 @@ type RegFormProps = {
   form: FormState; errors: Partial<Record<keyof FormState, string>>;
   update: <K extends keyof FormState>(k: K, v: FormState[K]) => void;
   authProvider: 'EMAIL_PASSWORD' | 'GOOGLE'; emailLocked: boolean;
-  google: GoogleProfile | null; onChangeMethod: () => void;
+  google: GoogleProfile | null;
   showPassword: boolean; setShowPassword: (v: boolean) => void;
   regiones: UbicacionOption[]; comunas: UbicacionOption[]; geoError: string;
   onRegionChange: (regionId: string) => void;
@@ -889,6 +782,7 @@ type RegFormProps = {
   onScheduleChange: (value: ReturnType<typeof createDefaultSchedule>) => void;
   shippingSelections: ReturnType<typeof defaultShippingSelections>;
   onShippingChange: (value: ReturnType<typeof defaultShippingSelections>) => void;
+  minimoDespacho: ReturnType<typeof useMinimoDespachoField>;
   specialistBrands: VehicleBrandOption[];
   onSpecialistBrandsChange: (brands: VehicleBrandOption[]) => void;
   submitting: boolean; formError: string; onSubmit: () => void;
@@ -960,7 +854,6 @@ function RegistrationForm(p: RegFormProps) {
             <div><strong>Registro manual</strong><span>Iniciarás sesión con tu correo y contraseña</span></div>
           </>
         )}
-        <button type="button" className="founder-reg-method-change" onClick={p.onChangeMethod}>Cambiar método</button>
       </div>
 
       <div className="founder-reg-grid">
@@ -1118,6 +1011,9 @@ function RegistrationForm(p: RegFormProps) {
       <Field as="div" label="Métodos de envío" hint="Elige los que ofrece tu tienda. Deja el precio en blanco si es gratuito.">
         <ShippingMethodsPicker selections={p.shippingSelections} onChange={p.onShippingChange} />
       </Field>
+
+      {/* Mínimo de despacho (22-nov): opcional, igual que en Configuración → Envíos. */}
+      <MinimoDespachoSlot field={p.minimoDespacho} />
 
       {/* Marcas especialistas: idéntico al registro de la app y sincronizado con el backend */}
       <Field as="div" label="Marcas especialistas" hint="Selecciona las marcas vehiculares en las que tu tienda se especializa para destacarlas en el catálogo.">

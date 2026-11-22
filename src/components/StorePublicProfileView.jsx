@@ -6,7 +6,7 @@ import { storeSeo, usePageSeo } from '../routes/pageSeo';
 import { qk } from '../services/queryKeys';
 import {
   ShieldCheck, MapPin, Star, Package, Clock,
-  ArrowLeft, X, CheckCircle2, Truck,
+  ArrowLeft, X, CheckCircle2, Truck, Banknote,
   Heart, Share2, PenLine, Tag, Store as StoreIcon,
   MessageCircle, MessageSquareText, Send, Mail, Link2, MoreHorizontal
 } from 'lucide-react';
@@ -24,6 +24,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import SocialIcon from './SocialIcon';
 import { storeSocialLinks } from '../utils/socialLinks';
 import '../styles/social-links.css';
+import { formatMinimo, minimoVigente } from '../utils/minimoDespacho';
 
 export default function StorePublicProfileView({
   store,
@@ -99,6 +100,7 @@ export default function StorePublicProfileView({
       marcasEspecialistas: Array.isArray(inputStore.marcasEspecialistas) ? inputStore.marcasEspecialistas : [],
       marcasVehiculoDisponibles: Array.isArray(inputStore.marcasVehiculoDisponibles) ? inputStore.marcasVehiculoDisponibles : [],
       metodosEnvio: Array.isArray(inputStore.metodosEnvio) ? inputStore.metodosEnvio : [],
+      minimoDespacho: inputStore.minimoDespacho ?? null,
       logoUrl: inputStore.logoUrl || null,
       coverUrl: inputStore.coverUrl || DEFAULT_STORE_COVER,
       instagramUrl: inputStore.instagramUrl || null,
@@ -585,6 +587,20 @@ export default function StorePublicProfileView({
                 <strong>{shippingMethods.length ? `${shippingMethods.length} opciones` : 'Sin métodos declarados'}</strong>
               </div>
             </div>
+
+            {/* Mínimo de despacho (22-nov): al lado de los envíos (en móvil queda en la fila 2, columna 2). */}
+            {minimoVigente(currentStore.minimoDespacho) && (
+              <div
+                className="metric-strip-item is-minimo-despacho"
+                title="Compra mínima en esta tienda para despacho dentro o fuera de la comuna. El retiro en tienda no tiene mínimo."
+              >
+                <span className="metric-icon-box"><Banknote size={22} /></span>
+                <div className="metric-text-box">
+                  <small>Mínimo de despacho</small>
+                  <strong>{formatMinimo(currentStore.minimoDespacho)}</strong>
+                </div>
+              </div>
+            )}
 
             {currentStore.responseTimeLabel && (
               <div className="metric-strip-item">

@@ -294,6 +294,8 @@ export function adaptProduct(dto) {
     vendedorFundador: Boolean(dto.sellerFounder),
     localFisico: Boolean(dto.sellerHours),
     metodosEnvio: dto.sellerShippingMethods || '',
+    // Mínimo de compra en la tienda para despachar (22-nov); null = sin mínimo.
+    minimoDespacho: toNumber(dto.sellerMinimoDespacho) || null,
     rating: toNumber(dto.productRating) ?? toNumber(dto.sellerRating),
     reviewCount: toNumber(dto.productReviewCount) ?? 0,
     // La reputación de la tienda va aparte: `rating` se queda en 0 cuando el
@@ -399,6 +401,8 @@ export function adaptStore(dto, index = 0) {
     especialidad: dto.giro || '',
     descripcion: dto.description || dto.descripcion || dto.giro || '',
     metodosEnvio,
+    // Mínimo de compra para despachar (22-nov); null = sin mínimo.
+    minimoDespacho: toNumber(dto.minimoDespacho) || null,
     marcasEspecialistas: Array.isArray(dto.marcasEspecialistas)
       ? dto.marcasEspecialistas.map((marca) => ({ id: marca.id, nombre: marca.nombre })).filter((marca) => marca.nombre)
       : [],

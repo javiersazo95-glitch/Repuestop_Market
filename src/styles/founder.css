@@ -616,8 +616,6 @@
 .repuestop-about-page .founder-reg-method-pill > div { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 .repuestop-about-page .founder-reg-method-pill strong { color: var(--about-navy); font-size: .86rem; }
 .repuestop-about-page .founder-reg-method-pill span { color: var(--about-muted); font-size: .74rem; }
-.repuestop-about-page .founder-reg-method-change { flex: none; background: #fff; color: var(--about-blue); font-weight: 700; font-size: .76rem; padding: 8px 12px; border-radius: 9px; cursor: pointer; border: 1px solid var(--about-line); }
-.repuestop-about-page .founder-reg-method-change:hover { border-color: var(--about-blue); }
 
 /* Grid de campos */
 .repuestop-about-page .founder-reg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 16px; margin-top: 18px; }
@@ -750,7 +748,6 @@
   .repuestop-about-page .founder-reg-resume-search { flex-direction: column; }
   .repuestop-about-page .founder-reg-method-grid { grid-template-columns: 1fr; }
   .repuestop-about-page .founder-reg-method-pill { flex-wrap: wrap; }
-  .repuestop-about-page .founder-reg-method-change { width: 100%; }
 }
 
 /* Enlaces legales + modal de términos/privacidad */

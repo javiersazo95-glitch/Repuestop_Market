@@ -2334,12 +2334,13 @@ export async function deleteSellerProductApi(proveedorId, productoId) {
 // que atajaba). Los metodos configurados llegan dentro de `GET /proveedores/{id}/tienda`.
 
 /**
- * Actualiza los métodos de envío que acepta la tienda.
+ * Actualiza los métodos de envío que acepta la tienda y, si se pasa, el mínimo de despacho (22-nov): un monto en
+ * pesos, o `null` para apagarlo. Sin el tercer argumento el mínimo guardado no se toca.
  */
-export async function updateSellerShippingMethodsApi(proveedorId, shippingMethods) {
+export async function updateSellerShippingMethodsApi(proveedorId, shippingMethods, minimoDespacho) {
   return fetchApi(`/proveedores/${proveedorId}/shipping-methods`, {
     method: 'PUT',
-    body: JSON.stringify({ shippingMethods }),
+    body: JSON.stringify(minimoDespacho === undefined ? { shippingMethods } : { shippingMethods, minimoDespacho }),
   });
 }
 

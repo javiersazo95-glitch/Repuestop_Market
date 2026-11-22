@@ -1,0 +1,64 @@
+/* Mínimo de despacho (22-nov): tarjeta de la tienda, avance en el carrito y ranura del vendedor. */
+
+.mdp-pill { display: inline-flex; align-items: center; gap: 5px; align-self: flex-start; justify-self: start; width: fit-content; padding: 4px 10px; border: 1px solid var(--ak-primary-border, #bfd6f7); border-radius: 999px; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary-dark, #00459a); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+
+.mdp-card { display: flex; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid var(--ak-primary-border, #bfd6f7); border-radius: 14px; background: linear-gradient(135deg, var(--ak-primary-wash, #f5f9ff) 0%, #fff 100%); }
+.mdp-card-icon { flex: none; width: 44px; height: 44px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--ak-primary, #0056bf); color: #fff; box-shadow: 0 6px 14px -8px rgba(0, 86, 191, .7); }
+.mdp-card-copy { display: grid; gap: 2px; min-width: 0; }
+.mdp-eyebrow { color: var(--ak-primary, #0056bf); font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.mdp-card-copy strong { color: var(--ak-ink, #0f172a); font-size: 16px; font-weight: 800; }
+.mdp-card-copy > span { color: var(--ak-text-muted, #5a6b7a); font-size: 12.5px; line-height: 1.45; }
+
+.mdp-progress { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--ak-warning-border, #fde3a7); border-radius: 14px; background: var(--ak-warning-bg, #fff7e6); }
+.mdp-progress-head { display: flex; align-items: flex-start; gap: 10px; }
+.mdp-progress-icon { flex: none; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: #fff; color: var(--ak-warning-text, #9a5a00); }
+.mdp-progress-copy { display: grid; gap: 2px; min-width: 0; }
+.mdp-progress-copy strong { color: var(--ak-warning-text, #9a5a00); font-size: 15px; font-weight: 800; }
+.mdp-progress-copy > span { color: var(--ak-text-muted, #5a6b7a); font-size: 12.5px; line-height: 1.45; }
+.mdp-track { position: relative; height: 8px; overflow: hidden; border-radius: 999px; background: #fff; }
+.mdp-track > span { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: linear-gradient(90deg, #f59e0b, #fbbf24); transition: width .35s ease; }
+.mdp-track-labels { display: flex; justify-content: space-between; gap: 8px; color: var(--ak-text-muted, #5a6b7a); font-size: 12px; }
+.mdp-visit { display: inline-flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 42px; padding: 0 12px; border: 1px solid var(--ak-primary-border, #bfd6f7); border-radius: 12px; background: #fff; color: var(--ak-primary, #0056bf); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: background .15s, border-color .15s; }
+.mdp-visit:hover { border-color: var(--ak-primary, #0056bf); background: var(--ak-primary-light, #eaf2ff); }
+.mdp-visit:focus-visible { outline: 2px solid var(--ak-primary, #0056bf); outline-offset: 2px; }
+
+.mdp-progress.is-compact { gap: 8px; padding: 10px 12px; border-radius: 12px; }
+.mdp-progress.is-compact .mdp-progress-icon { width: 30px; height: 30px; }
+.mdp-progress.is-compact .mdp-progress-copy strong { font-size: 13.5px; }
+.mdp-progress.is-compact .mdp-progress-copy > span { font-size: 12px; }
+.mdp-progress.is-compact .mdp-visit { min-height: 36px; font-size: 13px; }
+
+.mdp-ok { display: flex; align-items: center; gap: 6px; margin: 0; padding: 8px 12px; border-radius: 10px; background: var(--ak-success-bg, #eafbf1); color: var(--ak-success-text, #0e7038); font-size: 13px; font-weight: 700; }
+
+/* Ranura "Mínimo de despacho" en Configuración → Envíos. */
+.mdp-slot { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--ak-border, #d9e0e7); border-radius: 14px; background: #fff; transition: border-color .15s, background .15s; }
+.mdp-slot.is-active { border-color: var(--ak-primary, #0056bf); background: var(--ak-primary-wash, #f5f9ff); }
+.mdp-slot.is-disabled { opacity: .6; }
+.mdp-slot-head { display: flex; align-items: center; gap: 12px; }
+.mdp-slot-icon { flex: none; width: 40px; height: 40px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; background: var(--ak-primary-light, #eaf2ff); color: var(--ak-primary, #0056bf); transition: background .15s, color .15s; }
+.mdp-slot.is-active .mdp-slot-icon { background: var(--ak-primary, #0056bf); color: #fff; }
+.mdp-slot-copy { flex: 1; display: grid; gap: 2px; min-width: 0; }
+.mdp-slot-copy strong { font-size: 15px; }
+.mdp-slot-copy small { color: var(--ak-text-muted, #5a6b7a); font-size: 12.5px; }
+.mdp-amount { display: flex; align-items: center; gap: 6px; min-height: 48px; padding: 0 14px; border: 1px solid var(--ak-border, #d9e0e7); border-radius: 12px; background: #fff; }
+.mdp-amount:focus-within { border-color: var(--ak-primary, #0056bf); box-shadow: 0 0 0 3px rgba(0, 86, 191, .12); }
+.mdp-amount.is-error { border-color: var(--ak-error-text, #b42318); }
+.mdp-amount b { color: var(--ak-text-muted, #5a6b7a); font-size: 16px; }
+.mdp-amount input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; font-size: 17px; font-weight: 700; color: var(--ak-ink, #0f172a); }
+.mdp-field { display: grid; gap: 6px; }
+.mdp-field > span { font-size: 13px; font-weight: 700; }
+.mdp-field-error { color: var(--ak-error-text, #b42318); font-size: 12.5px; }
+.mdp-help { color: var(--ak-text-muted, #5a6b7a); font-size: 12.5px; }
+.mdp-switch { position: relative; flex: none; width: 46px; height: 28px; cursor: pointer; }
+.mdp-switch input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.mdp-switch input:disabled { cursor: not-allowed; }
+.mdp-switch i { position: absolute; inset: 0; border-radius: 999px; background: var(--ak-border, #d9e0e7); transition: background .15s; }
+.mdp-switch i::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .2); transition: transform .15s; }
+.mdp-switch input:checked + i { background: var(--ak-primary, #0056bf); }
+.mdp-switch input:checked + i::after { transform: translateX(18px); }
+.mdp-switch input:focus-visible + i { outline: 2px solid var(--ak-primary, #0056bf); outline-offset: 2px; }
+
+/* Ubicacion en cada pantalla. */
+.cart-store-minimo { padding: 0 14px 4px; }
+.pdd-seller-minimo { margin-top: 4px; }
+.pdm-seller-minimo { margin-top: 4px; }
