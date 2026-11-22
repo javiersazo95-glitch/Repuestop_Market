@@ -1757,15 +1757,10 @@ export default function AuthModal({ isOpen, onClose, modalOptions, onOpenSellerR
           </div>
         )}
 
-        {/* STEP 3: BUYER REGISTER FORM */}
+        {/* STEP 3: BUYER REGISTER FORM. Es el alta manual: solo el formulario (22-nov, se quitó «Continuar con
+            Google»; quien quiere Google usa la pestaña «Iniciar con Google» → Crear cuenta). */}
         {step === 'register_buyer' && (
           <form onSubmit={handleBuyerRegisterSubmit} className="auth-modal-body">
-            <GoogleSignInButton onCredential={handleGoogleCredential} disabled={isSubmitting} />
-
-            <div className="auth-divider">
-              <span>o regístrate con tu correo</span>
-            </div>
-
             <div className="form-group">
               <label>Nombre y Apellido *</label>
               <input
