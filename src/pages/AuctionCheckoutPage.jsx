@@ -10,6 +10,8 @@ import { useAuth } from '../context/AuthContext';
 import { useFlag } from '../remoteConfig/hooks';
 import { useDocumentTitle } from '../routes/useDocumentTitle';
 import '../styles/auction-purchase.css';
+import { PreOwnedNotice } from '../components/ProductCondition';
+import { conditionLabel, isPreOwned } from '../data/productConditions';
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
 const nf = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
@@ -171,6 +173,9 @@ export default function AuctionCheckoutPage() {
                     </div>
                     <strong className="ap-store-total">{money(totalOf(store))}</strong>
                   </header>
+                  {[...new Set(store.lineas.map((line) => line.condicion).filter(isPreOwned))].map((condicion) => (
+                    <PreOwnedNotice key={condicion} condition={condicion} storeName={store.tienda} />
+                  ))}
                   <table className="ap-lines">
                     <tbody>
                       {store.lineas.map((line) => (
@@ -178,7 +183,7 @@ export default function AuctionCheckoutPage() {
                           <td>
                             <span className="ap-line-product">
                               {line.productoFotoUrl ? <img className="ap-line-photo" src={resolveMediaUrl(line.productoFotoUrl)} alt="" loading="lazy" /> : null}
-                              <span><strong>{line.repuesto}</strong><small>{line.productoTitulo}</small></span>
+                              <span><strong>{line.repuesto}</strong><small>{line.productoTitulo}</small>{line.condicion && <small className={`pcond-sold${isPreOwned(line.condicion) ? ' is-pre-owned' : ''}`}>Condición: {conditionLabel(line.condicion)}</small>}</span>
                             </span>
                           </td>
                           <td className="is-num">{line.cantidad} × {money(line.precioUnitario)}</td>

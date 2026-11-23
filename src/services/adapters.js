@@ -567,7 +567,7 @@ export function adaptCompatibleOffer(spare, offer) {
     vendedorReviewCount: toNumber(offer.ratingCount) ?? 0,
     horarioVendedor: offer.sellerHours || '',
     stock: toNumber(offer.stock) ?? 0,
-    condicion: offer.condicion || 'Nuevo OEM Original',
+    condicion: offer.condicion || '',
     imagen: imagenes[0] || null,
     imagenes,
     logoTienda: resolveMediaUrl(offer.storeIconUrl),

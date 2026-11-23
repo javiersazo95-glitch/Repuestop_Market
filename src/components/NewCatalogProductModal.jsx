@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AlertTriangle, Check, CircleDollarSign, ClipboardList, Image as ImageIcon, Images, ListChecks, Loader2, PackagePlus, Plus, Search, Tag, Trash2, Upload, X } from 'lucide-react';
+import { AlertTriangle, Check, CircleDollarSign, ClipboardList, Image as ImageIcon, Images, Info, ListChecks, Loader2, PackagePlus, Plus, Search, ShieldCheck, Tag, Trash2, Upload, X } from 'lucide-react';
 import CommissionSummaryCard from './CommissionSummaryCard';
 import SearchableDropdown from './SearchableDropdown';
 import {
@@ -18,6 +18,8 @@ import {
 } from '../services/api';
 import { compressImageFile } from '../utils/imageCompression';
 import { PRODUCT_WARRANTY_MAX, PRODUCT_WARRANTY_OTHER, resolveWarranty, useWarrantyOptions, warrantyToForm } from '../utils/productWarranty';
+import { isPreOwned, SELLER_PRE_OWNED_NOTICE, toProductCondition, usePartConditions } from '../data/productConditions';
+import '../styles/product-condition.css';
 
 const MAX_PHOTOS = 4;
 const CURRENT_YEAR = new Date().getFullYear() + 2;
@@ -144,7 +146,8 @@ const baseForm = (product = null) => ({
   stock: product?.stock ?? '1',
   requiresChassis: Boolean(product?.requiereChasis),
   isUniversal: Boolean(product?.esUniversal),
-  condition: product?.condicion || 'ORIGINAL',
+  // Al crear nace sin responder: es la primera pregunta del formulario.
+  condition: product ? (toProductCondition(product.condicion) || 'ORIGINAL') : '',
   ...warrantyToForm(product?.garantia),
   description: product?.descripcion || '',
   compatibilities: parseCompatibilitiesFromProduct(product),
@@ -172,9 +175,10 @@ const initialForm = (product = null, prefill = null) => {
 };
 
 /** Obligatorios en el orden del formulario: al registrar con algo pendiente se lleva al primero que falta. */
-const REQUIRED_FIELD_ORDER = ['name', 'sku', 'category', 'partBrand', 'price', 'stock', 'warranty'];
-const FIELD_LABELS = { name: 'nombre', sku: 'SKU', category: 'categoría', partBrand: 'marca', price: 'precio', stock: 'stock', warranty: 'garantía' };
+const REQUIRED_FIELD_ORDER = ['condition', 'name', 'sku', 'category', 'partBrand', 'price', 'stock', 'warranty'];
+const FIELD_LABELS = { condition: 'condición', name: 'nombre', sku: 'SKU', category: 'categoría', partBrand: 'marca', price: 'precio', stock: 'stock', warranty: 'garantía' };
 const FIELD_MESSAGES = {
+  condition: 'Indica la condición del repuesto.',
   name: 'Ingresa el nombre del producto.',
   sku: 'Ingresa el SKU.',
   category: 'Selecciona una categoría.',
@@ -187,6 +191,7 @@ const FIELD_MESSAGES = {
 function missingProductFields(form, { isEditing = false } = {}) {
   const quoteOnly = form.pricingMode === 'QUOTE_ONLY';
   const solved = {
+    condition: Boolean(form.condition),
     name: Boolean(form.name.trim()),
     sku: Boolean(form.sku.trim()),
     category: Boolean(form.category.trim()),
@@ -318,6 +323,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
   const hasQuoteOnly = form.pricingMode === 'QUOTE_ONLY';
   const resolvedWarranty = resolveWarranty(form.warranty, form.warrantyOther);
   // La garantia es obligatoria al crear; un producto antiguo se puede editar sin ella.
+  const partConditions = usePartConditions();
   const missingFields = useMemo(() => missingProductFields(form, { isEditing }), [form, isEditing]);
   const canSave = missingFields.length === 0;
   // Campos marcados en rojo tras tocar "Registrar" con algo pendiente. Se apagan solos al completarlos.
@@ -590,14 +596,37 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
         </header>
         <form ref={formRef} onSubmit={submit} className="catalog-product-form" noValidate>
           <nav className="catalog-product-steps" aria-label="Secciones del formulario">
+            <a href="#catalog-condition"><ShieldCheck size={14} /><span>Condición</span></a>
             <a href="#catalog-basic"><Tag size={14} /><span>Datos</span></a>
             <a href="#catalog-pricing"><CircleDollarSign size={14} /><span>Venta</span></a>
             <a href="#catalog-compatibility"><ClipboardList size={14} /><span>Compatibilidad</span></a>
             <a href="#catalog-media"><Images size={14} /><span>Fotos</span></a>
           </nav>
           {error && <div className="catalog-product-alert"><AlertTriangle size={17} />{error}</div>}
+          <section className="catalog-product-section" id="catalog-condition" data-field="condition">
+            <h3><b>1</b> ¿En qué condición está el repuesto?</h3>
+            <div className={`pcond-options${fieldErrors.condition ? ' has-error' : ''}`} role="radiogroup" aria-label="Condición del repuesto">
+              {partConditions.filter((option) => toProductCondition(option.value)).map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={form.condition === option.value}
+                  className={`pcond-option${form.condition === option.value ? ' active' : ''}`}
+                  onClick={() => update('condition', option.value)}
+                >
+                  <strong>{form.condition === option.value && <Check size={14} />}{option.label}</strong>
+                  <span>{option.hint}</span>
+                </button>
+              ))}
+            </div>
+            {fieldErrors.condition && <p className="pcond-error">{fieldErrors.condition}</p>}
+            {isPreOwned(form.condition) && (
+              <div className="pcond-notice pcond-form-notice" role="note"><Info size={17} /><span>{SELLER_PRE_OWNED_NOTICE}</span></div>
+            )}
+          </section>
           <section className="catalog-product-section" id="catalog-basic">
-            <h3><b>1</b> Información básica</h3>
+            <h3><b>2</b> Información básica</h3>
             <div className="catalog-product-grid">
               <CatalogField label="Nombre del producto" field="name" error={fieldErrors.name}><input autoFocus value={form.name} onChange={(e) => update('name', e.target.value)} maxLength="120" placeholder="Ej. Pastillas de freno delanteras" required /></CatalogField>
               <CatalogField label="SKU (código interno)" field="sku" error={fieldErrors.sku}><input value={form.sku} onChange={(e) => update('sku', e.target.value.replace(/\s+/g, '').toUpperCase().slice(0, 30))} maxLength="30" placeholder="Ej. PFD1234" required /></CatalogField>
@@ -607,7 +636,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
             </div>
           </section>
           <section className="catalog-product-section" id="catalog-pricing">
-            <h3><b>2</b> Precio y disponibilidad</h3>
+            <h3><b>3</b> Precio y disponibilidad</h3>
             <div className="catalog-pricing-options">
               <button type="button" className={form.pricingMode === 'SHOW_PRICE' ? 'active' : ''} onClick={() => update('pricingMode', 'SHOW_PRICE')}><strong>Mostrar precio</strong><span>El precio será visible</span></button>
               <button type="button" className={hasQuoteOnly ? 'active' : ''} onClick={() => update('pricingMode', 'QUOTE_ONLY')}><strong>Solo cotizar</strong><span>El comprador solicitará cotización</span></button>
@@ -654,7 +683,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
             )}
           </section>
           <section className="catalog-product-section" id="catalog-compatibility">
-            <div className="catalog-section-title-row"><h3><b>3</b> Compatibilidad</h3>{!form.isUniversal && <button type="button" className="catalog-add-compatibility" onClick={addCompatibility}><Plus size={15} /> Agregar</button>}</div>
+            <div className="catalog-section-title-row"><h3><b>4</b> Compatibilidad</h3>{!form.isUniversal && <button type="button" className="catalog-add-compatibility" onClick={addCompatibility}><Plus size={15} /> Agregar</button>}</div>
             <div className="catalog-condition-row"><span>¿Es un repuesto universal?</span>{[false, true].map((value) => <button type="button" key={String(value)} className={form.isUniversal === value ? 'active' : ''} onClick={() => update('isUniversal', value)}><Check size={14} />{value ? 'Sí, sirve para cualquier vehículo' : 'No'}</button>)}</div>
             {form.isUniversal
               ? <p className="catalog-universal-hint">Aparecerá en las búsquedas de todos los vehículos, así que no necesita declarar marca ni modelo. Úsalo solo para aceites, lubricantes, accesorios y similares.</p>
@@ -672,7 +701,7 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
             </div>)}
           </section>
           <section className="catalog-product-section" id="catalog-media">
-            <h3><b>4</b> Fotos <small>Opcional · hasta 4</small></h3>
+            <h3><b>5</b> Fotos <small>Opcional · hasta 4</small></h3>
             <div className="catalog-photo-grid">
               {existingPhotos.map((photoUrl, index) => (
                 <div className="catalog-photo-preview" key={`existing-${photoUrl}-${index}`}>
@@ -695,9 +724,8 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
             {totalPhotosCount === 0 && <p className="catalog-photo-note"><ImageIcon size={15} /> Si no agregas fotos, el producto se publicará con la imagen genérica de RepuesTop.</p>}
           </section>
           <section className="catalog-product-section">
-            <h3><b>5</b> Descripción, calidad y garantía</h3>
+            <h3><b>6</b> Descripción y garantía</h3>
             <CatalogField label="Descripción"><textarea rows="4" maxLength="1000" value={form.description} onChange={(e) => update('description', e.target.value)} placeholder="Describe el producto, sus características y detalles importantes." required /><small className="catalog-char-counter">{form.description.length}/1000</small></CatalogField>
-            <div className="catalog-condition-row"><span>Calidad del producto</span>{['ORIGINAL', 'ALTERNATIVO'].map((condition) => <button type="button" key={condition} className={form.condition === condition ? 'active' : ''} onClick={() => update('condition', condition)}><Check size={14} />{condition === 'ORIGINAL' ? 'Original' : 'Alternativo'}</button>)}</div>
             <div className="catalog-warranty-field">
               <CatalogField label="Garantía" field="warranty" error={form.warranty === PRODUCT_WARRANTY_OTHER ? undefined : fieldErrors.warranty}>
                 <SearchableDropdown value={form.warranty} options={warrantyOptions} placeholder="Selecciona la garantía" onChange={(value) => setForm((previous) => ({ ...previous, warranty: value, warrantyOther: value === PRODUCT_WARRANTY_OTHER ? previous.warrantyOther : '' }))} />

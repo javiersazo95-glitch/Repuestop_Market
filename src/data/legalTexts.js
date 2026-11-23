@@ -12,7 +12,7 @@
  */
 
 /** Fecha de la version vigente, para mostrar en pantalla. */
-export const LEGAL_VERSION = '4 de noviembre de 2026';
+export const LEGAL_VERSION = '23 de noviembre de 2026';
 
 /**
  * Codigo estable de la misma version, el que viaja al backend y queda guardado en
@@ -23,7 +23,7 @@ export const LEGAL_VERSION = '4 de noviembre de 2026';
  * Debe coincidir con `repuestop.legal.version-vigente` del backend y con
  * LEGAL_VERSION_CODE de la app.
  */
-export const LEGAL_VERSION_CODE = '2026-11-04';
+export const LEGAL_VERSION_CODE = '2026-11-23';
 
 /**
  * Declaracion de la tienda de ser contribuyente de IVA (art. 3° bis LIVS, Circular SII 39 de
@@ -115,6 +115,7 @@ La aceptación se realiza mediante una casilla u otro mecanismo digital equivale
 3. NATURALEZA DE REPUESTOP
 RepuesTop no fabrica, almacena, revisa físicamente, importa ni vende directamente los productos publicados por los vendedores. Su función principal es facilitar la conexión entre compradores y vendedores formalizados, permitiendo búsqueda, cotización, pago, comunicación, seguimiento, soporte y mediación. Además ofrece un buscador de talleres y servicios automotrices, una agenda de citas y el registro de fallas, regulados en la sección 15.
 El vendedor es el único responsable de la existencia, calidad, estado, origen, compatibilidad, precio, stock, despacho, garantía, emisión de boleta o factura y cumplimiento tributario asociado al producto vendido.
+Productos usados y reacondicionados: cada publicación indica la condición del producto (nuevo original, nuevo alternativo, usado o reacondicionado), que también queda registrada en el detalle de la compra. RepuesTop no inspecciona ni certifica los productos usados o reacondicionados: el vendedor responde por su estado, su procedencia, la garantía que corresponda o haya ofrecido y la atención posterior a la compra. El comprador conserva los derechos que le reconoce la ley y los reclamos y la mediación de la sección 12.
 RepuesTop recauda el pago de cada compra por cuenta del vendedor y lo mantiene retenido durante 11 días desde la entrega, o mientras exista un reclamo o una mediación abiertos. La mediación es un servicio de la Plataforma para resolver las diferencias entre comprador y vendedor; los reembolsos que ordena se pagan con cargo a ese dinero retenido de la venta del vendedor. RepuesTop no es el vendedor de los productos, no otorga su garantía ni responde por ella, sin perjuicio de las obligaciones que la ley le impone como operador de la Plataforma.
 
 4. REGISTRO DEL COMPRADOR
@@ -168,7 +169,7 @@ A. DERECHO A RETRACTO LEGAL (COMPRAS A DISTANCIA / MEDIOS ELECTRÓNICOS):
 Conforme al artículo 3° bis letra b) de la Ley N° 19.496, el comprador persona natural puede poner término unilateralmente al contrato (retracto), sin expresar causa, dentro de diez (10) días corridos contados desde la recepción del producto.
 Condiciones de la devolución:
 1. El producto se devuelve con sus elementos originales (caja, etiquetas, sellos, manuales y accesorios) en buen estado. El comprador puede haberlo abierto y revisado.
-2. No procede el retracto cuando el producto se deterioró por hecho del comprador: en particular, si el repuesto fue instalado, conectado, probado en el vehículo o usado más allá de revisarlo, de modo que ya no puede venderse como nuevo. Tampoco procede en los productos fabricados, adaptados o importados a pedido del comprador o codificados al VIN de su vehículo, lo que el vendedor informa en la publicación antes del pago (Decreto N° 52 de 2024 del Ministerio de Economía).
+2. No procede el retracto cuando el producto se deterioró por hecho del comprador: en particular, si el repuesto fue instalado, conectado, probado en el vehículo o usado más allá de revisarlo, de modo que ya no puede venderse en el estado en que se entregó. Tampoco procede en los productos fabricados, adaptados o importados a pedido del comprador o codificados al VIN de su vehículo, lo que el vendedor informa en la publicación antes del pago (Decreto N° 52 de 2024 del Ministerio de Economía).
 3. Productos eléctricos: los productos de la categoría Eléctrico y de todas sus subcategorías (por ejemplo, fusibles y relés, bobinas, alternadores, baterías, comandos y switches) no tienen derecho a devolución por retracto. RepuesTop informa expresamente esta exclusión en la publicación de cada producto, donde el comprador la confirma antes de agregarlo al carro o comprarlo (artículo 3° bis letra b) de la Ley N° 19.496). La exclusión no afecta la garantía legal: si el producto presenta fallas, no corresponde a lo comprado, resulta incompatible o no llega, el comprador conserva todos sus derechos conforme a la letra B siguiente y puede reclamarlos desde el detalle del pedido.
 4. El flete de la devolución por retracto es de cargo del comprador, por courier o entregando el producto en la tienda.
 5. Procedimiento: el comprador inicia un reclamo por retracto desde el detalle del pedido dentro de los 10 días, con fotografías del producto y su empaque. Si no hay acuerdo con el vendedor, cualquiera de los dos puede pedir un mediador de RepuesTop dentro de ese mismo plazo. El mediador indica la dirección de la tienda a la que se devuelve el producto; el comprador tiene 10 días corridos para despacharlo o entregarlo e informarlo en el chat, y el vendedor 5 días hábiles para confirmar su recepción u objetar su estado; si no responde en ese plazo, se presume recibido en buen estado. Confirmada o presumida la recepción, el mediador ordena el reembolso, que se solicita a la pasarela de pago. Mientras el caso esté en mediación, el vendedor no puede retirar el dinero de esa venta.
@@ -267,7 +268,8 @@ RepuesTop podrá solicitar documentos actualizados en el futuro. Si el vendedor 
 
 4. PRODUCTOS PERMITIDOS Y PROHIBIDOS
 El vendedor podrá publicar repuestos y accesorios para vehículos, así como otros productos relacionados con el rubro vehicular que RepuesTop permita.
-No se permite publicar productos usados ni reacondicionados. El vendedor podrá publicar productos originales o alternativos, debiendo informar correctamente la calidad del producto al momento de crear la publicación.
+El vendedor podrá publicar productos nuevos (originales o alternativos), usados y reacondicionados, indicando su condición real al crear la publicación. Está prohibido presentar como nuevo un producto usado o reacondicionado.
+Productos usados y reacondicionados: el vendedor debe informar en la descripción su estado, desgaste, fallas conocidas y reparaciones, con fotografías del producto ofrecido. Declara que su origen es lícito, que está facultado para venderlos y que conserva los documentos que lo respaldan, que entregará a RepuesTop dentro de dos (2) días hábiles si se los pide. Responde por su procedencia, su estado, la garantía que corresponda o haya ofrecido y la atención posterior a la venta, en los términos de la cláusula 15 del Contrato de Adhesión. Si existen antecedentes fundados de que un producto es de origen ilícito o no coincide con lo publicado, RepuesTop podrá ocultar la publicación, retener el pago de la venta y entregar los antecedentes a la autoridad.
 • Se prohíben productos falsificados, robados, peligrosos, sin procedencia acreditable, ilegales o no relacionados con el rubro vehicular.
 • Se prohíben publicaciones engañosas, precios manipulados, descripciones falsas, imágenes no autorizadas o información que induzca a error al comprador.
 • RepuesTop podrá solicitar correcciones, ocultar, pausar o eliminar publicaciones sospechosas, incompletas, falsas o contrarias a estos Términos, sin necesidad de bloquear previamente toda la cuenta del vendedor.
@@ -320,7 +322,7 @@ Si el comprador no confirma la recepción, esta se da por confirmada automática
 El vendedor deberá cumplir rigurosamente con la garantía legal y demás obligaciones de protección al consumidor establecidas en la Ley N° 19.496 y la Ley N° 21.398.
 
 A. DERECHO A RETRACTO (10 DÍAS CORRIDOS):
-El vendedor reconoce que el comprador persona natural tiene derecho a retractarse de su compra, sin expresar causa, dentro de diez (10) días corridos desde la recepción, devolviendo el producto con sus elementos originales en buen estado. El retracto no procede si el producto se deterioró por hecho del comprador (instalado, conectado, probado o usado más allá de revisarlo, de modo que no pueda venderse como nuevo) ni en los productos a pedido o codificados al VIN, exclusión que el vendedor debe informar en la publicación antes del pago (Decreto N° 52 de 2024). Tampoco procede en los productos de la categoría Eléctrico y sus subcategorías, exclusión que RepuesTop aplica a toda la Plataforma y que informa al comprador en la publicación, donde la confirma antes de agregar el producto al carro o comprarlo; la garantía legal de esos productos se mantiene. El vendedor no puede agregar otras exclusiones.
+El vendedor reconoce que el comprador persona natural tiene derecho a retractarse de su compra, sin expresar causa, dentro de diez (10) días corridos desde la recepción, devolviendo el producto con sus elementos originales en buen estado. El retracto no procede si el producto se deterioró por hecho del comprador (instalado, conectado, probado o usado más allá de revisarlo, de modo que no pueda venderse en el estado en que se entregó) ni en los productos a pedido o codificados al VIN, exclusión que el vendedor debe informar en la publicación antes del pago (Decreto N° 52 de 2024). Tampoco procede en los productos de la categoría Eléctrico y sus subcategorías, exclusión que RepuesTop aplica a toda la Plataforma y que informa al comprador en la publicación, donde la confirma antes de agregar el producto al carro o comprarlo; la garantía legal de esos productos se mantiene. El vendedor no puede agregar otras exclusiones.
 El comprador ejerce el retracto mediante un reclamo en la Plataforma y devuelve el producto a la dirección de la tienda con flete a su cargo. El vendedor debe recibir la devolución, revisarla y confirmar en el chat del caso, dentro de 5 días hábiles desde que el comprador informa el despacho o la entrega, si llegó en buen estado o si la objeta con fotografías; si no responde en ese plazo, se presume recibida en buen estado. Confirmada o presumida la recepción, el mediador ordena el reembolso con cargo a la venta conforme a la sección 10.
 
 B. GARANTÍA LEGAL DE SEIS (6) MESES:

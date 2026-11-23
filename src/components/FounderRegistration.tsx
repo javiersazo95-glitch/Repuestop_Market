@@ -45,6 +45,7 @@ import { INVENTORY_PANEL_URL } from '../config/inventoryPanel';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../routes/paths';
 import { useAuth } from '../context/AuthContext';
+import '../styles/product-condition.css';
 
 type LegalDoc = 'terms' | 'privacy';
 
@@ -102,6 +103,8 @@ type FormState = {
   storeName: string; taxId: string; giro: string; giroOtro: string;
   regionId: string; comunaId: string; address: string; codigoPostal: string;
   referral: string;
+  /** ¿Vende repuestos usados o reacondicionados? Vacío hasta responder. */
+  sellsUsed: '' | 'si' | 'no';
   acceptsTerms: boolean;
 };
 
@@ -110,6 +113,7 @@ const EMPTY_FORM: FormState = {
   storeName: '', taxId: '', giro: '', giroOtro: '',
   regionId: '', comunaId: '', address: '', codigoPostal: '',
   referral: '',
+  sellsUsed: '',
   acceptsTerms: false,
 };
 
@@ -161,6 +165,7 @@ function validarRegistro(form: FormState, ctx: {
   // O50 (pruebas de lanzamiento, 25-sep): una sugerencia de solo calle del autocompletado
   // ("Imperial") dejaba la tienda sin numero. El backend tambien lo rechaza.
   else if (!/\d/.test(form.address)) e.address = 'Incluye el número de la dirección (ej: Imperial 450).';
+  if (!form.sellsUsed) e.sellsUsed = 'Indica si vendes repuestos usados o reacondicionados.';
   if (!form.acceptsTerms) e.acceptsTerms = 'Debes aceptar los términos y condiciones.';
   return e;
 }
@@ -179,7 +184,7 @@ function fuerzaContrasena(pwd: string): { score: 1 | 2 | 3; label: string; color
 /** Orden en que el resumen menciona lo que falta (el mismo del formulario). */
 const ORDEN_CAMPOS: (keyof FormState)[] = [
   'responsibleName', 'cargo', 'email', 'phone', 'password', 'storeName', 'taxId',
-  'giro', 'giroOtro', 'regionId', 'comunaId', 'address', 'acceptsTerms',
+  'giro', 'giroOtro', 'regionId', 'comunaId', 'address', 'sellsUsed', 'acceptsTerms',
 ];
 
 export default function FounderRegistration({ onBack }: { onBack: () => void }) {
@@ -545,6 +550,7 @@ export default function FounderRegistration({ onBack }: { onBack: () => void }) 
         hours: formatOpeningHours(schedule) || undefined,
         shippingMethods: buildShippingMethodsString(shippingSelections) || undefined,
         minimoDespacho: minimoDespacho.valor ?? undefined,
+        vendeUsados: form.sellsUsed === 'si',
         specialistBrandIds: specialistBrands.length ? specialistBrands.map((b) => b.id) : undefined,
         acceptsTerms: true,
         termsVersion: LEGAL_VERSION_CODE,
@@ -1014,6 +1020,17 @@ function RegistrationForm(p: RegFormProps) {
 
       {/* Mínimo de despacho (22-nov): opcional, igual que en Configuración → Envíos. */}
       <MinimoDespachoSlot field={p.minimoDespacho} />
+
+      {/* 23-nov: si responde que sí, su Contrato de Adhesión suma la declaración expresa. */}
+      <Field as="div" label="¿Vendes repuestos usados o reacondicionados?" required error={errors.sellsUsed}
+        hint={form.sellsUsed === 'si'
+          ? 'Tu Contrato de Adhesión incluirá tu declaración y las obligaciones para vender estos repuestos: informar su estado real, respaldar su procedencia y responder por la postventa.'
+          : undefined}>
+        <div className="pcond-yesno" role="radiogroup" aria-label="¿Vendes repuestos usados o reacondicionados?">
+          <button type="button" role="radio" aria-checked={form.sellsUsed === 'si'} onClick={() => update('sellsUsed', 'si')}>Sí</button>
+          <button type="button" role="radio" aria-checked={form.sellsUsed === 'no'} onClick={() => update('sellsUsed', 'no')}>No, solo nuevos</button>
+        </div>
+      </Field>
 
       {/* Marcas especialistas: idéntico al registro de la app y sincronizado con el backend */}
       <Field as="div" label="Marcas especialistas" hint="Selecciona las marcas vehiculares en las que tu tienda se especializa para destacarlas en el catálogo.">

@@ -80,6 +80,7 @@ function mapServerCart(summary) {
     shippingFee: Number(item.costoEnvioLocal || 0),
     // El checkout exige el vehiculo si algun repuesto no es universal.
     esUniversal: Boolean(item.esUniversal),
+    condicion: item.condicion || '',
     // Checkout por producto: lo que publica la tienda para entregar y desde donde.
     storeShippingMethods: item.metodosEnvioTienda || '',
     // Mínimo de compra en la tienda para despachar (22-nov); null = sin mínimo.

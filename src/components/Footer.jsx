@@ -142,7 +142,7 @@ export default function Footer() {
             <img src="/repuestop_icon.png" alt="" />
             <span>Repues<b>Top</b></span>
           </div>
-          <p>El marketplace automotriz para encontrar repuestos nuevos, comparar opciones y comprar con seguridad.</p>
+          <p>El marketplace automotriz para encontrar repuestos, comparar opciones y comprar con seguridad.</p>
 
           <div className="footer-trust-points">
             <div><Truck /><span><strong>Envíos a todo Chile</strong>Entregas rápidas y seguras donde estés.</span></div>

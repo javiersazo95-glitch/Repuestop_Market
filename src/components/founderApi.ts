@@ -29,6 +29,8 @@ export type SellerRegistrationPayload = {
   shippingMethods?: string;
   /** Mínimo de despacho en pesos (22-nov); sin él la tienda despacha sin mínimo. */
   minimoDespacho?: number;
+  /** La tienda declara si vende repuestos usados o reacondicionados (23-nov). */
+  vendeUsados?: boolean;
   specialistBrandIds?: number[];
   referral?: string;
   referralChannel?: 'CASA_REPUESTOS';

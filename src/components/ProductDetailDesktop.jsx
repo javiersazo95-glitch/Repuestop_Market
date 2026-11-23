@@ -19,6 +19,7 @@ import { formatRating, reviewCountLabel } from '../services/reviews';
 import '../styles/reviews.css';
 import { NO_RETURN_DETAIL, NO_RETURN_TITLE, isNoReturnProduct } from '../utils/noReturnProducts';
 import '../styles/no-return.css';
+import { ConditionBadge, PreOwnedNotice } from './ProductCondition';
 
 const formatCLP = (value) => `$${Number(value || 0).toLocaleString('es-CL')}`;
 
@@ -138,6 +139,8 @@ export default function ProductDetailDesktop({
 
           <div className="pdd-stage">
             <div className="pdd-badges">
+              {/* La condición va siempre sobre la foto, para que se vea antes de comprar. */}
+              <ConditionBadge condition={product.condicion} />
               {isTopProduct && <ProductTopBadge className="pdd-top-badge" />}
               {isBestSeller && <span className="pdd-ranking">Más vendido</span>}
             </div>
@@ -256,7 +259,7 @@ export default function ProductDetailDesktop({
             ? <span className="pdd-chip is-own"><Store size={13} /> Tu tienda</span>
             : <span className={`pdd-chip ${stockChip.className}`}>{stockChip.label}</span>}
           <span className="pdd-chip">{condition}</span>
-          <span className="pdd-chip is-verified"><BadgeCheck size={13} /> Verificado</span>
+          <span className="pdd-chip is-verified"><BadgeCheck size={13} /> Tienda verificada</span>
         </div>
 
         <h1 className="pdd-title">{product.titulo}</h1>
@@ -299,6 +302,8 @@ export default function ProductDetailDesktop({
             <span><strong>{NO_RETURN_TITLE}.</strong> {NO_RETURN_DETAIL}</span>
           </div>
         )}
+
+        <PreOwnedNotice condition={product.condicion} storeName={sellerName} />
 
         <div className="pdd-price-block">
           {isOwnProduct ? (

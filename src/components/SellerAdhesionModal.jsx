@@ -111,7 +111,7 @@ export default function SellerAdhesionModal() {
               <h2 id="adhesion-modal-title">{verificacion?.contratoDesactualizado ? 'Actualizamos el Contrato de Adhesión' : 'Contrato de Adhesión'}</h2>
               <span className="order-modal-subtitle">
                 {verificacion?.contratoDesactualizado
-                  ? 'Cambió la marcha blanca de Tienda Fundadora: 1 mes para las tiendas que postulan desde el 11 de noviembre de 2026; si tu tienda postuló antes, conservas tus 2 meses o lo que te quede. Fírmalo de nuevo para seguir usando tu cuenta.'
+                  ? 'Ahora puedes publicar repuestos usados y reacondicionados. Agregamos la cláusula 15 con las obligaciones para venderlos: informar su condición real, respaldar su procedencia y responder por la postventa. Fírmalo de nuevo para seguir usando tu cuenta.'
                   : 'Tu tienda quedó aprobada. Firma el contrato para empezar a vender en RepuesTop.'}
               </span>
             </div>

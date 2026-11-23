@@ -19,6 +19,8 @@ import { evaluateOffer, shippingClass, suggestOffer } from '../utils/auctionOffe
 import { usePaymentDeadline } from '../utils/paymentDeadline';
 import { offerRemainingText, offerValidityLabel } from '../utils/offerValidity';
 import '../styles/auction-offers.css';
+import { conditionLabel, isPreOwned } from '../data/productConditions';
+import '../styles/product-condition.css';
 
 const nf = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const money = (value) => (value == null ? '—' : nf.format(value));
@@ -89,7 +91,7 @@ function LinesTable({ quote }) {
         {quote.lineas.map((line) => (
           <tr key={line.itemId} className={line.vigente ? '' : 'is-void'}>
             <td><strong>{line.repuesto}</strong>{!line.vigente && <small>Ya adjudicado a otra oferta</small>}</td>
-            <td>{line.productoTitulo}</td>
+            <td>{line.productoTitulo}{line.condicion && <small className={`pcond-sold${isPreOwned(line.condicion) ? ' is-pre-owned' : ''}`}> {conditionLabel(line.condicion)}</small>}</td>
             <td className="is-num">{line.cantidad}</td>
             <td className="is-num">{money(line.precioUnitario)}</td>
             <td className="is-num">{money(line.precioTotal)}</td>

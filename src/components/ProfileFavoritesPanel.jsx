@@ -17,6 +17,8 @@ import { faultDetailPath, tallerPath, productPath, ROUTES, storePath } from '../
 import { useSavedMarketplaceItems } from '../hooks/useSavedMarketplaceItems';
 import { useRestoredState } from '../routes/useRestoredState';
 import { useScrollMemory } from '../routes/useScrollMemory';
+import { ConditionBadge } from './ProductCondition';
+import { conditionLabel, isPreOwned } from '../data/productConditions';
 
 // Destino de "Explorar" en cada sección vacía.
 const exploreTarget = (type) => ({ products: ROUTES.catalog, talleres: ROUTES.talleres, faults: ROUTES.faults, auctions: ROUTES.auctions }[type] || ROUTES.stores);
@@ -522,7 +524,9 @@ function SectionTitle({ title, count, actionLabel, onAction }) {
 function FavoriteProductCard({ product, removing, onOpen, onOpenStore, onRemove }) {
   const stock = product.stock;
   const tone = stock === null || stock === undefined ? 'unknown' : stock <= 0 ? 'out' : stock <= 5 ? 'low' : 'ok';
-  const quality = product.condicion ? product.condicion.charAt(0) + product.condicion.slice(1).toLowerCase() : '';
+  // Usado o reacondicionado va como etiqueta; la píldora queda para original o alternativo.
+  const preOwned = isPreOwned(product.condicion);
+  const quality = product.condicion && !preOwned ? conditionLabel(product.condicion) : '';
   const oem = product.referenciaOem;
   const rating = Number(product.rating || 0);
   const storeLogo = product.logoTienda;
@@ -534,6 +538,7 @@ function FavoriteProductCard({ product, removing, onOpen, onOpenStore, onRemove 
           {product.imagen ? <img src={product.imagen} alt="" /> : <Package size={26} />}
         </span>
         <span className="fav-m-copy">
+          {preOwned && <ConditionBadge condition={product.condicion} compact />}
           <strong className="fav-m-title">{product.titulo}</strong>
           <small>{[product.marca, product.categoriaNombre].filter(Boolean).join(' · ')}</small>
           {(quality || oem) && (

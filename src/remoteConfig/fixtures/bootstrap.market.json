@@ -84,7 +84,7 @@
     "CONDICION_PRODUCTO": [
       {
         "valor": "ORIGINAL",
-        "etiqueta": "Original",
+        "etiqueta": "Nuevo original",
         "descripcion": "Pieza nueva del fabricante del vehículo",
         "orden": 0,
         "esDefault": true,
@@ -94,9 +94,29 @@
       },
       {
         "valor": "ALTERNATIVO",
-        "etiqueta": "Alternativo",
+        "etiqueta": "Nuevo alternativo",
         "descripcion": "Pieza nueva equivalente y homologada",
         "orden": 1,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "USADO",
+        "etiqueta": "Usado",
+        "descripcion": "Pieza con uso previo o de desarme",
+        "orden": 2,
+        "esDefault": false,
+        "iconoUrl": null,
+        "color": null,
+        "metadata": null
+      },
+      {
+        "valor": "REACONDICIONADO",
+        "etiqueta": "Reacondicionado",
+        "descripcion": "Pieza reparada o remanufacturada",
+        "orden": 3,
         "esDefault": false,
         "iconoUrl": null,
         "color": null,

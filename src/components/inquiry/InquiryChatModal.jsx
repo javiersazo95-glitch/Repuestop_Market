@@ -19,6 +19,8 @@ import ChatImagePreview from '../ChatImagePreview';
 import { useIsMobile } from '../../hooks/useIsMobile';
 import { usePartAssistant } from '../../context/PartAssistantContext';
 import '../../styles/inquiry.css';
+import { ConditionBadge } from '../ProductCondition';
+import { isPreOwned } from '../../data/productConditions';
 
 const MAX_CHAT_MESSAGE = 500;
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
@@ -242,6 +244,7 @@ function OfferedProductMessage({ product, viewer, onOpen }) {
         {photo ? <img className="inq-thumb" src={photo} alt="" /> : <span className="inq-thumb inq-thumb-fallback"><Package size={18} /></span>}
         <span className="inq-product-copy">
           <strong>{product.nombre || 'Repuesto'}</strong>
+          {isPreOwned(product.condicion) && <ConditionBadge condition={product.condicion} compact />}
           {price && <b className="inq-price">{price}</b>}
           {product.stock != null && Number(product.stock) <= 0 && <small>Sin stock por ahora</small>}
         </span>

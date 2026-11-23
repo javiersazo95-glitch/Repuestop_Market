@@ -12,6 +12,8 @@ import { offerValidityLabel } from '../../utils/offerValidity';
 import StoreProfileLink from '../StoreProfileLink';
 import AuctionAvatar from '../AuctionAvatar';
 import { TrackingCells, TrackingTag } from './TrackingDetail';
+import { conditionLabel, isPreOwned } from '../../data/productConditions';
+import '../../styles/product-condition.css';
 
 const DELIVERY_ORDER = ['Mismo día / Retiro inmediato', '24 horas', '48 horas', '3 a 5 días hábiles', 'A coordinar con cliente'];
 const formatCLP = (value) => (value == null || Number.isNaN(Number(value)) ? '—' : `$${Math.round(Number(value)).toLocaleString('es-CL')}`);
@@ -152,6 +154,7 @@ export default function OfferFullDetail({ auction, quote, onClose, onChanged }) 
                     <span className="ofd-line-copy">
                       <small>{String(line.repuesto || '').toUpperCase()}</small>
                       <strong>{line.productoTitulo || 'Repuesto'}</strong>
+                      {line.condicion && <small className={`pcond-sold${isPreOwned(line.condicion) ? ' is-pre-owned' : ''}`}>{conditionLabel(line.condicion)}</small>}
                       <small>{`${line.cantidad} u. × ${formatCLP(line.precioUnitario)}`}</small>
                     </span>
                     <span className="ofd-line-side"><strong>{formatCLP(line.precioTotal)}</strong>{line.adjudicada ? <TrackingTag label="Aceptado" tone="ok" /> : line.vigente === false ? <TrackingTag label="No vigente" tone="lost" /> : null}</span>

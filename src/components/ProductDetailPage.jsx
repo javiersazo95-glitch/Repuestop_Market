@@ -31,6 +31,7 @@ import ProductPhotoLightbox from './ProductPhotoLightbox';
 import RelatedProductsCarousel from './RelatedProductsCarousel';
 import { isProductTopActive } from '../utils/productTop';
 import { isOwnStoreProduct } from '../utils/purchaseProfile';
+import { conditionLabel } from '../data/productConditions';
 
 function claveTexto(str) {
   return String(str || '')
@@ -173,7 +174,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const compatibility = useMemo(() => product.compatibilidad || [], [product.compatibilidad]);
   const isUniversalPart = Boolean(product.esUniversal);
   const category = product.categoriaNombre || product.categoria || 'Repuestos';
-  const condition = product.condicion || 'Original';
+  const condition = conditionLabel(product.condicion);
   const city = product.ciudadVendedor || 'Chile';
 
   const explicitBrand = String(

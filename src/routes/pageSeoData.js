@@ -6,6 +6,8 @@ import { SITE_URL } from './site.js';
 import { productPath, storePath } from './paths.js';
 import { compatibilidadLinea } from '../data/compatibilityLine.js';
 
+const SCHEMA_CONDITION = { USADO: 'UsedCondition', REACONDICIONADO: 'RefurbishedCondition' };
+
 const DESCRIPCION_MAX = 155;
 
 const absoluta = (url) => (typeof url === 'string' && /^https?:\/\//i.test(url) ? url : null);
@@ -57,8 +59,8 @@ export function productSeo(product) {
       priceCurrency: 'CLP',
       price: Math.round(Number(product.precio)),
       availability: Number(product.stock) > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
-      // Original o alternativo es el origen de la pieza, no su estado: en RepuesTop se vende nuevo.
-      itemCondition: 'https://schema.org/NewCondition',
+      // Original o alternativo es el origen de la pieza: ambas son nuevas.
+      itemCondition: `https://schema.org/${SCHEMA_CONDITION[String(product.condicion || '').toUpperCase()] || 'NewCondition'}`,
       seller: { '@type': 'Organization', name: tienda },
     };
   }

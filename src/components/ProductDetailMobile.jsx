@@ -17,6 +17,7 @@ import { shippingMethodMessage } from '../utils/cartDelivery';
 import '../styles/reviews.css';
 import { NO_RETURN_DETAIL, NO_RETURN_TITLE, isNoReturnProduct } from '../utils/noReturnProducts';
 import '../styles/no-return.css';
+import { ConditionBadge, PreOwnedNotice } from './ProductCondition';
 
 // El panel del vendedor ya es un <button>: el acceso a sus opiniones no puede ser otro <button>
 // adentro (HTML invalido), asi que es un span con rol de boton que no deja pasar el clic.
@@ -97,7 +98,11 @@ export default function ProductDetailMobile({
     <section className="pdm-layout">
       {/* 1. Hero con galería, como la tarjeta hero de la app. */}
       <article className="pdm-hero">
-        {isTopProduct && <ProductTopBadge className="pdm-top-badge" />}
+        <div className="pdm-photo-badges">
+          {/* La condición va siempre sobre la foto, para que se vea antes de comprar. */}
+          <ConditionBadge condition={product.condicion} />
+          {isTopProduct && <ProductTopBadge className="pdm-top-badge" />}
+        </div>
         {isBestSeller && <span className="pdm-ranking">Más vendido</span>}
         <div className="pdm-hero-actions">
           <button
@@ -219,6 +224,8 @@ export default function ProductDetailMobile({
             <span><strong>{NO_RETURN_TITLE}.</strong> {NO_RETURN_DETAIL}</span>
           </div>
         )}
+
+        <PreOwnedNotice condition={product.condicion} storeName={sellerName} />
 
         {product.requiereChasis && (
           <div className="pdm-vin-note">

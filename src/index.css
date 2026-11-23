@@ -14607,13 +14607,13 @@ button.role-option-card {
 .market-product-content { min-height: 190px; padding: 10px 11px 10px; display: flex; flex: 1; flex-direction: column; }
 .market-product-content h3 { overflow: hidden; color: #111d35; font-size: 12.5px; font-weight: 850; line-height: 1.25; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
 .market-product-compatibility { overflow: hidden; margin-top: 2px; color: #64748c; font-size: 10px; line-height: 1.25; white-space: nowrap; text-overflow: ellipsis; }
-.market-product-tags { min-height: 20px; margin-top: 6px; display: flex; align-items: center; gap: 4px; overflow: hidden; }
+.market-product-tags { min-height: 20px; margin-top: 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px; overflow: hidden; }
 .market-product-tags > span { min-width: 0; height: 19px; padding: 3px 6px; display: inline-flex; align-items: center; gap: 3px; overflow: hidden; border-radius: 10px; font-size: 8px; font-weight: 800; line-height: 1; white-space: nowrap; text-overflow: ellipsis; }
 .market-product-tags > span > svg { width: 10px; height: 10px; flex: 0 0 auto; }
 .market-product-category { width: auto; max-width: 36%; color: #b33a40; background: #ffeaeb; }
 .market-product-tag-icon.category-icon-tile { width: 12px; height: 12px; min-width: 12px; flex: 0 0 12px; border-radius: 50%; box-shadow: none; }
 .market-product-tag-icon.category-icon-tile svg { width: 7px; height: 7px; }
-.market-product-origin { max-width: 34%; }
+.market-product-origin { flex: 0 0 auto; max-width: 100%; }
 .market-product-origin.original { color: #167149; background: #e8f8f0; }
 .market-product-origin.alternative { color: #7350c7; background: #f0ebff; }
 .market-product-brand { max-width: 30%; color: #42516a; background: #eef2f7; }

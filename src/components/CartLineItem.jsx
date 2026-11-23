@@ -6,6 +6,8 @@ import ProductPhoto from './ProductPhoto';
 import { productReferenceImage } from '../utils/productImage';
 import { productPath } from '../routes/paths';
 import CompatibilityStatus from './CompatibilityStatus';
+import { ConditionBadge } from './ProductCondition';
+import { isPreOwned } from '../data/productConditions';
 
 function formatCLP(value) {
   return `$${Number(value || 0).toLocaleString('es-CL')}`;
@@ -39,6 +41,7 @@ export default function CartLineItem({ item, activeVehicle, compatibility = null
           <span className="cart-line-oem">OEM {item.oemCode}</span>
           {item.marca && <span>{item.marca}</span>}
         </p>
+        {isPreOwned(item.condicion) && <ConditionBadge condition={item.condicion} compact />}
         {/* Antes decia "Compatible con {patente}" en cada linea sin verificar nada. La
             compatibilidad la confirma el vendedor con el vehiculo del pedido (checklist de
             confirmacion), asi que se dice eso; un repuesto universal si sirve para cualquiera. */}

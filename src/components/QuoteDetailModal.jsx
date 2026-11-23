@@ -32,6 +32,7 @@ import {
 import { buildQuotePdfBlob, quoteDocumentFilename } from '../utils/quoteDocument';
 import { checkoutPath, helpCategoryPath, productPath, profilePurchasePath, storePath } from '../routes/paths';
 import { parseShippingMethods, resolveShippingService, shippingMethodCost } from '../data/shippingMethods';
+import { conditionLabel } from '../data/productConditions';
 
 // Tope del mensaje del chat. Una cotizacion se negocia con datos concretos -cantidad,
 // estado, despacho, precio-; 500 caracteres son un parrafo completo y obligan a ser
@@ -750,6 +751,7 @@ export default function QuoteDetailModal({
           conversacionId: quote.id,
           productoId: quote.productoId,
           productoNombre: productName,
+          productoCondicion: quote.productoCondicion,
           productoImagenUrl: productImage,
           proveedorId: storeId,
           tiendaNombre: storeName,
@@ -973,6 +975,7 @@ export default function QuoteDetailModal({
             <h3>Detalles del producto</h3>
             <div className="quote-ws-product-head">{productImage ? <img src={productImage} alt={productName} /> : <Package size={28} />}<div><strong>{productName}</strong><span>Producto #{quote.productoId || '—'}</span></div></div>
             <DataRow icon={ShieldCheck} label="Estado" value="Publicado" />
+            {quote.productoCondicion && <DataRow icon={Package} label="Condición" value={conditionLabel(quote.productoCondicion)} />}
             <DataRow icon={BadgeDollarSign} label="Precio cotizado" value={activeQuote ? formatCLP(activeQuote.precioFinal ?? activeQuote.precio) : 'Por definir'} />
             <button type="button" className="quote-ws-outline-button" onClick={openProduct}><ExternalLink size={15} /> Ver ficha completa</button>
             {/* Pedir un ajuste escribe en el chat, asi que sigue la misma suerte: sin

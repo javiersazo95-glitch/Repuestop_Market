@@ -15,6 +15,7 @@ import { useIsMobile } from '../hooks/useIsMobile';
 import NewCatalogProductModal from './NewCatalogProductModal';
 import { itemVehicleLabel } from './AuctionItemsCard';
 import '../styles/auction-quote.css';
+import { conditionLabel as productConditionLabel } from '../data/productConditions';
 
 const nf = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const money = (value) => (value == null || Number.isNaN(value) ? '—' : nf.format(value));
@@ -25,8 +26,7 @@ const DELIVERY_TYPES = ['Retiro en tienda', 'Envío dentro de la comuna', 'Enví
 const VALIDITIES = ['24 horas', '48 horas', '72 horas', '7 días'];
 const CHECK_ICON = { ok: CheckCircle2, warn: AlertTriangle, bad: XCircle, neutral: MinusCircle };
 
-const CONDITION_LABEL = { ORIGINAL: 'Original', ALTERNATIVO: 'Alternativo', USADO: 'Usado', NUEVO: 'Nuevo', REACONDICIONADO: 'Reacondicionado' };
-const conditionLabel = (value) => CONDITION_LABEL[String(value || '').toUpperCase()] || (value ? String(value) : '');
+const conditionLabel = (value) => (value ? productConditionLabel(value) : '');
 
 function useDebounced(value, delay = 300) {
   const [debounced, setDebounced] = useState(value);

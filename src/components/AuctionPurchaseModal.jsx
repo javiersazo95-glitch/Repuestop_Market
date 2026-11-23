@@ -5,6 +5,8 @@ import { getAuctionPurchase } from '../services/auctionApi';
 import { auctionCheckoutPath } from '../routes/paths';
 import AuctionAvatar from './AuctionAvatar';
 import '../styles/auction-purchase.css';
+import { conditionLabel, isPreOwned } from '../data/productConditions';
+import '../styles/product-condition.css';
 
 const nf = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const money = (value) => (value == null ? '—' : nf.format(value));
@@ -100,7 +102,7 @@ export default function AuctionPurchaseModal({ isOpen, onClose, auctionId, onSee
                   {store.lineas.map((line) => (
                     <tr key={line.itemId}>
                       <td><strong>{line.repuesto}</strong>{line.vehiculo ? <small>{line.vehiculo}</small> : null}</td>
-                      <td>{line.productoTitulo}</td>
+                      <td>{line.productoTitulo}{line.condicion && <small className={`pcond-sold${isPreOwned(line.condicion) ? ' is-pre-owned' : ''}`}>Condición: {conditionLabel(line.condicion)}</small>}</td>
                       <td className="is-num">{line.cantidad}</td>
                       <td className="is-num">{money(line.precioUnitario)}</td>
                       <td className="is-num">{money(line.subtotal)}</td>

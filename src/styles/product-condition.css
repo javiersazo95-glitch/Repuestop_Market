@@ -1,0 +1,52 @@
+/* Condición del repuesto (23-nov): etiqueta sobre la foto, aviso de la ficha y pregunta al publicar. */
+
+.pcond-badge { display: inline-flex; align-items: center; gap: 5px; width: fit-content; min-height: 28px; padding: 5px 11px; border-radius: 8px; color: #fff; background: #0e7038; font-size: 12.5px; font-weight: 800; line-height: 1.2; white-space: nowrap; box-shadow: 0 3px 8px rgba(10, 25, 48, .16); }
+.pcond-badge.is-alternativo { background: #0056bf; }
+.pcond-badge.is-usado { background: #9a5a00; }
+.pcond-badge.is-reacondicionado { background: #5b3ad6; }
+.pcond-badge.is-compact { min-height: 24px; padding: 3px 8px; border-radius: 7px; gap: 4px; font-size: 11px; }
+
+/* Tarjetas: la condicion va siempre en la esquina; el Top y la oferta bajan bajo ella. */
+.market-product-condition { position: absolute; z-index: 2; top: 10px; left: 10px; }
+.market-product-media:has(.market-product-condition) .market-product-top-badge { top: 38px; }
+.market-product-condition + .market-product-badge { top: 42px; }
+.market-product-top-badge + .market-product-condition + .market-product-badge { left: 62px; }
+@media (max-width: 768px) {
+  .pcond-badge.market-product-condition, .pcond-badge.hb-part-condition { min-height: 22px; padding: 3px 7px; font-size: 10px; }
+  .pcond-badge.market-product-condition svg { display: none; }
+}
+.hb-part-condition { position: absolute; z-index: 2; top: 44px; left: 12px; }
+.market-product-origin.pre-owned { color: #9a5a00; background: #fff7e6; }
+
+/* Ficha en celular: la condición y el Top, uno sobre el otro en la esquina de la foto. */
+.pdm-photo-badges { position: absolute; z-index: 3; top: 14px; left: 14px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.pdm-photo-badges .pdm-top-badge { position: static; }
+
+.pcond-notice { display: flex; align-items: flex-start; gap: 9px; padding: 11px 13px; border: 1px solid #bfd6f7; border-radius: 10px; color: #34475f; background: #f5f9ff; font-size: 12.5px; line-height: 1.5; }
+.pcond-notice svg { flex: none; margin-top: 1px; color: #0056bf; }
+.pcond-notice strong { color: #00459a; font-weight: 800; }
+@media (min-width: 769px) { .pcond-notice { font-size: 13px; } }
+
+.apc-store .pcond-notice, .ap-store .pcond-notice { margin: 10px 12px; }
+
+.pcond-sold { display: inline-block; margin-top: 2px; color: #5a6b7a; font-size: 12px; font-weight: 700; }
+.pcond-sold.is-pre-owned { color: #9a5a00; }
+
+/* Formulario de publicación */
+.pcond-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; }
+.pcond-option { display: grid; gap: 3px; padding: 12px 14px; border: 1px solid #d3dee9; border-radius: 12px; background: #fff; color: #334155; text-align: left; font: inherit; cursor: pointer; transition: border-color .15s, background .15s; }
+.pcond-option strong { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; font-weight: 800; }
+.pcond-option span { color: #64748b; font-size: 12px; line-height: 1.4; }
+.pcond-option:hover { border-color: #8fbbe8; }
+.pcond-option:focus-visible { outline: 2px solid #0056bf; outline-offset: 2px; }
+.pcond-option.active { border-color: #1480d8; background: #edf7ff; }
+.pcond-option.active strong { color: #0759ae; }
+.pcond-options.has-error .pcond-option { border-color: #f1a9a0; }
+.pcond-error { margin: 8px 0 0; color: #c0392b; font-size: 12px; font-weight: 700; }
+.pcond-form-notice { margin-top: 12px; }
+
+/* Registro de la tienda */
+.pcond-yesno { display: flex; flex-wrap: wrap; gap: 10px; }
+.pcond-yesno button { flex: 1 1 140px; min-height: 44px; padding: 8px 14px; border: 1px solid #d3dee9; border-radius: 12px; background: #fff; color: #334155; font: inherit; font-size: .88rem; font-weight: 700; cursor: pointer; }
+.pcond-yesno button[aria-checked='true'] { border-color: #0056bf; background: #eaf2ff; color: #00459a; }
+.pcond-yesno button:focus-visible { outline: 2px solid #0056bf; outline-offset: 2px; }

@@ -37,6 +37,8 @@ import { buildOrderPackages } from '../utils/orderPackages';
 import VehicleSheet from './VehicleSheet';
 import { buyerCompatibilityText } from '../utils/buyerCompatibility';
 import ShippingIcon from './ShippingIcon';
+import { conditionLabel, isPreOwned } from '../data/productConditions';
+import '../styles/product-condition.css';
 
 /**
  * Una linea de repuesto dentro del bloque de su tienda, con la ficha tecnica desplegable.
@@ -144,7 +146,10 @@ function OrderProductRow({ item, order, onNavigate }) {
   // La respuesta se aplica salvo que el componente ya no este montado. Antes se descartaba
   // tambien al re-ejecutarse el efecto, que es lo que dejaba la ficha girando.
   const mountedRef = useRef(true);
-  useEffect(() => () => { mountedRef.current = false; }, []);
+  useEffect(() => {
+    mountedRef.current = true; // StrictMode monta dos veces en desarrollo.
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const photo = resolveMediaUrl(item.imagenUrl || item.imageUrl || item.productPhotoUri || (item.imageUrls && item.imageUrls[0]));
   const name = item.nombre || item.productName || item.name || 'Repuesto de vehículo';
@@ -180,13 +185,15 @@ function OrderProductRow({ item, order, onNavigate }) {
       .catch(() => { if (mountedRef.current) setSpecsState('error'); });
   }, [expanded, productId]);
 
+  // La condición con que se compró; en pedidos de un backend anterior, la que tiene hoy la publicación.
+  const soldCondition = item.condicion || details?.condicion || null;
   const specs = [
     ['Categoría', details?.categoriaNombre || item.categoria || item.productCategory || null],
     // El SKU del vendedor, que es el mismo que se ve en la fila cerrada. La referencia OEM va
     // aparte y SOLO si existe: con `oemCode` -- que colapsa referenciaOem, skuProveedor y
     // codigoInterno en el primero que haya -- las dos filas mostraban el mismo valor.
     ['SKU', details?.skuProveedor || sku || null],
-    ['Condición', details?.condicion || null],
+    ['Condición', soldCondition ? conditionLabel(soldCondition) : null],
     // La del vehiculo con que se compro, no la primera que declaro el vendedor.
     ['Compatibilidad', buyerCompatibilityText({
       compatibilidad: details?.compatibilidad || [],
@@ -222,6 +229,9 @@ function OrderProductRow({ item, order, onNavigate }) {
           <span className="item-table-meta">
             {[brand, sku ? `SKU ${sku}` : null].filter(Boolean).join(' · ')}
           </span>
+          {soldCondition && (
+            <span className={`pcond-sold${isPreOwned(soldCondition) ? ' is-pre-owned' : ''}`}>Condición: {conditionLabel(soldCondition)}</span>
+          )}
           {cancelled && refunded > 0 && (
             <span className="order-item-row-refund">Reembolso {formatCLP(refunded)}</span>
           )}

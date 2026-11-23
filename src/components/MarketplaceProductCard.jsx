@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, MapPin, PackageCheck, ShieldCheck, ShoppingBag, Sparkles, Star, Store, Tag } from 'lucide-react';
+import { History, Heart, MapPin, PackageCheck, ShieldCheck, ShoppingBag, Sparkles, Star, Store, Tag } from 'lucide-react';
 import CategoryIconTile from './CategoryIconTile';
 import ProductTopBadge from './ProductTopBadge';
 import { getPartImage, useCategories } from '../data/categories';
@@ -7,6 +7,8 @@ import { isProductTopActive } from '../utils/productTop';
 import { compatibilidadLinea } from '../services/adapters';
 import { productPath } from '../routes/paths';
 import { isModifiedClick } from '../utils/linkClick';
+import { ConditionBadge } from './ProductCondition';
+import { conditionLabel, isPreOwned, toProductCondition } from '../data/productConditions';
 
 const CATEGORY_LABELS = {
   frenos: 'Frenos',
@@ -33,12 +35,16 @@ function getPartBrand(product) {
 }
 
 function getPartType(product) {
+  const value = toProductCondition(product.condicion);
+  if (isPreOwned(value)) return { label: conditionLabel(value), icon: History, kind: 'pre-owned' };
+  if (value === 'ALTERNATIVO') return { label: conditionLabel(value), icon: Sparkles, kind: 'alternative' };
+  if (value === 'ORIGINAL') return { label: conditionLabel(value), icon: ShieldCheck, kind: 'original' };
   const condition = String(product.condicion || product.tipoRepuesto || '').toLowerCase();
   if (condition.includes('altern')) return { label: 'Alternativo', icon: Sparkles, kind: 'alternative' };
   if (condition.includes('original') || condition.includes('oem')) return { label: 'Original', icon: ShieldCheck, kind: 'original' };
-  return product.oemCode
-    ? { label: 'Original', icon: ShieldCheck, kind: 'original' }
-    : { label: 'Alternativo', icon: Sparkles, kind: 'alternative' };
+  // Sin condición conocida (publicaciones antiguas con "NUEVO") no se adivina si es original o
+  // alternativo: la ficha dice "Nuevo" y la tarjeta también.
+  return { label: 'Nuevo', icon: ShieldCheck, kind: 'original' };
 }
 
 export default function MarketplaceProductCard({ product, onView, fallbackCity, isFavorite = false, onToggleFavorite }) {
@@ -47,10 +53,8 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
   const price = Number(product.precio || 0);
   const oldPrice = Number(product.precioOriginal || 0);
   const isOffer = Number(product.descuento || 0) > 0;
-  const isNew = String(product.condicion || '').toLowerCase().includes('nuevo');
   const isTop = isProductTopActive(product);
-  const badgeLabel = isOffer ? '🔥 Oferta' : isNew ? '✦ Nuevo' : null;
-  const badgeKind = isOffer ? 'offer' : 'new';
+  const badgeLabel = isOffer ? '🔥 Oferta' : null;
   const city = product.ciudad || product.ciudadVendedor || fallbackCity || 'Santiago, RM';
   const partBrand = getPartBrand(product);
   const partType = getPartType(product);
@@ -99,7 +103,8 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
           size={34}
         />
         {isTop && <ProductTopBadge compact className="market-product-top-badge" />}
-        {badgeLabel && <span className={`market-product-badge ${badgeKind}`}>{badgeLabel}</span>}
+        {isPreOwned(product.condicion) && <ConditionBadge condition={product.condicion} compact className="market-product-condition" />}
+        {badgeLabel && <span className="market-product-badge offer">{badgeLabel}</span>}
         <button
           className={`market-product-favorite ${favoriteActive ? 'is-active' : ''}`}
           type="button"

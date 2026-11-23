@@ -32,6 +32,8 @@ import {
   cartStoreKey, defaultAddressForMethod, deliveryKind, isDispatch,
   offeredMethodsForItem, pendingDeliveryReason, shippingFees, withStoreShipment,
 } from '../utils/cartDelivery';
+import { ConditionBadge } from '../components/ProductCondition';
+import { isPreOwned } from '../data/productConditions';
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
 
@@ -188,6 +190,7 @@ export default function CheckoutPage() {
               conversacionId: found.id,
               productoId: found.productoId,
               productoNombre: found.productoNombre,
+              productoCondicion: found.productoCondicion,
               productoImagenUrl: resolveMediaUrl(found.productoImagenUrl),
               proveedorId: found.proveedorId,
               tiendaNombre: found.otroParticipanteNombre || found.participante || found.proveedorNombre,
@@ -216,6 +219,7 @@ export default function CheckoutPage() {
     return {
       id: quoteContext?.productoId || conversacionId,
       titulo: quoteContext?.productoNombre || 'Producto cotizado',
+      condicion: quoteContext?.productoCondicion || '',
       imagen: quoteContext?.productoImagenUrl || '',
       vendedor: quoteContext?.tiendaNombre || 'Tienda RepuesTop',
       proveedorId: quoteContext?.proveedorId,
@@ -903,6 +907,7 @@ export default function CheckoutPage() {
                 <tr>
                   <td>
                     <strong>{item.titulo}</strong>
+                    {isPreOwned(item.condicion) && <ConditionBadge condition={item.condicion} compact />}
                     {!isQuoteMode && item.marca && <small>{item.marca}</small>}
                   </td>
                   <td className="is-num">{item.quantity} × {money(item.precio)}</td>

@@ -7,11 +7,12 @@ export const PART_TYPE_LABELS = {
   ORIGINAL: 'Originales',
   ALTERNATIVO: 'Alternativos',
   USADO: 'Usados o de desarme',
+  REACONDICIONADO: 'Reacondicionados',
 };
 
 /** "Repuestos originales y alternativos" (la misma etiqueta que arma el backend en el ranking). */
 export function partTypesLabel(types) {
-  const ordered = ['ORIGINAL', 'ALTERNATIVO', 'USADO'].filter((type) => types.includes(type));
+  const ordered = ['ORIGINAL', 'ALTERNATIVO', 'USADO', 'REACONDICIONADO'].filter((type) => types.includes(type));
   if (ordered.length === 0) return null;
   const names = ordered.map((type) => PART_TYPE_LABELS[type].toLowerCase());
   const text = names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} y ${names[names.length - 1]}`;

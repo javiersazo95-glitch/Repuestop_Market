@@ -266,8 +266,8 @@
   /* Tipo y marca deciden la compra; la categoria ya la da el contexto. */
   .market-product-tags > .market-product-category { display: none; }
   .market-product-tags > span { height: 22px; padding: 3px 7px; font-size: 11px; }
-  .market-product-origin,
-  .market-product-brand { max-width: 50%; }
+  .market-product-origin { max-width: 100%; }
+  .market-product-brand { max-width: 60%; }
   .market-product-store { margin-top: 6px; font-size: 11px; }
   .market-product-store-city { font-size: 11px; min-width: 0; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
   .market-product-meta { min-height: 0; margin-top: 4px; font-size: 11px; }

@@ -1747,11 +1747,11 @@ export default function PartsCatalogView({
               />
             </div>
 
-            {/* Filter 6: Condición Técnica. Viaja como `condicion`, con el vocabulario
+            {/* Filter 6: Condición del repuesto. Viaja como `condicion`, con el vocabulario
                 exacto que valida el backend. */}
             <div className={`filter-section-group ${openFilterSections.condition ? 'is-open' : 'is-collapsed'}`}>
               <button className="filter-group-toggle" type="button" onClick={() => toggleFilterSection('condition')} aria-expanded={openFilterSections.condition}>
-                <span className="filter-group-label"><ShieldCheck size={13} /> Condición Técnica</span><ChevronDown size={16} />
+                <span className="filter-group-label"><ShieldCheck size={13} /> Condición del Repuesto</span><ChevronDown size={16} />
               </button>
               {openFilterSections.condition && <div className="filter-options-list">
                 <button

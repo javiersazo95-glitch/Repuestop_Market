@@ -9,17 +9,18 @@ import { useAuth } from '../../context/AuthContext';
 import { useFavorites } from '../../hooks/useFavorites';
 import { productPath } from '../../routes/paths';
 import { isModifiedClick } from '../../utils/linkClick';
+import { ConditionBadge } from '../ProductCondition';
+import { isPreOwned } from '../../data/productConditions';
 
 const FEATURED_COUNT = 4;
 const FETCH_COUNT = 12;
 const nf = new Intl.NumberFormat('es-CL');
 
-/** Etiqueta de la esquina: el descuento si lo hay; si no, lo mas vendido, lo nuevo o simplemente destacado. */
+/** Etiqueta de la esquina: el descuento si lo hay; si no, lo mas vendido o simplemente destacado. */
 function badgeOf(product) {
   const discount = Math.round(Number(product.descuento || 0));
   if (discount > 0) return { label: `-${discount}%`, kind: 'discount' };
   if (Number(product.ventas || 0) > 0) return { label: 'Más vendido', kind: 'best' };
-  if (String(product.condicion || '').toLowerCase().includes('nuevo')) return { label: 'Nuevo', kind: 'new' };
   return { label: 'Destacado', kind: 'offer' };
 }
 
@@ -60,6 +61,7 @@ function FeaturedCard({ product, onView, isFavorite, onToggleFavorite }) {
     <article className="hb-part">
       <div className="hb-part-media" onClick={() => onView?.(product)}>
         <span className={`hb-part-badge is-${badge.kind}`}>{badge.label}</span>
+        {isPreOwned(product.condicion) && <ConditionBadge condition={product.condicion} compact className="hb-part-condition" />}
         <button
           type="button"
           className={`hb-part-fav ${isFavorite ? 'is-active' : ''}`}
