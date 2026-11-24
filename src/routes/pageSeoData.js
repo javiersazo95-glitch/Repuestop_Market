@@ -72,6 +72,11 @@ export function productSeo(product) {
     };
   }
 
+  // Google exige "offers", "review" o "aggregateRating" en todo Product (error critico en Search
+  // Console, 24-nov: los repuestos "solo cotizacion" de una tienda). Sin precio ni opiniones la
+  // ficha se indexa igual, pero sin declararse como Product.
+  const productoValido = Boolean(productoLd.offers || productoLd.aggregateRating);
+
   return {
     description,
     path,
@@ -79,7 +84,7 @@ export function productSeo(product) {
     jsonLd: {
       '@context': 'https://schema.org',
       '@graph': [
-        productoLd,
+        ...(productoValido ? [productoLd] : []),
         {
           '@type': 'BreadcrumbList',
           itemListElement: [
