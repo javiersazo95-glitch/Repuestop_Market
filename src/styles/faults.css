@@ -376,7 +376,7 @@ a.ft-card:hover { border-color: var(--ft-primary-border); box-shadow: 0 6px 18px
 .ft-detail-hero-card { display: grid; grid-template-columns: minmax(480px, .88fr) minmax(460px, 1.12fr); gap: 24px; padding: 17px; border-radius: 16px; background: #fff; box-shadow: 0 8px 26px rgba(36, 86, 128, .06); }
 .ft-detail-gallery { min-width: 0; }
 .ft-detail-main-photo { position: relative; height: 310px; overflow: hidden; border-radius: 7px; color: var(--ft-primary); background: #eaf2f9; display: grid; place-items: center; }
-.ft-detail-main-photo > img { width: 100%; height: 100%; object-fit: cover; }
+.ft-detail-main-photo > img { width: 100%; height: 100%; object-fit: contain; }
 .ft-detail-main-photo > button { position: absolute; top: 50%; width: 38px; height: 48px; border: 0; border-radius: 8px; color: #fff; background: rgba(2, 12, 25, .72); display: grid; place-items: center; transform: translateY(-50%); cursor: pointer; }
 .ft-detail-main-photo > button.is-left { left: 10px; }
 .ft-detail-main-photo > button.is-right { right: 10px; }
