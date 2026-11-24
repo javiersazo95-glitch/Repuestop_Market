@@ -194,7 +194,8 @@
   .pdd-lightbox-close, .pdd-lightbox-arrow { width: 44px; height: 44px; display: grid; place-items: center; padding: 0; border: 1px solid rgba(255, 255, 255, .18); border-radius: 50%; color: #fff; background: rgba(255, 255, 255, .08); cursor: pointer; transition: background .15s ease; }
   .pdd-lightbox-close:hover, .pdd-lightbox-arrow:hover { background: rgba(255, 255, 255, .18); }
   .pdd-lightbox-stage { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 0 20px; min-height: 0; }
-  .pdd-lightbox-figure { margin: 0; height: 100%; min-height: 0; display: grid; place-items: center; }
+  /* Columna central fija: con una sola foto no hay flechas y la foto caia en la primera columna. */
+  .pdd-lightbox-figure { grid-column: 2; margin: 0; height: 100%; min-height: 0; display: grid; place-items: center; }
   .pdd-lightbox-figure img { max-width: 100%; max-height: calc(100vh - 190px); object-fit: contain; border-radius: 8px; }
   .pdd-lightbox-figure svg { color: rgba(255, 255, 255, .5); }
   .pdd-lightbox-thumbs { display: flex; justify-content: center; gap: 8px; padding: 14px 20px 18px; overflow-x: auto; scrollbar-width: thin; }
