@@ -1,0 +1,35 @@
+/* Código de la caja en la carga 1:1 del Market (25-nov). Misma paleta que el formulario del catálogo. */
+.ac-bloque { display: flex; flex-direction: column; gap: 11px; margin-bottom: 16px; padding: 14px 16px; border: 1.5px solid #9fcdf3; border-radius: 13px; background: #f2f9ff; }
+.ac-titulo { display: flex; align-items: flex-start; gap: 11px; }
+.ac-titulo > svg { flex-shrink: 0; margin-top: 2px; color: #0d76d2; }
+.ac-titulo > div { display: flex; flex-direction: column; gap: 2px; }
+.ac-titulo strong { color: #1e3a5f; font-size: 14px; }
+.ac-titulo span { color: #4b647d; font-size: 13px; line-height: 1.45; }
+.ac-busqueda { display: flex; flex-wrap: wrap; gap: 9px; }
+.ac-busqueda input { flex: 1 1 210px; min-width: 0; box-sizing: border-box; border: 1px solid #ccd7e4; border-radius: 8px; padding: 10px 11px; outline: none; color: #172b45; background: #fff; font: inherit; font-size: 14px; text-transform: uppercase; }
+.ac-busqueda input::placeholder { text-transform: none; color: #94a3b8; }
+.ac-busqueda input:focus { border-color: #1681df; box-shadow: 0 0 0 3px rgba(22, 129, 223, .12); }
+.ac-busqueda button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 42px; padding: 0 18px; border: 0; border-radius: 9px; color: #fff; background: linear-gradient(135deg, #0d76d2, #034d98); font: inherit; font-size: 13px; font-weight: 750; cursor: pointer; }
+.ac-busqueda button:disabled { opacity: .55; cursor: not-allowed; }
+.ac-girando { animation: ac-girar .9s linear infinite; }
+@keyframes ac-girar { to { transform: rotate(360deg); } }
+.ac-aviso { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 9px 11px; border-radius: 9px; background: #fef3c7; color: #92400e; font-size: 13px; line-height: 1.45; }
+.ac-aviso.error { background: #ffe9e6; color: #9f1d12; }
+.ac-aviso svg, .ac-listo svg { flex-shrink: 0; margin-top: 2px; }
+.ac-opciones p, .ac-confirmar p, .ac-revisar p, .ac-fuera p { margin: 0 0 8px; color: #334155; font-size: 13px; line-height: 1.45; }
+.ac-opciones > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 9px; }
+.ac-opciones button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 52px; padding: 9px 13px; border: 1.5px solid #cbd5e1; border-radius: 11px; background: #fff; color: #1e293b; font: inherit; text-align: left; cursor: pointer; }
+.ac-opciones button:hover { border-color: #1681df; }
+.ac-opciones button span { color: #475569; font-size: 12px; }
+.ac-confirmar { padding: 11px 13px; border: 1px solid #f59e0b; border-radius: 11px; background: #fffbeb; }
+.ac-confirmar > div { display: flex; flex-wrap: wrap; gap: 9px; }
+.ac-confirmar button { min-height: 38px; padding: 0 15px; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #334155; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.ac-confirmar button.ac-primario { border-color: #0d76d2; background: #0d76d2; color: #fff; }
+.ac-resultado { display: flex; flex-direction: column; gap: 9px; }
+.ac-listo { display: flex; align-items: flex-start; gap: 9px; margin: 0; padding: 9px 11px; border-radius: 9px; background: #e8f7ee; color: #14532d; font-size: 13px; line-height: 1.5; }
+.ac-revisar ul { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.ac-revisar li { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; border-bottom: 1px solid #e2e8f0; color: #1e293b; font-size: 13px; }
+.ac-revisar button { display: inline-flex; align-items: center; gap: 5px; min-height: 36px; padding: 0 11px; border: 1px solid #cbd5e1; border-radius: 9px; background: #fff; color: #0759ae; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+.ac-revisar button:hover { border-color: #1681df; }
+.ac-fuera summary { min-height: 36px; display: flex; align-items: center; color: #475569; font-size: 13px; cursor: pointer; }
+@media (max-width: 640px) { .ac-busqueda button { width: 100%; } }

@@ -277,6 +277,8 @@ export function adaptProduct(dto) {
     // codigo, el que haya".
     skuProveedor: dto.skuProveedor || dto.codigoInterno || '',
     referenciaOem: dto.referenciaOem || '',
+    // Código impreso en la caja (25-nov): con él el repuesto puede tener ficha técnica del fabricante.
+    codigoFabricante: dto.codigoFabricante || '',
     descripcion: dto.descripcion || '',
     marca: dto.marcaRepuesto || dto.marca || dto.productBrand || dto.brand || dto.fabricante || dto.manufacturer || '',
     precio,

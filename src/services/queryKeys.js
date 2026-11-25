@@ -14,6 +14,7 @@ export const qk = {
   accesoAsistido: (id) => ['seller', id, 'accesoAsistido'],
   products: (filters) => ['products', filters || {}],
   product: (id) => ['products', id],
+  productFicha: (id) => ['products', id, 'ficha'],
   productQuestions: (id) => ['products', id, 'questions'],
   /** Opiniones de compradores: resumen + primera pagina (producto o tienda). */
   reviews: (kind, id, size) => ['reviews', kind, String(id), size],
