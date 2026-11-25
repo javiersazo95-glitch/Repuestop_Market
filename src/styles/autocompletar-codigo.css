@@ -36,3 +36,11 @@
 .ac-opciones button .ac-imagen { margin-top: 3px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-style: normal; font-weight: 600; }
 .ac-opciones button .ac-imagen.con { background: #dcfce7; color: #166534; }
 .ac-opciones button .ac-imagen.sin { background: #f1f5f9; color: #475569; }
+
+.ac-opciones > div { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.ac-opciones button { gap: 6px; width: 100%; }
+.ac-opciones button .ac-nombre { text-transform: uppercase; font-size: 0.85em; letter-spacing: 0.01em; }
+.ac-opciones button .ac-datos { display: grid; gap: 0; width: 100%; margin: 0; }
+.ac-opciones button .ac-datos > div { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-top: 1px solid #e2e8f0; }
+.ac-opciones button .ac-datos dt { color: #475569; }
+.ac-opciones button .ac-datos dd { margin: 0; font-weight: 600; color: #1e293b; text-align: right; overflow-wrap: anywhere; }

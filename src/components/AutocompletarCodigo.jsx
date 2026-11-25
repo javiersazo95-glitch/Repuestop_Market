@@ -84,7 +84,11 @@ export default function AutocompletarCodigo({ sellerId, codigo, onCodigo, condic
           <div>
             {resultado.opciones.map((o) => (
               <button type="button" key={o.marca} onClick={() => void buscar(o.marca)} disabled={buscando}>
-                <strong>{o.marca}</strong><span>{o.nombre}</span>
+                <strong className="ac-nombre">{o.nombre}</strong>
+                <dl className="ac-datos">
+                  {o.codigoMarca && <div><dt>Número de parte</dt><dd>{o.codigoMarca}</dd></div>}
+                  <div><dt>Marca</dt><dd>{o.marca}</dd></div>
+                </dl>
                 {o.conImagen === true && <em className="ac-imagen con">Trae imagen</em>}
                 {o.conImagen === false && <em className="ac-imagen sin">Sin imagen: sube la tuya</em>}
               </button>
