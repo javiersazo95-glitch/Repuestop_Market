@@ -1,9 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, Check, CircleDollarSign, ClipboardList, Image as ImageIcon, Images, Info, ListChecks, Loader2, PackagePlus, Plus, Search, ShieldCheck, Tag, Trash2, Upload, X } from 'lucide-react';
 import CommissionSummaryCard from './CommissionSummaryCard';
-import AutocompletarCodigo from './AutocompletarCodigo';
-import { useFlag } from '../remoteConfig/hooks';
-import { FLAG_FICHA_CODIGO, compatibilidadDesdeGrupo, descripcionPropuesta, gruposSeguros, mismoNombre, nombrePropuesto } from '../utils/fichaCodigo';
 import SearchableDropdown from './SearchableDropdown';
 import {
   createSellerInventoryProductApi,
@@ -141,8 +138,6 @@ function completarDesdeCatalogo(compatibility, filasPorId) {
 const baseForm = (product = null) => ({
   name: product?.nombrePublicado || product?.repuestoNombre || product?.nombre || '',
   sku: product?.skuProveedor || product?.sku || product?.codigoSKU || '',
-  // Código impreso en la caja: con él se completa la ficha y el backend vincula la publicación a ella.
-  manufacturerCode: product?.codigoFabricante || '',
   category: product?.categoria || product?.categoriaNombre || product?.category || '',
   subcategory: product?.subcategoria || '',
   partBrand: product?.marcaRepuesto || product?.marca || product?.productBrand || '',
@@ -222,8 +217,6 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
   // Garantias de la lista `GARANTIA_PRODUCTO` del mantenedor (o las de siempre sin bootstrap).
   const warrantyOptions = useWarrantyOptions();
   const [form, setForm] = useState(() => initialForm(product, prefill));
-  // Sin configuración remota el flag vale apagado: la función depende del backend.
-  const fichaCodigoActiva = useFlag(FLAG_FICHA_CODIGO, false);
   const [categories, setCategories] = useState([]);
   const [subcategories, setSubcategories] = useState([]);
   const [partBrands, setPartBrands] = useState([]);
@@ -365,55 +358,6 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
     } catch {
       setSubcategories([]);
     }
-  };
-  const hayFichaDatos = form.name.trim() !== '' || form.category !== '' || form.partBrand.trim() !== ''
-    || form.compatibilities.some((item) => item.brand || item.model || (item.vehicleCatalogIds || []).length);
-  /**
-   * Lo que trae el código reemplaza lo que identifica al repuesto y sus vehículos. Precio, stock, fotos, garantía y la
-   * descripción propia no se tocan; el SKU ya escrito tampoco.
-   */
-  const aplicarFicha = async (ficha) => {
-    const seguros = gruposSeguros(ficha);
-    const categoria = ficha.categoria ? categories.find((item) => mismoNombre(item.nombre, ficha.categoria)) : null;
-    let marcasRepuesto = partBrands;
-    let subcategoriasFicha = [];
-    if (categoria?.id) {
-      try {
-        const [subs, marcas] = await Promise.all([getPartSubcategoriesApi(categoria.id), getPartBrandsApi(categoria.nombre)]);
-        subcategoriasFicha = Array.isArray(subs) ? subs : [];
-        setSubcategories(subcategoriasFicha);
-        if (Array.isArray(marcas)) { marcasRepuesto = marcas; setPartBrands(marcas); }
-      } catch {
-        setSubcategories([]);
-      }
-    }
-    const subcategoria = categoria && ficha.subcategoria
-      ? subcategoriasFicha.find((item) => mismoNombre(item.nombre, ficha.subcategoria))?.nombre || '' : '';
-    const marcaCatalogo = marcasRepuesto.find((item) => mismoNombre(item.nombre, ficha.marca))?.nombre;
-    setIsCustomPartBrand(!marcaCatalogo);
-    setForm((previous) => ({
-      ...previous,
-      manufacturerCode: ficha.codigo,
-      name: nombrePropuesto(ficha).slice(0, 120),
-      category: categoria ? categoria.nombre : previous.category,
-      subcategory: categoria ? subcategoria : previous.subcategory,
-      partBrand: marcaCatalogo || ficha.marca,
-      sku: previous.sku || String(ficha.codigo).replace(/\s+/g, '').toUpperCase().slice(0, 30),
-      description: previous.description.trim() ? previous.description : descripcionPropuesta(ficha, seguros).slice(0, 1000),
-      isUniversal: false,
-      compatibilities: seguros.length > 0
-        ? seguros.map((grupo) => ({ ...compatibilidadDesdeGrupo(grupo), oem: ficha.referenciaOem || '' }))
-        : [emptyCompatibility()],
-    }));
-  };
-  const agregarVehiculoDelCodigo = (grupo) => {
-    setForm((previous) => ({
-      ...previous,
-      compatibilities: [
-        ...previous.compatibilities.filter((item) => item.brand || item.model || (item.vehicleCatalogIds || []).length),
-        compatibilidadDesdeGrupo(grupo),
-      ],
-    }));
   };
   // "+ Agregar" suma una tarjeta al final y lleva la vista a ella, como en la app: sin el
   // desplazamiento la nueva quedaba fuera de pantalla y parecia que no habia pasado nada.
@@ -585,7 +529,6 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
     const payload = new FormData();
     const append = (key, value) => payload.append(key, String(value ?? ''));
     append('skuProveedor', form.sku.trim().toUpperCase());
-    if (form.manufacturerCode.trim()) append('codigoFabricante', form.manufacturerCode.trim());
     append('nombrePublicado', form.name.trim());
     append('categoria', form.category.trim());
     append('subcategoria', form.subcategory.trim());
@@ -684,17 +627,6 @@ export default function NewCatalogProductModal({ sellerId, product = null, prefi
           </section>
           <section className="catalog-product-section" id="catalog-basic">
             <h3><b>2</b> Información básica</h3>
-            {fichaCodigoActiva && !isEditing && (
-              <AutocompletarCodigo
-                sellerId={sellerId}
-                codigo={form.manufacturerCode}
-                onCodigo={(value) => update('manufacturerCode', value)}
-                condicion={form.condition || undefined}
-                hayDatos={hayFichaDatos}
-                onAplicar={aplicarFicha}
-                onAgregarVehiculo={agregarVehiculoDelCodigo}
-              />
-            )}
             <div className="catalog-product-grid">
               <CatalogField label="Nombre del producto" field="name" error={fieldErrors.name}><input autoFocus value={form.name} onChange={(e) => update('name', e.target.value)} maxLength="120" placeholder="Ej. Pastillas de freno delanteras" required /></CatalogField>
               <CatalogField label="SKU (código interno)" field="sku" error={fieldErrors.sku}><input value={form.sku} onChange={(e) => update('sku', e.target.value.replace(/\s+/g, '').toUpperCase().slice(0, 30))} maxLength="30" placeholder="Ej. PFD1234" required /></CatalogField>

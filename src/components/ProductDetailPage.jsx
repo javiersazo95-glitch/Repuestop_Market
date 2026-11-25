@@ -10,7 +10,7 @@ import { productReferenceImage } from '../utils/productImage';
 import ProductBrandModal from './ProductBrandModal';
 import { localDeliveryCost, productShippingOptions } from '../utils/cartDelivery';
 import {
-  createProductQuestionApi, getProductFichaApi, getProductQuestionsApi, searchVehicleByPatenteApi, answerProductQuestionApi,
+  createProductQuestionApi, getProductQuestionsApi, searchVehicleByPatenteApi, answerProductQuestionApi,
   getInventoryVehicleCatalogsApi, getVehicleVersionsApi, getAddressesApi,
 } from '../services/api';
 import { adaptVehicle, vehicleCatalogIds } from '../services/adapters';
@@ -22,8 +22,6 @@ import { qk } from '../services/queryKeys';
 import MobileStickyBar from './MobileStickyBar';
 import ProductDetailMobile from './ProductDetailMobile';
 import ProductDetailDesktop from './ProductDetailDesktop';
-import FichaTabs from './ficha/FichaTabs';
-import { adaptFicha, galeriaConFicha, pestanasDeFicha } from './ficha/fichaModel';
 import ProductQuestionsSection from './ProductQuestionsSection';
 import ProductReviewsSection from './reviews/ProductReviewsSection';
 import ReviewsModal from './reviews/ReviewsModal';
@@ -127,23 +125,9 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   // Mismo respaldo que la tarjeta del catalogo: la foto de la pieza que nombra el titulo
   // antes que la de su categoria, para no abrir la ficha de un espejo con la foto de un auto.
   // Si una foto no carga, `ProductPhoto` cae a esta misma referencial (como la tarjeta).
-  //
-  // 25-nov: con ficha de su código de fabricante, la galería suma las fotos, el plano y el diagrama del catálogo. Las
-  // de la tienda van siempre primero; si no subió ninguna, la del catálogo reemplaza a la referencial.
-  const fichaQuery = useQuery({
-    queryKey: qk.productFicha(product.id),
-    queryFn: ({ signal }) => getProductFichaApi(product.id, { signal }),
-    enabled: Boolean(product.id && product.codigoFabricante),
-    staleTime: 1000 * 60 * 5,
-    retry: false,
-  });
-  const ficha = useMemo(() => adaptFicha(fichaQuery.data), [fichaQuery.data]);
-  const ownImages = (product.imagenes?.length ? product.imagenes : [product.imagen]).filter(Boolean);
-  const gallery = galeriaConFicha(
-    ownImages.length || ficha?.fotos.length ? ownImages : [productReferenceImage(product)].filter(Boolean),
-    ficha,
-  );
-  const images = gallery.map((item) => item.url);
+  const images = (product.imagenes?.length
+    ? product.imagenes
+    : [product.imagen || productReferenceImage(product)]).filter(Boolean);
   const [activeImage, setActiveImage] = useState(0);
   // Fotos a pantalla completa (solo escritorio); comparte `activeImage` con la galería.
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -691,33 +675,6 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
     <ProductReviewsSection ref={reviewsSectionRef} productId={product.id} productName={product.titulo} />
   );
 
-  // Con ficha, el detalle pasa a pestañas (components/ficha); sin ella se pintan las tarjetas de siempre.
-  const compatibleModels = new Set(compatibilityRows.map((r) => `${r.marca}|${r.modelo}`)).size;
-  const fichaTabs = pestanasDeFicha(ficha, { compatibles: compatibleModels, universal: isUniversalPart });
-  const fichaSection = fichaTabs.length > 0 ? (
-    <FichaTabs
-      pestanas={fichaTabs}
-      ficha={ficha}
-      product={product}
-      descripcion={descriptionText}
-      descripcionLarga={descriptionIsLong}
-      descripcionAbierta={descriptionExpanded}
-      onAlternarDescripcion={() => setDescriptionExpanded((value) => !value)}
-      datosTienda={[
-        { nombre: 'Marca', valor: brandName },
-        { nombre: 'Condición', valor: condition },
-        { nombre: 'Categoría', valor: product.subcategoria ? `${category} · ${product.subcategoria}` : category },
-        ...(product.garantia ? [{ nombre: 'Garantía', valor: product.garantia }] : []),
-        ...(product.skuProveedor ? [{ nombre: 'SKU de la tienda', valor: product.skuProveedor }] : []),
-      ]}
-      filasCompatibles={compatibilityRows}
-      universal={isUniversalPart}
-      compatible={compatible}
-      vehiculoActivo={activeVehicle}
-      onVerificarPatente={() => setCompatibilityOpen(true)}
-    />
-  ) : null;
-
   return (
     <main className="product-marketplace-page">
       <div className="product-marketplace-container">
@@ -741,8 +698,6 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
           <ProductDetailMobile
             product={product}
             images={images}
-            photoLabel={gallery[activeImage]?.rotulo}
-            fichaSection={fichaSection}
             activeImage={activeImage}
             setActiveImage={setActiveImage}
             onChangeImage={changeImage}
@@ -761,7 +716,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             compatible={compatible}
             activeVehicle={activeVehicle}
             isUniversalPart={isUniversalPart}
-            compatibilityCount={fichaSection ? compatibleModels : compatibility.length}
+            compatibilityCount={compatibility.length}
             sellerRating={sellerRating}
             sellerReviews={sellerReviews}
             onOpenReviews={scrollToReviews}
@@ -822,8 +777,6 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
           <ProductDetailDesktop
             product={product}
             images={images}
-            photoLabel={gallery[activeImage]?.rotulo}
-            fichaSection={fichaSection}
             activeImage={activeImage}
             setActiveImage={setActiveImage}
             onChangeImage={changeImage}
@@ -844,7 +797,6 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
             activeVehicle={activeVehicle}
             isUniversalPart={isUniversalPart}
             compatibility={compatibility}
-            compatibilityCount={fichaSection ? compatibleModels : compatibility.length}
             sellerRating={sellerRating}
             sellerReviews={sellerReviews}
             hasSellerRating={hasSellerRating}

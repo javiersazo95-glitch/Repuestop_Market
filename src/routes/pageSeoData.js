@@ -48,8 +48,7 @@ export function productSeo(product) {
     description: recortar(product.descripcion || description, 500),
     ...(imagenes.length ? { image: imagenes } : {}),
     ...(product.skuProveedor ? { sku: product.skuProveedor } : {}),
-    // El MPN es el código del fabricante de la pieza; el número original queda de respaldo.
-    ...(product.codigoFabricante || product.referenciaOem ? { mpn: product.codigoFabricante || product.referenciaOem } : {}),
+    ...(product.referenciaOem ? { mpn: product.referenciaOem } : {}),
     ...(product.marca ? { brand: { '@type': 'Brand', name: product.marca } } : {}),
     ...(product.categoriaNombre ? { category: product.categoriaNombre } : {}),
   };
@@ -203,7 +202,6 @@ export function productFromDto(dto) {
     imagenes: Array.isArray(dto.imageUrls) ? dto.imageUrls : [],
     skuProveedor: dto.skuProveedor || '',
     referenciaOem: dto.referenciaOem || '',
-    codigoFabricante: dto.codigoFabricante || '',
     rating: numero(dto.productRating) ?? 0,
     reviewCount: numero(dto.productReviewCount) ?? 0,
   };

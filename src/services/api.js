@@ -1139,11 +1139,6 @@ export async function getProductQuestionsApi(productoId, { signal } = {}) {
   return fetchApi(`/inventario/productos/${productoId}/preguntas`, { method: 'GET', signal });
 }
 
-/** Ficha del repuesto por su código de fabricante (25-nov). 204 = no tiene: el detalle se ve como siempre. */
-export async function getProductFichaApi(productoId, { signal } = {}) {
-  return fetchApi(`/inventario/productos/${productoId}/ficha-tecnica`, { method: 'GET', signal });
-}
-
 export async function createProductQuestionApi(productoId, question) {
   return fetchApi(`/inventario/productos/${productoId}/preguntas`, {
     method: 'POST',
@@ -1682,17 +1677,6 @@ export async function createSellerInventoryProductApi(proveedorId, formData) {
     method: 'POST',
     body: formData,
   });
-}
-
-/**
- * La ficha del repuesto a partir del código del fabricante impreso en la caja (carga 1:1). Responde un estado:
- * RECONOCIDO (con la ficha), ELEGIR_MARCA, NO_ENCONTRADO o NO_DISPONIBLE. Con `condicion` usada solo sirven fichas verificadas.
- */
-export async function buscarCodigoFichaApi(proveedorId, codigo, marca, condicion) {
-  const query = new URLSearchParams({ codigo });
-  if (marca && String(marca).trim()) query.set('marca', String(marca).trim());
-  if (condicion) query.set('condicion', condicion);
-  return fetchApi(`/proveedores/${proveedorId}/inventario/codigos?${query.toString()}`, { method: 'GET' });
 }
 
 /** Edita un producto personalizado, manteniendo las imágenes actuales si no se adjuntan nuevas. */

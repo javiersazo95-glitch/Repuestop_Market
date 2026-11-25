@@ -80,8 +80,6 @@ export default function ProductDetailMobile({
   onSelectShippingMethod,
   shippingSectionRef,
   shippingFocused,
-  photoLabel = '',
-  fichaSection = null,
 }) {
   const [specsOpen, setSpecsOpen] = useState(true);
   const [paymentsOpen, setPaymentsOpen] = useState(false);
@@ -92,7 +90,7 @@ export default function ProductDetailMobile({
   const rating = Number(product.rating || 0);
   const reviewCount = Number(product.reviewCount || 0);
   const vendidos = Number(product.vendidos || 0);
-  const code = product.codigoFabricante || product.oemCode || product.sku || '';
+  const code = product.oemCode || product.sku || '';
   const visibleThumbs = images.slice(0, 4);
   const extraThumbs = images.length - visibleThumbs.length;
 
@@ -128,7 +126,6 @@ export default function ProductDetailMobile({
         </div>
         <div className="pdm-hero-photo">
           <ProductPhoto src={images[activeImage]} product={product} alt={product.titulo} iconSize={64} />
-          {photoLabel && <span className="pf-rotulo">{photoLabel}</span>}
           {images.length > 1 && <>
             <button className="pdm-image-arrow previous" type="button" onClick={() => onChangeImage(-1)} aria-label="Imagen anterior"><ChevronLeft /></button>
             <button className="pdm-image-arrow next" type="button" onClick={() => onChangeImage(1)} aria-label="Imagen siguiente"><ChevronRight /></button>
@@ -315,8 +312,7 @@ export default function ProductDetailMobile({
         </article>
       )}
 
-      {/* 5. Con ficha de su código de fabricante, pestañas; si no, acordeón + grilla de specs y descripción. */}
-      {fichaSection || (<>
+      {/* 5. Información del repuesto: acordeón + grilla de specs de 2 columnas. */}
       <article className="pdm-section">
         <button type="button" className="pdm-section-toggle" onClick={() => setSpecsOpen((value) => !value)} aria-expanded={specsOpen}>
           <h2 className="pdm-section-title"><Package size={16} /> Información del repuesto</h2>
@@ -349,7 +345,6 @@ export default function ProductDetailMobile({
           </button>
         )}
       </article>
-      </>)}
 
       {/* Pagos, garantías y reporte: no existen en la app pero no se pierden. */}
       {!isOwnProduct && (

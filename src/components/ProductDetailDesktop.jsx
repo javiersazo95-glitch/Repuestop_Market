@@ -59,7 +59,6 @@ export default function ProductDetailDesktop({
   activeVehicle,
   isUniversalPart,
   compatibility,
-  compatibilityCount = compatibility.length,
   sellerRating,
   sellerReviews,
   onOpenReviews,
@@ -84,13 +83,11 @@ export default function ProductDetailDesktop({
   shippingCardRef,
   shippingFocused,
   questions,
-  photoLabel = '',
-  fichaSection = null,
 }) {
   const hasThumbs = images.length > 1;
   const precioOriginal = Number(product.precioOriginal || 0);
   const descuento = Number(product.descuento || 0);
-  const code = product.codigoFabricante || product.oemCode || product.sku || '';
+  const code = product.oemCode || product.sku || '';
   const compatCount = compatibility.length;
   const compatLabel = compatCount > 4
     ? `Ver todas las compatibilidades (${compatCount})`
@@ -173,7 +170,6 @@ export default function ProductDetailDesktop({
               <ProductPhoto src={images[activeImage]} product={product} alt={product.titulo} iconSize={76} />
               <span className="pdd-photo-zoom"><Maximize2 size={14} /> Ampliar</span>
             </button>
-            {photoLabel && <span className="pf-rotulo">{photoLabel}</span>}
 
             {hasThumbs && (
               <>
@@ -184,7 +180,6 @@ export default function ProductDetailDesktop({
           </div>
         </article>
 
-        {fichaSection || (<>
         <section className="pdd-card pdd-section" aria-labelledby="pdd-specs-title">
           <h2 id="pdd-specs-title"><Package size={18} /> Ficha técnica</h2>
           <dl className="pdd-specs">
@@ -253,7 +248,6 @@ export default function ProductDetailDesktop({
             </button>
           )}
         </section>
-        </>)}
 
         {questions}
       </div>
@@ -297,7 +291,7 @@ export default function ProductDetailDesktop({
           </button>
         ) : (
           <button type="button" className="pdd-compat-pill" onClick={onOpenCompatibility}>
-            <Car size={15} /> Ver compatibilidad{compatibilityCount > 0 ? ` (${compatibilityCount})` : ''} <ChevronRight size={14} />
+            <Car size={15} /> Ver compatibilidad{compatCount > 0 ? ` (${compatCount})` : ''} <ChevronRight size={14} />
           </button>
         )}
 

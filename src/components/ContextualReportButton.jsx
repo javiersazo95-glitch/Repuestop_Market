@@ -81,8 +81,7 @@ const REASONS = {
   ],
 };
 
-// `motivos` reemplaza la lista del tipo (p. ej. la ficha técnica reporta un error con su propio motivo).
-export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTitulo, className, label, onRequireLogin, motivos }) {
+export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTitulo, className, label, onRequireLogin }) {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
@@ -91,7 +90,7 @@ export default function ContextualReportButton({ tipoObjeto, objetoId, objetoTit
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  const reasons = motivos || REASONS[tipoObjeto];
+  const reasons = REASONS[tipoObjeto];
   const isOpinion = tipoObjeto === 'OPINION_PRODUCTO' || tipoObjeto === 'OPINION_TIENDA' || tipoObjeto === 'TALLER_OPINION';
   const entityLabel = isOpinion
     ? 'opinión'
