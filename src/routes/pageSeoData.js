@@ -5,6 +5,7 @@
 import { SITE_URL } from './site.js';
 import { productPath, storePath } from './paths.js';
 import { compatibilidadLinea } from '../data/compatibilityLine.js';
+import { isGenericProductImage } from '../utils/genericImage.js';
 
 const DESCRIPCION_MAX = 155;
 
@@ -37,14 +38,15 @@ export function productSeo(product) {
   const oferta = conPrecio ? `${formatoCLP(product.precio)} en ${tienda}${ubicacion}` : `Cotiza con ${tienda}${ubicacion}`;
   const description = recortar(`${encabezado}. ${oferta}. Pago seguro en RepuesTop.`.replace(/\.\./g, '.'));
 
-  const imagenes = (product.imagenes || []).map(absoluta).filter(Boolean);
+  // Solo fotos propias: la SPA ya quita la lamina "SIN FOTO" y la funcion de Vercel la recibe.
+  const imagenes = (product.imagenes || []).filter((u) => !isGenericProductImage(u)).map(absoluta).filter(Boolean);
   const productoLd = {
     '@type': 'Product',
     '@id': `${url}#producto`,
     name: product.titulo,
     url,
     description: recortar(product.descripcion || description, 500),
-    ...(imagenes.length ? { image: imagenes } : {}),
+    image: imagenes,
     ...(product.skuProveedor ? { sku: product.skuProveedor } : {}),
     ...(product.referenciaOem ? { mpn: product.referenciaOem } : {}),
     ...(product.marca ? { brand: { '@type': 'Brand', name: product.marca } } : {}),
@@ -73,9 +75,10 @@ export function productSeo(product) {
   }
 
   // Google exige "offers", "review" o "aggregateRating" en todo Product (error critico en Search
-  // Console, 24-nov: los repuestos "solo cotizacion" de una tienda). Sin precio ni opiniones la
-  // ficha se indexa igual, pero sin declararse como Product.
-  const productoValido = Boolean(productoLd.offers || productoLd.aggregateRating);
+  // Console, 24-nov: los repuestos "solo cotizacion" de una tienda) e "image" cuando tiene
+  // "offers" (26-nov: repuestos sin foto propia). Si falta algo, la ficha se indexa igual, pero
+  // sin declararse como Product.
+  const productoValido = Boolean(imagenes.length && (productoLd.offers || productoLd.aggregateRating));
 
   return {
     description,
