@@ -13,6 +13,7 @@ import { isNoReturnCategory } from '../utils/noReturnProducts';
 import { APPOINTMENT_STATUSES } from '../data/talleresData';
 import { resolveMediaUrl, toMediaPath } from './api';
 import { compatibilidadLinea } from '../data/compatibilityLine.js';
+import { isGenericProductImage } from '../utils/genericImage.js';
 
 /**
  * El backend no guarda filas de imagen para los productos sin foto: al leerlos les pone una
@@ -21,10 +22,9 @@ import { compatibilidadLinea } from '../data/compatibilityLine.js';
  * cual y el catalogo quedaba lleno de laminas grises, tapando el respaldo que ya existia: la
  * foto referencial de la categoria (`CATEGORY_IMAGE_BY_ID`).
  *
- * Aca se descarta para que ese respaldo vuelva a entrar. Se compara por nombre de archivo y
- * no por la URL completa porque el bucket cambia entre ambientes.
+ * Aca se descarta para que ese respaldo vuelva a entrar (la comparacion vive en
+ * utils/genericImage.js, que tambien usa el SEO de las fichas).
  */
-const GENERIC_IMAGE_FILE = 'imagen-generica';
 
 /**
  * Portada de una tienda que aun no elige una de sus portadas oficiales: la plantilla "Fachada profesional"
@@ -32,9 +32,7 @@ const GENERIC_IMAGE_FILE = 'imagen-generica';
  */
 export const DEFAULT_STORE_COVER = 'https://pub-650d4cc5c6be42bc9a81e878e6042ea6.r2.dev/Plantillas/Portadas_Tienda/fachada-profesional.png';
 
-export function isGenericProductImage(url) {
-  return typeof url === 'string' && url.toLowerCase().includes(GENERIC_IMAGE_FILE);
-}
+export { isGenericProductImage };
 
 /** Fotos reales del producto: sin la generica y sin vacios. */
 function realProductImages(urls) {
