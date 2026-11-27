@@ -336,6 +336,9 @@ export const POPULAR_CATEGORIES = [
  * Piezas que el vendedor nombra distinto a la taxonomia. Todas apuntan a imagenes que ya
  * existen en `/category-parts/`; no se agrega ningun archivo nuevo.
  */
+const STOP_WORDS = new Set(['de', 'del', 'la', 'el', 'los', 'las', 'y']);
+const SIDE_WORDS = new Set(['exterior', 'interior']);
+
 const PART_IMAGE_ALIASES = {
   'Kit de Distribucion': '/category-parts/distribution-subcategories/cadenas-distribucion.png',
   'Kit de Embrague': '/category-parts/clutch-subcategories/kit-embragues.png',
@@ -347,45 +350,42 @@ const PART_IMAGE_ALIASES = {
   'Manilla Exterior': '/category-parts/body-subcategories/manillas.png',
 };
 
-const PART_IMAGE_BY_SUBCATEGORY = (() => {
+const PART_IMAGE_ENTRIES = (() => {
   const index = new Map();
   // HEADER_CATEGORIES_FALLBACK es la fuente cruda: ahi viven las ~25 familias con sus
   // `subcategoryImages`, incluidas embrague, distribucion y correas.
   HEADER_CATEGORIES_FALLBACK.forEach((category) => {
     Object.entries(category.subcategoryImages || {}).forEach(([nombre, image]) => {
       const key = normalizePartKey(nombre);
-      if (key && !index.has(key)) index.set(key, image);
+      if (key && !index.has(key)) index.set(key, { image, category: normalizePartKey(category.nombre) });
     });
   });
   Object.entries(PART_IMAGE_ALIASES).forEach(([nombre, image]) => {
     const key = normalizePartKey(nombre);
-    if (key) index.set(key, image);
+    if (key) index.set(key, { image, category: null });
   });
-  // De mas especifico a menos: "filtro de aceite" tiene que ganarle a "aceite" cuando el
-  // titulo dice las dos cosas.
-  return [...index.entries()].sort((a, b) => b[0].length - a[0].length);
+  return [...index.entries()].map(([key, entry]) => ({ key, words: words(key), ...entry }));
 })();
 
-/** minusculas, sin acentos y sin plurales simples, para comparar titulos con subcategorias. */
+/** minusculas, sin acentos, para comparar titulos con subcategorias. */
 export function normalizePartKey(value) {
   return String(value || '')
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-/** "amortiguadores" y "amortiguador" tienen que calzar igual. */
-function singular(word) {
-  if (word.length > 4 && word.endsWith('es')) return word.slice(0, -2);
-  if (word.length > 3 && word.endsWith('s')) return word.slice(0, -1);
-  return word;
+/** Palabras con significado: "Filtro de Aceite" y "Filtro aceite" son la misma pieza. */
+function words(value) {
+  return normalizePartKey(value).split(' ').filter((word) => word && !STOP_WORDS.has(word));
 }
 
-function tokens(value) {
-  return normalizePartKey(value).split(' ').filter(Boolean).map(singular);
+/** "amortiguadores" y "amortiguador", "buje" y "bujes", tienen que calzar igual. */
+function sameWord(a, b) {
+  return a === b || `${a}s` === b || `${b}s` === a || `${a}es` === b || `${b}es` === a;
 }
 
 /**
@@ -396,37 +396,51 @@ function tokens(value) {
  * como un error del filtro, no como "esta tienda no subio foto". Aca se busca la pieza
  * concreta dentro de la libreria que ya existe (`/category-parts/`).
  *
- * Devuelve `null` cuando no hay nada suficientemente parecido; el llamador decide el
- * respaldo. El TITULO manda sobre la subcategoria declarada por el vendedor: es lo que lee
- * el comprador en la tarjeta, y la subcategoria a veces viene mal cargada (hay un "Filtro de
- * aceite" clasificado en "Espejos").
+ * En castellano la pieza se nombra primero ("Correa alternador", "Empaquetadura culata"), asi
+ * que el orden es:
+ *   1. la pieza con la que EMPIEZA el titulo (manda aunque la subcategoria venga mal cargada:
+ *      hay un "Filtro de aceite" clasificado en "Espejos"). Si es una sola palabra, tiene que
+ *      ser de la categoria declarada: un "Condensador distribuidor" no es el del aire.
+ *   2. la subcategoria declarada.
+ *   3. otra pieza nombrada en el titulo, solo de la misma categoria.
+ * "Exterior" e "interior" dicen de que lado va la pieza, no cual es: no cuentan en el titulo.
+ *
+ * Devuelve `null` cuando no hay nada suficientemente parecido; el llamador decide el respaldo.
+ * `remoteImages` son pares [nombre normalizado, url] subidos en el mantenedor; ganan a los locales.
  */
-export function getPartImage(...candidates) {
-  for (const candidate of candidates) {
-    const texto = normalizePartKey(candidate);
-    if (!texto) continue;
+export function getPartImage(title, subcategory, categoryName, remoteImages = []) {
+  const overrides = new Map(remoteImages);
+  const entries = [
+    ...remoteImages
+      .filter(([key]) => !PART_IMAGE_ENTRIES.some((entry) => entry.key === key))
+      .map(([key, image]) => ({ key, words: words(key), image, category: null })),
+    ...PART_IMAGE_ENTRIES.map((entry) => ({ ...entry, image: overrides.get(entry.key) || entry.image })),
+  ]
+    .filter((entry) => entry.words.length)
+    // De mas especifico a menos: "filtro de aceite" le gana a "aceite".
+    .sort((a, b) => b.words.length - a.words.length || b.key.length - a.key.length);
 
-    // 1. Coincidencia directa: el nombre de la subcategoria aparece en el texto.
-    const exacta = PART_IMAGE_BY_SUBCATEGORY.find(([key]) => texto.includes(key));
-    if (exacta) return exacta[1];
+  const titleWords = words(title);
+  const category = normalizePartKey(categoryName);
+  const sameCategory = (entry) => !category || !entry.category || entry.category === category;
+  const inTitle = (entry) => !(entry.words.length === 1 && SIDE_WORDS.has(entry.words[0]));
 
-    // 2. Por palabras, tolerando plurales ("Amortiguador de Maletero" -> "Amortiguadores").
-    const palabras = new Set(tokens(candidate));
-    let mejor = null;
-    let mejorPuntaje = 0;
-    PART_IMAGE_BY_SUBCATEGORY.forEach(([key, image]) => {
-      const claves = tokens(key);
-      const aciertos = claves.filter((palabra) => palabras.has(palabra)).length;
-      // Se exige acertar TODAS las palabras de la subcategoria: con una sola coincidencia
-      // "Liquido de Freno" se llevaria la foto de "Piola Freno de Mano".
-      if (aciertos === claves.length && aciertos > mejorPuntaje) {
-        mejorPuntaje = aciertos;
-        mejor = image;
-      }
-    });
-    if (mejor) return mejor;
+  const head = entries.find((entry) => inTitle(entry)
+    && entry.words.every((word, i) => titleWords[i] && sameWord(titleWords[i], word))
+    && (entry.words.length > 1 || sameCategory(entry)));
+  if (head) return head.image;
+
+  const subWords = words(subcategory);
+  if (subWords.length) {
+    const declared = entries.filter((entry) => entry.words.length === subWords.length
+      && entry.words.every((word, i) => sameWord(subWords[i], word)));
+    const match = declared.find(sameCategory) || declared[0];
+    if (match) return match.image;
   }
-  return null;
+
+  const mention = entries.find((entry) => inTitle(entry) && sameCategory(entry)
+    && entry.words.every((word) => titleWords.some((other) => sameWord(other, word))));
+  return mention ? mention.image : null;
 }
 
 export function getCategoryVisuals(categoryOrName) {
