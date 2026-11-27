@@ -212,19 +212,8 @@ export function useCategories() {
  * Foto de LA PIEZA que nombra el titulo (ver `getPartImage` en categoriesFallback.js). Primero
  * busca entre las fotos de subcategoria subidas al mantenedor y despues en la libreria local.
  */
-export function getPartImage(...candidates) {
-  const remoteImages = getCategories().remoteSubcategoryImages;
-  if (!remoteImages.length) return getFallbackPartImage(...candidates);
-  // Candidato por candidato, como el original: el TITULO manda sobre la subcategoria declarada.
-  for (const candidate of candidates) {
-    const text = normalizePartKey(candidate);
-    if (!text) continue;
-    const match = remoteImages.find(([key]) => key && text.includes(key));
-    if (match) return match[1];
-    const local = getFallbackPartImage(candidate);
-    if (local) return local;
-  }
-  return null;
+export function getPartImage(title, subcategory, categoryName) {
+  return getFallbackPartImage(title, subcategory, categoryName, getCategories().remoteSubcategoryImages);
 }
 
 /**
