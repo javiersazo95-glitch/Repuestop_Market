@@ -303,6 +303,8 @@ export function adaptProduct(dto) {
     vendedorReviewCount: toNumber(dto.sellerReviewCount) ?? 0,
     horarioVendedor: dto.sellerHours || '',
     stock: toNumber(dto.stock) ?? 0,
+    // Sin stock pero la tienda lo encarga: «Consultar por stock» en vez de Comprar o Cotizar (28-nov).
+    consultarStock: Boolean(dto.consultarStock),
     condicion: dto.condicion || '',
     garantia: typeof dto.garantia === 'string' ? dto.garantia.trim() : '',
     imagen: imagenes[0] || null,
@@ -565,6 +567,7 @@ export function adaptCompatibleOffer(spare, offer) {
     vendedorReviewCount: toNumber(offer.ratingCount) ?? 0,
     horarioVendedor: offer.sellerHours || '',
     stock: toNumber(offer.stock) ?? 0,
+    consultarStock: Boolean(offer.consultarStock),
     condicion: offer.condicion || '',
     imagen: imagenes[0] || null,
     imagenes,

@@ -188,7 +188,7 @@ export default function OrderCard({
 
   const orderIdShort = orderDisplayCode(order, isSeller ? 'seller' : 'buyer');
   const orderDate = formatOrderDate(order.createdAt || order.fecha);
-  const orderSource = order.origen === 'SUBASTA' ? 'Búsqueda de repuestos' : order.source === 'quote' || order.origen === 'COTIZACION' ? 'Cotización' : 'Carrito';
+  const orderSource = order.origen === 'SUBASTA' ? 'Búsqueda de repuestos' : order.encargo ? 'Reserva por encargo' : order.source === 'quote' || order.origen === 'COTIZACION' ? 'Cotización' : 'Carrito';
 
   const buyerName = order.compradorNombre || order.buyerName || order.usuarioNombre || 'Cliente sin nombre';
   const buyerAvatar = resolveMediaUrl(order.compradorFotoPerfil || order.compradorAvatarUrl || order.buyerAvatarUrl || order.buyerAvatar || null);
@@ -814,7 +814,9 @@ export default function OrderCard({
       <ConfirmDialog
         isOpen={confirmCancel}
         title="¿Cancelar este pedido?"
-        message="Las unidades vuelven al stock y el pedido queda cancelado. Esta acción no se puede deshacer; si aún quieres el repuesto tendrás que comprarlo de nuevo."
+        message={order.encargo
+          ? 'Se cancela la reserva por encargo. Esta acción no se puede deshacer; si aún quieres el repuesto tendrás que consultarlo de nuevo.'
+          : 'Las unidades vuelven al stock y el pedido queda cancelado. Esta acción no se puede deshacer; si aún quieres el repuesto tendrás que comprarlo de nuevo.'}
         confirmLabel="Sí, cancelar pedido"
         cancelLabel="No, mantenerlo"
         isBusy={isCancelling}

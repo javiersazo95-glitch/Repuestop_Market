@@ -1054,6 +1054,10 @@ export default function ProfileDashboard({ onBackToStore, initialTab = 'resumen'
     const notificationText = [
       `Cotización enviada por ${formatQuoteCLP(total)}${shipping > 0 ? ` (incluye despacho ${formatQuoteCLP(shipping)})` : ''}.`,
       method ? `Método de envío: ${method}.` : '',
+      // 28-nov: cotización por encargo (consulta por stock): pagarla reserva la pieza.
+      Number(quoteForTotal?.tiempoEncargoDias) > 0
+        ? `Por encargo: llega en ${quoteForTotal.tiempoEncargoDias} ${Number(quoteForTotal.tiempoEncargoDias) === 1 ? 'día' : 'días'}; al pagar reservas la pieza y la tienda la manda a pedir.`
+        : '',
     ].filter(Boolean).join(' ');
     const sentMessage = await sendConversationMessageApi(quoteId, notificationText).catch(() => null);
     queryClient.invalidateQueries({ queryKey: qk.conversations(isSeller ? effectiveSellerId : effectiveUserId, isSeller) });

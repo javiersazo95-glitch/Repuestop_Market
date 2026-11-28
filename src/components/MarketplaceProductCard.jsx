@@ -160,8 +160,8 @@ export default function MarketplaceProductCard({ product, onView, fallbackCity, 
             </span>
           )}
           {stockKnown && (
-            <span className={`market-product-stock ${stock <= 0 ? 'out' : stock <= 5 ? 'low' : ''}`}>
-              <PackageCheck size={12} /> {stock > 0 ? `${stock} en stock` : 'Sin stock'}
+            <span className={`market-product-stock ${stock <= 0 ? (product.consultarStock ? 'encargo' : 'out') : stock <= 5 ? 'low' : ''}`}>
+              <PackageCheck size={12} /> {stock > 0 ? `${stock} en stock` : product.consultarStock ? 'Por encargo' : 'Sin stock'}
             </span>
           )}
         </div>

@@ -101,3 +101,37 @@ export function inquiryVehicleIds(conversation) {
     hasPlate: Boolean(String(solicitud.patente || '').trim()),
   };
 }
+
+/**
+ * Consulta por stock (28-nov): cotización de un repuesto sin stock que la tienda encarga. Sigue siendo una cotización
+ * (`tipo` cotizacion) con `motivo` STOCK; la tienda puede cotizar por encargo con el tiempo en que llega la pieza.
+ */
+export const isStockQueryConversation = (conversation) => String(conversation?.motivo || '').toUpperCase() === 'STOCK';
+
+/** "Llega en 10 días" de una cotización por encargo; null si la tienda la vende con su stock. */
+export function encargoLabel(cotizacion) {
+  const dias = Number(cotizacion?.tiempoEncargoDias);
+  if (!Number.isFinite(dias) || dias <= 0) return null;
+  return `Por encargo · llega en ${dias} ${dias === 1 ? 'día' : 'días'}`;
+}
+
+/** "12 de diciembre": la fecha estimada de un encargo, en horario de Chile; '' si no hay fecha. */
+export function encargoFecha(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleDateString('es-CL', { day: 'numeric', month: 'long', timeZone: 'America/Santiago' });
+}
+
+const SOLICITUD_HEADER = /^Solicitud de cotizaci[oó]n( actualizada)?/i;
+
+/** Si el mensaje es la solicitud en lista que publica el backend ("Solicitud de cotización…"). */
+export const isQuoteRequestMessage = (texto) => SOLICITUD_HEADER.test(String(texto || '').trim());
+
+/**
+ * En una consulta por stock, la solicitud se muestra titulada «Consulta por stock». Solo cambia lo que se ve: el texto
+ * guardado sigue empezando con "Solicitud de cotización", que es lo que reconocen la app y el Market.
+ */
+export function stockRequestText(texto) {
+  return String(texto || '').trim().replace(SOLICITUD_HEADER, (_, actualizada) => (actualizada ? 'Consulta por stock actualizada' : 'Consulta por stock'));
+}

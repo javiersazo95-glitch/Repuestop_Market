@@ -38,6 +38,8 @@ import VehicleSheet from './VehicleSheet';
 import { buyerCompatibilityText } from '../utils/buyerCompatibility';
 import ShippingIcon from './ShippingIcon';
 import { conditionLabel, isPreOwned } from '../data/productConditions';
+import { encargoFecha } from '../utils/inquiry';
+import EncargoTimeNotice from './EncargoTimeNotice';
 import '../styles/product-condition.css';
 
 /**
@@ -371,8 +373,32 @@ function formatDate(value) {
 
 // Los 5 hitos y los textos por rol de la app (`mobile/components/orders/OrderTimeline.tsx`). `PENDIENTE` cubre PAGADO y
 // PENDIENTE; `ENTREGADO` es la recepción confirmada y `FINALIZADO` el cierre con fondos liberados.
-function buildTimelineSteps(isStorePickup, isSeller) {
+function buildTimelineSteps(isStorePickup, isSeller, encargo = null) {
   const pick = (buyer, seller) => (isSeller ? seller : buyer);
+  // 28-nov: reserva por encargo (consulta por stock). Mismos 5 pasos, contados para que el comprador sepa que
+  // reservó la pieza y que la tienda la manda a pedir.
+  if (encargo) {
+    const llega = encargo.fecha ? `Llega aprox. el ${encargo.fecha}.` : `Llega en aprox. ${encargo.dias} días desde el pago.`;
+    return [
+      { key: 'PENDIENTE', icon: CreditCard,
+        label: pick('Reservaste la pieza', 'Reserva pagada'),
+        description: pick('Tu pago quedó como reserva. La tienda va a mandar a pedir la pieza a su proveedor.', 'El comprador pagó la reserva. Manda a pedir la pieza y confirma el pedido.') },
+      { key: 'EN_PREPARACION', icon: Wrench,
+        label: pick('Pieza encargada', 'Pieza encargada'),
+        description: pick(`La tienda ya mandó a pedir tu repuesto. ${llega}`, `Despáchala o déjala lista para retiro cuando llegue. ${llega}`) },
+      { key: 'ENVIADO', icon: isStorePickup ? Store : Truck,
+        label: isStorePickup ? pick('Listo para retirar', 'Listo para entrega') : pick('En camino', 'Enviado'),
+        description: isStorePickup
+          ? pick('Tu repuesto llegó a la tienda. Dicta tu código de retiro al retirarlo.', 'El cliente ya puede retirar en tu local. Pídele su código de retiro al entregarlo.')
+          : 'Tu repuesto llegó y está en tránsito al destino.' },
+      { key: 'ENTREGADO', icon: CheckCircle2,
+        label: pick('Entregado', 'Recibido por comprador'),
+        description: pick('Confirmaste la recepción del repuesto.', 'El cliente confirmó la recepción del pedido.') },
+      { key: 'FINALIZADO', icon: PackageCheck,
+        label: pick('Compra finalizada', 'Venta finalizada'),
+        description: pick('¡Gracias por comprar en RepuesTop!', 'Fondos liberados para su liquidación.') },
+    ];
+  }
   return [
     { key: 'PENDIENTE', icon: CreditCard,
       label: pick('Pago confirmado', 'Venta cobrada'),
@@ -394,8 +420,8 @@ function buildTimelineSteps(isStorePickup, isSeller) {
   ];
 }
 
-function timelineStepsFor(isStorePickup, isSeller) {
-  return buildTimelineSteps(isStorePickup, isSeller);
+function timelineStepsFor(isStorePickup, isSeller, encargo = null) {
+  return buildTimelineSteps(isStorePickup, isSeller, encargo);
 }
 
 // Mientras hay un caso postventa VIVO (reclamo abierto o mediacion en curso) la barra cuenta ese
@@ -631,6 +657,9 @@ export default function OrderDetailView({
     if (isSeller || !onCancelBuyerSubOrder) return false;
     if (!Number.isFinite(Number(seller?.id))) return false;
     const estado = String(seller.subOrder?.estado || normStatus || '').toUpperCase();
+    // Reserva por encargo: con la pieza ya pedida, solo si no llegó en el plazo más el margen (el backend lo exige).
+    if (order.encargo && estado === 'EN_PREPARACION' && order.encargoCancelableDesde
+      && Date.now() < new Date(order.encargoCancelableDesde).getTime()) return false;
     return CANCELLABLE_BY_BUYER.includes(estado);
   };
   // Confirmar la recepcion y finalizar, POR TIENDA. Antes el comprador cerraba el pedido
@@ -858,7 +887,9 @@ export default function OrderDetailView({
   // O60: con retiro en tienda el paso ENVIADO se llama y se explica como retiro.
   const timelineSteps = caseIsLive
     ? CLAIM_TIMELINE_STEPS[isSeller ? 'seller' : 'buyer']
-    : timelineStepsFor(isStorePickup, isSeller);
+    : timelineStepsFor(isStorePickup, isSeller, order.encargo
+      ? { dias: order.encargoDias, fecha: encargoFecha(order.encargoFechaEstimada) }
+      : null);
   const visibleTimelineStep = timelineSteps.find((step) => step.key === selectedTimelineStep)
     || timelineSteps[timelineIndex];
   const VisibleTimelineIcon = visibleTimelineStep.icon;
@@ -1533,7 +1564,7 @@ export default function OrderDetailView({
                   para que el numero de 10 digitos no parta el titulo en tres. */}
               <h2><span className="order-modal-title-label">{isSeller ? "Detalles de la Venta" : "Detalles del Pedido"}</span> <span className="order-modal-title-number">{orderIdShort}</span></h2>
               <span className="order-modal-subtitle">
-                {formatDate(order.createdAt || order.fecha)} · {order.origen === 'SUBASTA' ? 'Encargo de repuestos' : order.source === 'quote' || order.origen === 'COTIZACION' ? 'Cotización' : 'Carrito'}
+                {formatDate(order.createdAt || order.fecha)} · {order.origen === 'SUBASTA' ? 'Encargo de repuestos' : order.encargo ? 'Reserva por encargo' : order.source === 'quote' || order.origen === 'COTIZACION' ? 'Cotización' : 'Carrito'}
                 {/* O72: el numero de arriba ya es el publico, el mismo que le pide soporte; no se
                     repite como "Código". */}
               </span>
@@ -1695,6 +1726,17 @@ export default function OrderDetailView({
                   : visibleTimelineStep.description}</span>
               )}
             </div>
+            {/* 28-nov: reserva por encargo. Tiempo destacado, qué significa y qué pasa si no se cumple. */}
+            {order.encargo && !['CANCELADO', 'ENTREGADO', 'FINALIZADO'].includes(normStatus) ? (
+              <EncargoTimeNotice
+                dias={order.encargoDias}
+                fechaEstimada={order.encargoFechaEstimada}
+                cancelableDesde={order.encargoCancelableDesde}
+                mode={isSeller ? 'seller' : 'buyer'}
+                stage="order"
+                estado={normStatus}
+              />
+            ) : null}
             <button type="button" className="order-timeline-expand" aria-expanded={timelineExpanded} onClick={() => setTimelineExpanded((value) => !value)}>
               {timelineExpanded ? 'Ocultar historial' : 'Ver historial de estados'}
               <ChevronDown size={14} className={timelineExpanded ? 'is-open' : ''} />
@@ -3151,7 +3193,10 @@ export default function OrderDetailView({
           title={showSubOrders ? `¿Cancelar tu compra a ${storeToCancel?.name || 'esta tienda'}?` : '¿Cancelar este pedido?'}
           message={(showSubOrders
             ? `Se cancelan solo los repuestos de ${storeToCancel?.name || 'esta tienda'} y se te devuelve lo que pagaste por ellos${isStorePickup ? '' : ', incluido su envío'}. El resto del pedido sigue su curso. No se puede deshacer.`
-            : 'Las unidades vuelven al stock y se te devuelve lo que pagaste. Esta acción no se puede deshacer; si aún quieres el repuesto tendrás que comprarlo de nuevo.')
+            : order.encargo
+              // 28-nov: reserva por encargo. No descontó stock, así que no hay unidades que vuelvan.
+              ? 'Se cancela tu reserva por encargo y se te devuelve lo que pagaste. Esta acción no se puede deshacer; si aún quieres el repuesto tendrás que consultarlo de nuevo.'
+              : 'Las unidades vuelven al stock y se te devuelve lo que pagaste. Esta acción no se puede deshacer; si aún quieres el repuesto tendrás que comprarlo de nuevo.')
             // O57 (pruebas de lanzamiento, 25-sep): la devolucion por Flow exige que el comprador
             // acepte el correo de Flow. Sin pago (PENDIENTE) no hay nada que devolver.
             + (String(storeToCancel?.subOrder?.estado || normStatus || '').toUpperCase() !== 'PENDIENTE'

@@ -4,7 +4,7 @@ import {
   AlertTriangle, ArrowLeft, BadgeCheck, BadgeDollarSign, CalendarDays, CalendarClock, Car,
   CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, ClipboardList, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
   Headphones, Image as ImageIcon, Info, Loader2, Lock, Maximize2, MessageSquare, Package, Paperclip,
-  PauseCircle, Pencil, Send, Settings2, Share2, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, Undo2, X, PackageCheck
+  PauseCircle, Pencil, Send, Settings2, Share2, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, Undo2, X, PackageCheck, PackageSearch
 } from 'lucide-react';
 import RepuesTopLogo from './RepuesTopLogo';
 import ChatImagePreview from './ChatImagePreview';
@@ -33,6 +33,8 @@ import { buildQuotePdfBlob, quoteDocumentFilename } from '../utils/quoteDocument
 import { checkoutPath, helpCategoryPath, productPath, profilePurchasePath, storePath } from '../routes/paths';
 import { parseShippingMethods, resolveShippingService, shippingMethodCost } from '../data/shippingMethods';
 import { conditionLabel } from '../data/productConditions';
+import { encargoLabel, isQuoteRequestMessage, isStockQueryConversation, stockRequestText } from '../utils/inquiry';
+import EncargoTimeNotice from './EncargoTimeNotice';
 
 // Tope del mensaje del chat. Una cotizacion se negocia con datos concretos -cantidad,
 // estado, despacho, precio-; 500 caracteres son un parrafo completo y obligan a ser
@@ -182,6 +184,10 @@ export default function QuoteDetailModal({
   const [unitPrice, setUnitPrice] = useState('');
   const [discount, setDiscount] = useState('');
   const [availability, setAvailability] = useState('Stock disponible');
+  // 28-nov: en una consulta por stock la tienda cotiza con su stock o por encargo, con los días en que llega.
+  const stockQuery = isStockQueryConversation(quote);
+  const [encargo, setEncargo] = useState(true);
+  const [encargoDias, setEncargoDias] = useState('');
   const [deliveryTerms, setDeliveryTerms] = useState('');
   const [deliveryCost, setDeliveryCost] = useState('');
   const [warranty, setWarranty] = useState('3 meses');
@@ -211,6 +217,8 @@ export default function QuoteDetailModal({
     setUnitPrice(String(current?.precioUnitario ?? current?.precio ?? ''));
     setDiscount(String(current?.descuento ?? ''));
     setAvailability(current?.disponibilidad || 'Stock disponible');
+    setEncargo(current ? Boolean(current.tiempoEncargoDias) : true);
+    setEncargoDias(current?.tiempoEncargoDias ? String(current.tiempoEncargoDias) : '');
     setWarranty(current?.garantia || '3 meses');
     setValidity(current?.vigencia || 'Valida por 24 horas');
     setResponseNotes(current?.notas || '');
@@ -695,6 +703,13 @@ export default function QuoteDetailModal({
         setIsSending(false);
         return;
       }
+      const dias = Number.parseInt(encargoDias, 10);
+      const porEncargo = stockQuery && encargo;
+      if (porEncargo && (!Number.isFinite(dias) || dias < 1 || dias > 120)) {
+        setQuoteEditorError('Indica en cuántos días llega la pieza (entre 1 y 120).');
+        setIsSending(false);
+        return;
+      }
       // El backend fija el metodo y las unidades desde la solicitud y agrega la tarifa de la
       // tienda al envio dentro de la comuna ("(costo: $X)").
       const normalizedDelivery = deliveryTerms;
@@ -703,6 +718,7 @@ export default function QuoteDetailModal({
         condicionesEntrega: normalizedDelivery, precioUnitario: Number(unitPrice),
         descuento: Number(discount) || 0, precioFinal: finalPrice,
         garantia: warranty, vigencia: validity, notas: responseNotes,
+        tiempoEncargoDias: porEncargo ? dias : null,
       };
       const saved = await onSendQuoteResponse?.(quote.id, payload);
       setLocalQuote(saved || { ...payload, id: activeQuote?.id || `local-${quote.id}`, createdAt: activeQuote?.createdAt || new Date().toISOString() });
@@ -802,9 +818,9 @@ export default function QuoteDetailModal({
           </section>
         </aside>
 
-        <main className="quote-ws-chat">
+        <main className={`quote-ws-chat${stockQuery ? ' is-stock-query' : ''}`}>
           <header className="quote-ws-chat-header">
-            <div className="quote-ws-person"><span>{participantPhoto ? <img src={participantPhoto} alt={participantName} /> : initials(participantName)}</span><div><strong>{participantName}</strong><small>{mode === 'buyer' ? 'Vendedor verificado' : 'Comprador'} <i /> En línea</small></div></div>
+            <div className="quote-ws-person"><span>{participantPhoto ? <img src={participantPhoto} alt={participantName} /> : initials(participantName)}</span><div>{stockQuery && <span className="stock-query-tag">Consulta de stock{encargoLabel(activeQuote) ? ` · ${encargoLabel(activeQuote).replace('Por encargo · ', '')}` : ''}</span>}<strong>{participantName}</strong><small>{mode === 'buyer' ? 'Vendedor verificado' : 'Comprador'} <i /> En línea</small></div></div>
             <div className="quote-ws-chat-actions">
               {(() => {
                 const isBuyerPayReady = mode === 'buyer' && Boolean(activeQuote) && !paused;
@@ -863,6 +879,26 @@ export default function QuoteDetailModal({
               suelto caia en la fila de los mensajes, que se encoge a 0, y su texto quedaba debajo
               de las burbujas. */}
           <div className="quote-ws-notices">
+            {/* 28-nov: una consulta por stock se distingue desde el chat: franja propia arriba y la solicitud en ámbar. */}
+            {stockQuery && (
+              <div className="quote-ws-stock-banner" data-testid="stock-query-banner">
+                <PackageSearch size={22} />
+                <div>
+                  <strong>Consulta por stock{encargoLabel(activeQuote) ? ` · ${encargoLabel(activeQuote).replace('Por encargo · ', '')}` : ''}</strong>
+                  <span>{mode === 'buyer'
+                    ? (activeQuote?.tiempoEncargoDias
+                      ? 'La tienda puede encargar este repuesto. Al pagar la cotización reservas la pieza y la tienda la manda a pedir.'
+                      : 'Preguntaste si la tienda puede encargar este repuesto, que hoy no tiene stock. Te responderá aquí con una cotización y el tiempo que tarda en llegar.')
+                    : (activeQuote?.tiempoEncargoDias
+                      ? 'Cotizaste por encargo. Cuando el comprador pague, la pieza queda reservada: mándala a pedir y confirma el pedido.'
+                      : 'El comprador pregunta si puedes encargar este repuesto, que hoy no tiene stock. Respóndele y cotiza «Por encargo» con los días en que llega.')}</span>
+                  {/* El tiempo de encargo, destacado y explicado: qué significa y qué pasa si no se cumple. */}
+                  {activeQuote?.tiempoEncargoDias && !purchased ? (
+                    <EncargoTimeNotice dias={activeQuote.tiempoEncargoDias} margen={activeQuote.encargoMargenDias} mode={mode} stage="quote" />
+                  ) : null}
+                </div>
+              </div>
+            )}
             <div className="quote-ws-private"><Info size={19} /><div><strong>Este chat es privado y está asociado a la cotización #{quoteIdShort}.</strong><span>Aquí podrás resolver dudas, solicitar ajustes o confirmar tu compra. El soporte, los reclamos y la mediación de RepuesTop solo cubren compras pagadas dentro de RepuesTop. No pagues ni coordines la compra por fuera.</span></div></div>
 
             {paused && (
@@ -902,7 +938,8 @@ export default function QuoteDetailModal({
               const mine = mode === 'buyer' ? isBuyer : !isBuyer;
               const bubblePhoto = mine ? myPhoto : participantPhoto;
               const bubbleInitials = mine ? initials(user?.userName || user?.nombre) : initials(participantName);
-              return <React.Fragment key={message.id}>{index === documentBubbleIndex && documentBubble}<div className={`quote-ws-message-row ${mine ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{bubblePhoto ? <img src={bubblePhoto} alt="" referrerPolicy="no-referrer" /> : bubbleInitials}</span><div className="quote-ws-bubble">{message.imagenUrl && <button type="button" className="quote-ws-image-open" onClick={() => setViewerImage(resolveMediaUrl(message.imagenUrl))} title="Ver imagen completa"><img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto" /><span><Maximize2 size={15} /></span></button>}{message.texto && <p>{message.texto}</p>}<small>{formatDate(message.createdAt)} {mine ? '✓✓' : ''}</small></div></div></React.Fragment>;
+              const stockRequest = stockQuery && isQuoteRequestMessage(message.texto);
+              return <React.Fragment key={message.id}>{index === documentBubbleIndex && documentBubble}<div className={`quote-ws-message-row ${mine ? 'mine' : ''}`}><span className="quote-ws-message-avatar">{bubblePhoto ? <img src={bubblePhoto} alt="" referrerPolicy="no-referrer" /> : bubbleInitials}</span><div className={`quote-ws-bubble${stockRequest ? ' is-stock-request' : ''}`}>{message.imagenUrl && <button type="button" className="quote-ws-image-open" onClick={() => setViewerImage(resolveMediaUrl(message.imagenUrl))} title="Ver imagen completa"><img src={resolveMediaUrl(message.imagenUrl)} alt="Adjunto" /><span><Maximize2 size={15} /></span></button>}{stockRequest && <span className="quote-ws-stock-request-tag"><PackageSearch size={13} /> Pregunta por stock</span>}{message.texto && <p>{stockRequest ? stockRequestText(message.texto) : message.texto}</p>}<small>{formatDate(message.createdAt)} {mine ? '✓✓' : ''}</small></div></div></React.Fragment>;
             })}
             {!isLoadingMessages && documentBubbleIndex === messages.length && documentBubble}
           </div>
@@ -1083,7 +1120,10 @@ export default function QuoteDetailModal({
             </div>
 
             <div className="quote-editor-fields-grid">
-              <label><span>Disponibilidad</span><select value={availability} onChange={(event) => setAvailability(event.target.value)}>{QUOTE_AVAILABILITY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>
+              {stockQuery && <label><span>¿Cómo lo vendes?</span><select value={encargo ? 'encargo' : 'stock'} onChange={(event) => setEncargo(event.target.value === 'encargo')}><option value="encargo">Por encargo (lo mando a pedir)</option><option value="stock">Tengo stock</option></select></label>}
+              {stockQuery && encargo
+                ? <label><span>Llega en (días)</span><input type="number" min="1" max="120" inputMode="numeric" value={encargoDias} onChange={(event) => setEncargoDias(event.target.value)} placeholder="Ej: 10" required /><small>Al pagar, el comprador reserva la pieza y tú la mandas a pedir.</small></label>
+                : <label><span>Disponibilidad</span><select value={availability} onChange={(event) => setAvailability(event.target.value)}>{QUOTE_AVAILABILITY_OPTIONS.map((option) => <option key={option}>{option}</option>)}</select></label>}
               {/* La condicion de entrega la eligio el COMPRADOR al pedir la cotizacion:
                   el vendedor cotiza sobre esa condicion, no la cambia. Se muestra
                   bloqueada igual que la cantidad, que ya funcionaba asi. */}
@@ -1285,7 +1325,7 @@ export default function QuoteDetailModal({
         </div>
       )}
 
-      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total a pagar{quoteShippingCost > 0 ? ' (productos + despacho)' : ''}</small><strong>{formatCLP(quoteChargeBase(activeQuote))}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} /><DataRow icon={Truck} label="Método de envío" value={deliveryTermsLabel(activeQuote.condicionesEntrega)} />{quoteShippingCost > 0 && <DataRow icon={CreditCard} label="Despacho dentro de la comuna" value={formatCLP(quoteShippingCost)} />}{Number(activeQuote.descuento) > 0 && <DataRow icon={Tag} label="Descuento" value={`-${formatCLP(activeQuote.descuento)}`} />}<DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && paused && <p className="quote-ws-preview-paused"><PauseCircle size={16} /> En pausa: pediste una modificación. Espera la respuesta de la tienda o cancela tu solicitud para pagar esta cotización.</p>}{purchased ? <button type="button" className="quote-ws-primary-button" onClick={() => navigate(profilePurchasePath(purchasedOrderId))}><PackageCheck size={16} /> Ver mi compra</button> : mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed || paused} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : paused ? 'Cotización en pausa' : 'Comprar esta cotización'}</button>}</div></section></div>}
+      {quotePreviewOpen && activeQuote && <div className="quote-ws-dialog-backdrop" onClick={() => setQuotePreviewOpen(false)}><section className="quote-ws-quote-dialog quote-ws-preview-dialog" onClick={(event) => event.stopPropagation()}><header><div><FileText size={22} /><span><strong>Detalle de la cotización</strong><small><CalendarClock size={13} /> {quoteExpirationLabel(activeQuote, now)}</small></span></div><button type="button" onClick={() => setQuotePreviewOpen(false)}><X size={20} /></button></header><div className="quote-ws-dialog-body"><div className="quote-ws-preview-price"><small>Total a pagar{quoteShippingCost > 0 ? ' (productos + despacho)' : ''}</small><strong>{formatCLP(quoteChargeBase(activeQuote))}</strong></div><DataRow icon={Package} label="Cantidad" value={activeQuote.cantidad} /><DataRow icon={CheckCircle2} label="Disponibilidad" value={activeQuote.disponibilidad} />{activeQuote.tiempoEncargoDias ? <EncargoTimeNotice dias={activeQuote.tiempoEncargoDias} margen={activeQuote.encargoMargenDias} mode={mode} stage="quote" /> : null}<DataRow icon={Truck} label="Método de envío" value={deliveryTermsLabel(activeQuote.condicionesEntrega)} />{quoteShippingCost > 0 && <DataRow icon={CreditCard} label="Despacho dentro de la comuna" value={formatCLP(quoteShippingCost)} />}{Number(activeQuote.descuento) > 0 && <DataRow icon={Tag} label="Descuento" value={`-${formatCLP(activeQuote.descuento)}`} />}<DataRow icon={ShieldCheck} label="Garantía" value={activeQuote.garantia} /><DataRow icon={FileText} label="Notas" value={activeQuote.notas} /><div className="quote-ws-preview-document"><button type="button" onClick={viewDocument}><Eye size={16} /> Ver PDF</button><button type="button" onClick={downloadDocument}><Download size={16} /> Descargar PDF</button></div>{mode === 'buyer' && paused && <p className="quote-ws-preview-paused"><PauseCircle size={16} /> En pausa: pediste una modificación. Espera la respuesta de la tienda o cancela tu solicitud para pagar esta cotización.</p>}{purchased ? <button type="button" className="quote-ws-primary-button" onClick={() => navigate(profilePurchasePath(purchasedOrderId))}><PackageCheck size={16} /> Ver mi compra</button> : mode === 'buyer' && <button type="button" className="quote-ws-primary-button" disabled={expired || closed || paused} onClick={goToQuoteCheckout}><ShoppingCart size={16} /> {expired ? 'Cotización vencida' : paused ? 'Cotización en pausa' : 'Comprar esta cotización'}</button>}</div></section></div>}
     </div>
   );
 }

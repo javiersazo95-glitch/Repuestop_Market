@@ -25,7 +25,8 @@ import { storePath } from '../../routes/paths';
 import { buildShippingMethodsString, getShippingMethodDefs, parseShippingSelections } from '../../data/shippingMethods';
 import { minimoVigente } from '../../utils/minimoDespacho';
 import { useMinimoDespachoField } from '../../hooks/useMinimoDespachoField';
-import { MinimoDespachoSlot } from '../MinimoDespacho';
+import { MinimoDespachoSlot, MinimoEncargoSlot } from '../MinimoDespacho';
+import { useMinimoEncargoField } from '../../hooks/useMinimoEncargoField';
 import { SELLER_SETTINGS } from '../../data/sellerSettings';
 import '../../styles/store-profile-mobile.css';
 import '../../styles/seller-settings.css';
@@ -183,8 +184,12 @@ function ShippingSection({ sellerId, storeInfo, onSaved }) {
   const minimoGuardado = minimoVigente(storeInfo?.minimoDespacho);
   const minimo = useMinimoDespachoField(buildShippingMethodsString(selections), minimoGuardado);
   const { reset: resetMinimo } = minimo;
+  const encargoGuardado = minimoVigente(storeInfo?.minimoEncargo);
+  const encargo = useMinimoEncargoField(encargoGuardado);
+  const { reset: resetEncargo } = encargo;
   useEffect(() => { setSelections(parseShippingSelections(storeInfo?.shippingMethods)); }, [storeInfo?.shippingMethods]);
   useEffect(() => { resetMinimo(minimoGuardado); }, [minimoGuardado, resetMinimo]);
+  useEffect(() => { resetEncargo(encargoGuardado); }, [encargoGuardado, resetEncargo]);
 
   const save = async () => {
     if (!getShippingMethodDefs().some((def) => selections[def.id]?.enabled)) {
@@ -195,10 +200,14 @@ function ShippingSection({ sellerId, storeInfo, onSaved }) {
       setNotice({ type: 'error', message: minimo.incompleto });
       return;
     }
+    if (encargo.incompleto) {
+      setNotice({ type: 'error', message: encargo.incompleto });
+      return;
+    }
     setSaving(true);
     setNotice(null);
     try {
-      await updateSellerShippingMethodsApi(sellerId, buildShippingMethodsString(selections), minimo.valor);
+      await updateSellerShippingMethodsApi(sellerId, buildShippingMethodsString(selections), minimo.valor, encargo.valor);
       setNotice({ type: 'success', message: 'Tus métodos de envío se guardaron.' });
       onSaved();
     } catch (err) {
@@ -216,6 +225,7 @@ function ShippingSection({ sellerId, storeInfo, onSaved }) {
       <ShippingMethodsPicker selections={selections} onChange={setSelections} />
       <small className="sst-help">Elige los métodos que ofrece tu tienda. Deja el precio en blanco si es gratuito.</small>
       <MinimoDespachoSlot field={minimo} />
+      <MinimoEncargoSlot field={encargo} />
       <Notice notice={notice} />
       <button type="button" className="sst-save" disabled={saving} onClick={save}>{saving ? <Loader2 size={16} className="spin-icon" /> : null} Guardar envíos</button>
     </div>

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, CheckCircle2, FileText, Loader2, Lock, Sparkles, Store, Truck, User,
+  AlertTriangle, ArrowLeft, CheckCircle2, FileText, Loader2, Lock, PackageSearch, Sparkles, Store, Truck, User,
 } from 'lucide-react';
 import '../styles/auction-purchase.css';
 import { useMarketplace } from '../context/MarketplaceContext';
@@ -15,6 +15,7 @@ import { formatVehicleLabel, isValidPlate, lookupVehicleByPlate, normalizePlate 
 import { adaptProduct, formatRut, isValidRut } from '../services/adapters';
 import { deliveryTermsLabel, isQuoteExpired, quantityFromLabel, quoteShippingCost } from '../utils/quoteFlow';
 import { normalizeOrderStatus } from '../data/orderStatusFlow';
+import EncargoTimeNotice from '../components/EncargoTimeNotice';
 import { checkoutFallbackShippingMethod, resolveShippingService } from '../data/shippingMethods';
 import { buyerProfilePath, profilePath, ROUTES } from '../routes/paths';
 import { useSellerBlocked } from '../hooks/useSellerBlocked';
@@ -979,6 +980,16 @@ export default function CheckoutPage() {
           <div className="checkout-main">
             <section className="apc-card">
               <h2><span>1</span> Tu pedido por tienda</h2>
+              {/* 28-nov: cotización por encargo. El pago es la reserva y la tienda manda a pedir la pieza. */}
+              {isQuoteMode && Number(quote?.tiempoEncargoDias) > 0 && (
+                <>
+                  <p className="apc-note encargo-note">
+                    <PackageSearch size={16} />
+                    <span><strong>Reserva por encargo.</strong> Al pagar reservas la pieza y la tienda la manda a pedir a su proveedor.</span>
+                  </p>
+                  <EncargoTimeNotice dias={quote.tiempoEncargoDias} margen={quote.encargoMargenDias} stage="quote" />
+                </>
+              )}
               {groups.map(renderStoreCard)}
               <p className="checkout-contact-note" style={{ margin: 0 }}>
                 <User size={13} /> Recibirás la confirmación y el comprobante en <strong>{user?.email || user?.nombreCompleto || 'tu cuenta RepuesTop'}</strong>.
@@ -1279,7 +1290,7 @@ export default function CheckoutPage() {
             costoEnvio={checkoutTotals.costoEnvio}
             total={checkoutTotals.total}
             shippingLabel={checkoutShippingLabel}
-            ctaLabel={paymentProcessingStatus || (paymentMethod === 'SIMULACION' ? `Simular y pagar ${formatCLP(checkoutTotals.total)}` : `Pagar ${formatCLP(checkoutTotals.total)}`)}
+            ctaLabel={paymentProcessingStatus || (paymentMethod === 'SIMULACION' ? `Simular y pagar ${formatCLP(checkoutTotals.total)}` : isQuoteMode && Number(quote?.tiempoEncargoDias) > 0 ? `Pagar y reservar ${formatCLP(checkoutTotals.total)}` : `Pagar ${formatCLP(checkoutTotals.total)}`)}
             onCta={advance}
             beforeCta={!isQuoteMode && compatMismatches.length > 0 ? (
               <div className="checkout-compat-summary">

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Banknote, CheckCircle2, ChevronRight, Store, Truck } from 'lucide-react';
+import { Banknote, CheckCircle2, ChevronRight, PackageSearch, Store, Truck } from 'lucide-react';
 import { formatMinimo, minimoVigente, progresoMinimo } from '../utils/minimoDespacho';
 import '../styles/minimo-despacho.css';
 
@@ -127,6 +127,53 @@ export function MinimoDespachoSlot({ field }) {
           {error
             ? <small className="mdp-field-error">{error}</small>
             : <small className="mdp-help">Se muestra en tu perfil, en tus productos y en el carrito. El retiro en tienda no tiene mínimo.</small>}
+        </label>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Ranura «Mínimo para encargo» (28-nov): interruptor y monto desde el que la tienda manda a pedir un repuesto sin
+ * stock. Va bajo el mínimo de despacho en Configuración → Envíos. `field` sale de `useMinimoEncargoField`.
+ */
+export function MinimoEncargoSlot({ field }) {
+  const { activo, texto, setTexto, setEnabled, error } = field;
+  return (
+    <div className={`mdp-slot${activo ? ' is-active' : ''}`} data-testid="minimo-encargo-slot">
+      <div className="mdp-slot-head">
+        <span className="mdp-slot-icon" aria-hidden="true"><PackageSearch size={20} /></span>
+        <span className="mdp-slot-copy">
+          <strong>Mínimo para encargo</strong>
+          <small>Si un repuesto se queda sin stock y su precio llega a este monto, sigue visible con «Consultar por stock» y puedes encargarlo a tu importadora.</small>
+        </span>
+        <label className="mdp-switch">
+          <input
+            type="checkbox"
+            checked={activo}
+            onChange={(event) => setEnabled(event.target.checked)}
+            aria-label="Activar mínimo para encargo"
+          />
+          <i />
+        </label>
+      </div>
+      {activo && (
+        <label className="mdp-field">
+          <span>Precio mínimo del repuesto</span>
+          <span className={`mdp-amount${error ? ' is-error' : ''}`}>
+            <b>$</b>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="Ej: 40.000"
+              value={texto}
+              onChange={(event) => setTexto(event.target.value)}
+              aria-invalid={Boolean(error)}
+            />
+          </span>
+          {error
+            ? <small className="mdp-field-error">{error}</small>
+            : <small className="mdp-help">Bajo este monto, un repuesto sin stock sigue como hoy. Los repuestos «a cotizar» sin stock siempre se pueden consultar.</small>}
         </label>
       )}
     </div>

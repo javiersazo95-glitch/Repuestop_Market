@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   AlertCircle, BadgeCheck, BadgeDollarSign, Box, CheckCircle2, ChevronRight,
-  CircleHelp, ClipboardList, FileText, Loader2, LockKeyhole, Package, Send, Shield, Store, X,
+  CircleHelp, ClipboardList, FileText, Loader2, LockKeyhole, Package, PackageSearch, Send, Shield, Store, X,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -101,6 +101,8 @@ export default function QuotationRequestModal({
     product.imagen || product.imagenUrl || product.image || product.imagenes?.[0] || product.fotos?.[0],
   );
   const providerId = product.proveedorId ?? product.sellerId ?? product.vendedor?.id;
+  // 28-nov: «Consultar por stock» abre esta misma solicitud, marcada para que la tienda cotice por encargo.
+  const stockQuery = Boolean(product.consultaStock);
   const buyerCommune = user?.comuna;
   const sellerCommune = product.ciudadVendedor || product.comunaVendedor || product.storeCommune;
   const configuredShippingMethods = parseShippingMethods(product.metodosEnvio);
@@ -146,7 +148,10 @@ export default function QuotationRequestModal({
       // cuando la unica que hay esta cerrada: en esos casos el comprador esta pidiendo
       // otra cotizacion, no continuando la anterior.
       const forceNew = await needsNewQuoteThread(user, providerId, product.id);
-      const createdConversation = await createConversationApi(providerId, product.id, { forceNew });
+      const createdConversation = await createConversationApi(providerId, product.id, {
+        forceNew,
+        motivo: stockQuery ? 'STOCK' : null,
+      });
       // La solicitud viaja como datos: el backend la guarda (unidades, método, chasis) y
       // publica en el chat el mensaje en lista. Antes se mandaba sólo un texto que cada
       // pantalla releía y, si no podía, mostraba "Retiro en tienda".
@@ -179,11 +184,19 @@ export default function QuotationRequestModal({
         <button className="modal-close-btn quote-request-close" type="button" onClick={onClose} aria-label="Cerrar"><X size={28} /></button>
 
         <header className="quote-request-header">
-          <div className="quote-request-header-icon"><FileText className="quote-request-header-file" size={38} /><BadgeDollarSign className="quote-request-header-money" size={20} /></div>
+          <div className="quote-request-header-icon">
+            {stockQuery
+              ? <PackageSearch className="quote-request-header-file" size={38} />
+              : <><FileText className="quote-request-header-file" size={38} /><BadgeDollarSign className="quote-request-header-money" size={20} /></>}
+          </div>
           <div className="quote-request-header-copy">
-            <span>COTIZACIÓN CON LA TIENDA</span>
-            <h2 id="quote-request-title">{conversation ? 'Solicitud enviada' : 'Solicita tu cotización'}</h2>
-            <p>{conversation ? 'La tienda ya recibió los datos y puede responderte en la conversación.' : 'Completa los datos necesarios para solicitar la cotización del repuesto.'}</p>
+            <span>{stockQuery ? 'CONSULTA POR STOCK' : 'COTIZACIÓN CON LA TIENDA'}</span>
+            <h2 id="quote-request-title">{conversation ? 'Solicitud enviada' : stockQuery ? 'Consulta por stock' : 'Solicita tu cotización'}</h2>
+            <p>{conversation
+              ? 'La tienda ya recibió los datos y puede responderte en la conversación.'
+              : stockQuery
+                ? 'La tienda no tiene stock, pero puede encargar este repuesto. Te responderá con una cotización y el tiempo que tarda en llegar; al pagarla, reservas la pieza y la tienda la manda a pedir.'
+                : 'Completa los datos necesarios para solicitar la cotización del repuesto.'}</p>
           </div>
         </header>
 
@@ -207,7 +220,7 @@ export default function QuotationRequestModal({
           {conversation ? (
             <div className="quote-request-success">
               <CheckCircle2 size={54} />
-              <h3>¡Cotización solicitada correctamente!</h3>
+              <h3>{stockQuery ? '¡Consulta enviada a la tienda!' : '¡Cotización solicitada correctamente!'}</h3>
               <p>Quedó creada la conversación #{conversation.id}. Podrás revisar la propuesta, su vigencia y responder desde <strong>Mis cotizaciones</strong>.</p>
               <a className="btn-submit-ticket" href={buyerProfilePath(user, 'quotes')}>Ir a mis cotizaciones <ChevronRight size={17} /></a>
               <button className="btn-auth-secondary" type="button" onClick={onClose}>Seguir viendo productos</button>

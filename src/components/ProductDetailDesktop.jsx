@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   BadgeCheck, Car, CheckCircle2, ChevronLeft, ChevronRight, Clock, CreditCard, FileText, Globe, Heart,
-  Info, MapPin, Maximize2, MessageCircle, MessageSquareText, Package, ShieldCheck, ShoppingCart, Star, Store, Truck, Zap,
+  Info, MapPin, Maximize2, MessageCircle, MessageSquareText, Package, PackageSearch, ShieldCheck, ShoppingCart, Star, Store, Truck, Zap,
 } from 'lucide-react';
 
 import ProductPhoto from './ProductPhoto';
@@ -93,8 +93,10 @@ export default function ProductDetailDesktop({
     ? `Ver todas las compatibilidades (${compatCount})`
     : compatCount > 0 ? 'Ver detalle y verificar con mi patente' : 'Verificar con mi patente';
 
+  // 28-nov: sin stock pero la tienda lo encarga.
+  const consultarStock = Boolean(product.consultarStock) && stock <= 0;
   const stockChip = stock <= 0
-    ? { className: 'is-out', label: 'Sin stock' }
+    ? { className: 'is-out', label: consultarStock ? 'Sin stock · por encargo' : 'Sin stock' }
     : stock <= 5
       ? { className: 'is-low', label: `Últimas ${stock} unidades` }
       : { className: 'is-ok', label: `Disponible · ${stock} u.` };
@@ -350,7 +352,11 @@ export default function ProductDetailDesktop({
 
         {!isOwnProduct && (
           <div className="pdd-ctas">
-            {quoteOnly ? (
+            {consultarStock ? (
+              <button type="button" className="pdd-btn is-primary" onClick={() => onOpenQuote({ ...product, consultaStock: true })}>
+                <PackageSearch size={18} /> Consultar por stock
+              </button>
+            ) : quoteOnly ? (
               <button type="button" className="pdd-btn is-primary" onClick={() => onOpenQuote(product)}>
                 <MessageCircle size={18} /> Cotizar con la tienda
               </button>

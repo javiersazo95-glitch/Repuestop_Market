@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { resolveMediaUrl } from '../services/api';
 import { isConversationPaused, isQuoteExpired } from '../utils/quoteFlow';
+import { isStockQueryConversation } from '../utils/inquiry';
 import { helpContactPath } from '../routes/paths';
 
 export const UNIFIED_QUOTE_STATUS = {
@@ -144,6 +145,7 @@ export default function QuoteCard({
           </div>
         )}
         <div className="product-copy">
+          {isStockQueryConversation(quote) && <span className="stock-query-tag">Consulta de stock</span>}
           <h4 className="product-title">{productName}</h4>
           <span className="product-meta quote-message-preview">"{lastMessage}"</span>
         </div>

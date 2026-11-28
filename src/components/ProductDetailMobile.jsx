@@ -154,7 +154,7 @@ export default function ProductDetailMobile({
       <article className="pdm-summary">
         <div className="pdm-badges">
           <span className={`pdm-badge pdm-badge-stock ${stock > 0 ? 'ok' : 'out'}`}>
-            <i /> {stock > 0 ? 'Disponible' : 'Sin stock'}
+            <i /> {stock > 0 ? 'Disponible' : product.consultarStock ? 'Sin stock · por encargo' : 'Sin stock'}
           </span>
           <span className="pdm-badge">{condition}</span>
           {code && <span className="pdm-badge pdm-badge-code">Código {code}</span>}

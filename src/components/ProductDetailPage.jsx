@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle, ArrowLeft, Car, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Heart, Info,
-  MessageCircle, Search, ShieldCheck, ShoppingCart, SlidersHorizontal, X,
+  MessageCircle, PackageSearch, Search, ShieldCheck, ShoppingCart, SlidersHorizontal, X,
 } from 'lucide-react';
 import VehicleBrandLogo from './VehicleBrandLogo';
 import { productReferenceImage } from '../utils/productImage';
@@ -168,6 +168,9 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   const stock = Number(product.stock || 0);
   const pricingMode = String(product.pricingMode || '').toUpperCase();
   const quoteOnly = pricingMode === 'QUOTE_ONLY' || pricingMode === 'COTIZACION' || product.soloCotizacion || !product.precio;
+  // 28-nov: sin stock, pero la tienda lo encarga (precio sobre su mínimo para encargo). El backend lo decide.
+  const consultarStock = Boolean(product.consultarStock) && stock <= 0;
+  const openStockQuery = () => onOpenQuote({ ...product, consultaStock: true });
   const rawSeller = product.vendedor;
   const seller = typeof rawSeller === 'object' ? (rawSeller?.nombre || rawSeller?.razonSocial) : rawSeller;
   const sellerName = seller || 'Tienda verificada';
@@ -237,7 +240,7 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
   useEffect(() => {
     if (selectedShippingMethod && !shippingChoices.includes(selectedShippingMethod)) setSelectedShippingMethod('');
   }, [shippingChoices, selectedShippingMethod]);
-  const canChooseShipping = !isOwnProduct && !quoteOnly;
+  const canChooseShipping = !isOwnProduct && !quoteOnly && !consultarStock;
   // Intento de compra sin método: se lleva al comprador a la card y se resalta un momento.
   const shippingCardRef = useRef(null);
   const [shippingFocused, setShippingFocused] = useState(false);
@@ -738,7 +741,19 @@ export default function ProductDetailPage({ product, user, activeVehicle, onBack
 
           {/* Barra fija de acción como la de la app: favorito + acción principal,
               siempre visible (sin watchSelector: el layout móvil no tiene buybox). */}
-          {!isOwnProduct && (quoteOnly ? (
+          {!isOwnProduct && (consultarStock ? (
+            <MobileStickyBar label="Sin stock" value="Por encargo" ariaLabel="Consultar por stock">
+              <button
+                type="button"
+                className={`mobile-sticky-bar__btn is-secondary ${favorite ? 'is-favorite' : ''}`}
+                onClick={handleToggleFavorite}
+                aria-label={favorite ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+              >
+                <Heart size={20} fill={favorite ? 'currentColor' : 'none'} />
+              </button>
+              <button type="button" className="mobile-sticky-bar__btn" onClick={openStockQuery}><PackageSearch size={18} /> Consultar por stock</button>
+            </MobileStickyBar>
+          ) : quoteOnly ? (
             <MobileStickyBar label="Precio" value="A cotizar" ariaLabel="Cotizar este repuesto">
               <button
                 type="button"

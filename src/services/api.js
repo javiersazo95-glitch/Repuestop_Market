@@ -1005,13 +1005,15 @@ export async function getBuyerConversationsApi(usuarioId, { signal } = {}) {
  * el hilo viejo. La condicion la decide quien llama, que es el unico que sabe si la
  * oferta anterior sigue vigente.
  */
-export async function createConversationApi(proveedorId, productoId, { forceNew = false } = {}) {
+export async function createConversationApi(proveedorId, productoId, { forceNew = false, motivo = null } = {}) {
   return fetchApi('/conversaciones', {
     method: 'POST',
     body: JSON.stringify({
       proveedorId: Number(proveedorId),
       productoId: Number(productoId),
       forceNew: Boolean(forceNew),
+      // 'STOCK' = consulta por stock de un repuesto sin stock que la tienda encarga (28-nov).
+      ...(motivo ? { motivo } : {}),
     }),
   });
 }
@@ -2337,10 +2339,14 @@ export async function deleteSellerProductApi(proveedorId, productoId) {
  * Actualiza los métodos de envío que acepta la tienda y, si se pasa, el mínimo de despacho (22-nov): un monto en
  * pesos, o `null` para apagarlo. Sin el tercer argumento el mínimo guardado no se toca.
  */
-export async function updateSellerShippingMethodsApi(proveedorId, shippingMethods, minimoDespacho) {
+export async function updateSellerShippingMethodsApi(proveedorId, shippingMethods, minimoDespacho, minimoEncargo) {
+  // Mínimo para encargo (28-nov): igual que el de despacho, sin el argumento el guardado no se toca.
+  const body = { shippingMethods };
+  if (minimoDespacho !== undefined) body.minimoDespacho = minimoDespacho;
+  if (minimoEncargo !== undefined) body.minimoEncargo = minimoEncargo;
   return fetchApi(`/proveedores/${proveedorId}/shipping-methods`, {
     method: 'PUT',
-    body: JSON.stringify(minimoDespacho === undefined ? { shippingMethods } : { shippingMethods, minimoDespacho }),
+    body: JSON.stringify(body),
   });
 }
 

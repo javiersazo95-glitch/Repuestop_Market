@@ -9,6 +9,7 @@ import { buyerProfilePath, profileOrderPath, profilePurchasePath, ROUTES } from 
 import { orderDeliverySummary, orderDisplayCode, orderHasShippingDueOnDelivery, orderNumberRef } from '../data/orderIdentity';
 import { buildOrderPackages } from '../utils/orderPackages';
 import ShippingIcon from '../components/ShippingIcon';
+import { encargoFecha } from '../utils/inquiry';
 
 const LAST_SUCCESSFUL_ORDER_KEY = 'repuestop_last_successful_order';
 
@@ -214,6 +215,14 @@ export default function PurchaseSuccessPage() {
     }
     if (orderStatus === 'ENTREGADO' || orderStatus === 'FINALIZADO') {
       return { title: 'Tu pedido ya fue entregado', note: 'La entrega de tu pedido ya quedó registrada.' };
+    }
+    // 28-nov: reserva por encargo (consulta por stock). La tienda manda a pedir la pieza con el pago.
+    if (order?.encargo) {
+      const fecha = encargoFecha(order.encargoFechaEstimada);
+      return {
+        title: 'Reservaste la pieza',
+        note: `La tienda ya fue notificada y va a mandar a pedir tu repuesto${fecha ? `: llega aprox. el ${fecha}` : ''}. Te avisaremos cuando esté ${isPickup ? 'listo para retirar' : 'en viaje'}.`,
+      };
     }
     return isPickup
       ? { title: 'Tu pedido se está preparando para retiro', note: 'La tienda ya fue notificada y está preparando tu pedido. Te avisaremos cuando esté listo para retirar.' }
