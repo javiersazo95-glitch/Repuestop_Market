@@ -21843,3 +21843,10 @@ input.has-success {
 .encargo-time.is-late, .encargo-time.is-overdue { border-color: #fca5a5; }
 .encargo-time.is-compact { padding: 9px 11px; }
 .quote-ws-stock-banner .encargo-time { margin: 6px 0 0; background: #fff; }
+
+/* Franja de la consulta por stock plegable: el título con la flecha minimiza o despliega la explicación. */
+.quote-ws-stock-banner > div { flex: 1; min-width: 0; }
+.quote-ws-stock-banner-toggle { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.quote-ws-stock-banner-chevron { flex: 0 0 auto; color: #d97706; transition: transform .18s ease; transform: rotate(180deg); }
+.quote-ws-stock-banner.is-collapsed { padding-top: 8px; padding-bottom: 8px; align-items: center; }
+.quote-ws-stock-banner.is-collapsed .quote-ws-stock-banner-chevron { transform: rotate(0deg); }

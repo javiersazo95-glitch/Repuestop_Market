@@ -4,7 +4,7 @@ import {
   AlertTriangle, ArrowLeft, BadgeCheck, BadgeDollarSign, CalendarDays, CalendarClock, Car,
   CheckCircle2, ChevronRight, CircleHelp, CircleUserRound, ClipboardList, CreditCard, Download, ExternalLink, Eye, FileText, Flag,
   Headphones, Image as ImageIcon, Info, Loader2, Lock, Maximize2, MessageSquare, Package, Paperclip,
-  PauseCircle, Pencil, Send, Settings2, Share2, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, Undo2, X, PackageCheck, PackageSearch
+  PauseCircle, Pencil, Send, Settings2, Share2, ShieldCheck, ShoppingCart, Store, Tag, Trash2, Truck, Undo2, X, PackageCheck, PackageSearch, ChevronDown
 } from 'lucide-react';
 import RepuesTopLogo from './RepuesTopLogo';
 import ChatImagePreview from './ChatImagePreview';
@@ -35,6 +35,9 @@ import { parseShippingMethods, resolveShippingService, shippingMethodCost } from
 import { conditionLabel } from '../data/productConditions';
 import { encargoLabel, isQuoteRequestMessage, isStockQueryConversation, stockRequestText } from '../utils/inquiry';
 import EncargoTimeNotice from './EncargoTimeNotice';
+
+/** Preferencia de la franja de la consulta por stock (abierta o minimizada), compartida entre chats. */
+const STOCK_BANNER_KEY = 'repuestop.chat.consultaStock.franja';
 
 // Tope del mensaje del chat. Una cotizacion se negocia con datos concretos -cantidad,
 // estado, despacho, precio-; 500 caracteres son un parrafo completo y obligan a ser
@@ -186,6 +189,14 @@ export default function QuoteDetailModal({
   const [availability, setAvailability] = useState('Stock disponible');
   // 28-nov: en una consulta por stock la tienda cotiza con su stock o por encargo, con los días en que llega.
   const stockQuery = isStockQueryConversation(quote);
+  // La franja de la consulta por stock se puede minimizar para dejarle espacio al chat; se recuerda la preferencia.
+  const [stockBannerOpen, setStockBannerOpen] = useState(() => {
+    try { return window.localStorage.getItem(STOCK_BANNER_KEY) !== 'cerrada'; } catch { return true; }
+  });
+  const toggleStockBanner = () => setStockBannerOpen((open) => {
+    try { window.localStorage.setItem(STOCK_BANNER_KEY, open ? 'cerrada' : 'abierta'); } catch { /* sin almacenamiento */ }
+    return !open;
+  });
   const [encargo, setEncargo] = useState(true);
   const [encargoDias, setEncargoDias] = useState('');
   const [deliveryTerms, setDeliveryTerms] = useState('');
@@ -881,10 +892,20 @@ export default function QuoteDetailModal({
           <div className="quote-ws-notices">
             {/* 28-nov: una consulta por stock se distingue desde el chat: franja propia arriba y la solicitud en ámbar. */}
             {stockQuery && (
-              <div className="quote-ws-stock-banner" data-testid="stock-query-banner">
+              <div className={`quote-ws-stock-banner${stockBannerOpen ? '' : ' is-collapsed'}`} data-testid="stock-query-banner">
                 <PackageSearch size={22} />
                 <div>
-                  <strong>Consulta por stock{encargoLabel(activeQuote) ? ` · ${encargoLabel(activeQuote).replace('Por encargo · ', '')}` : ''}</strong>
+                  <button
+                    type="button"
+                    className="quote-ws-stock-banner-toggle"
+                    onClick={toggleStockBanner}
+                    aria-expanded={stockBannerOpen}
+                    aria-label={stockBannerOpen ? 'Minimizar la información de la consulta por stock' : 'Ver la información de la consulta por stock'}
+                  >
+                    <strong>Consulta por stock{encargoLabel(activeQuote) ? ` · ${encargoLabel(activeQuote).replace('Por encargo · ', '')}` : ''}</strong>
+                    <ChevronDown size={18} className="quote-ws-stock-banner-chevron" />
+                  </button>
+                  {stockBannerOpen && <>
                   <span>{mode === 'buyer'
                     ? (activeQuote?.tiempoEncargoDias
                       ? 'La tienda puede encargar este repuesto. Al pagar la cotización reservas la pieza y la tienda la manda a pedir.'
@@ -896,6 +917,7 @@ export default function QuoteDetailModal({
                   {activeQuote?.tiempoEncargoDias && !purchased ? (
                     <EncargoTimeNotice dias={activeQuote.tiempoEncargoDias} margen={activeQuote.encargoMargenDias} mode={mode} stage="quote" />
                   ) : null}
+                  </>}
                 </div>
               </div>
             )}
